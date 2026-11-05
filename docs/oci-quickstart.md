@@ -65,7 +65,8 @@ export PREGO_API_KEY=prk_...   # from the Prego console; do not write it to a fi
 ```
 
 The helper gives the tenant as the username and the identity as the password. Docker sends them only to the
-Prego token realm (`https://sts.prego.k8skill.com/v1/oci/token`). The realm gives Docker a registry token (15
+Prego token realm (`https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's `401`
+answer). The realm gives Docker a registry token (15
 minutes by default, or the lifetime of your grant), and Docker gets a new one when the registry answers `401`. No password goes into `config.json`.
 
 ## 3. Push and pull

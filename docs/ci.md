@@ -145,6 +145,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       PREGO_TENANT: acme
+      PREGO_EDGE_CODE: k7mq
     steps:
       - uses: actions/checkout@<full commit SHA>
       # install cargo-credential-prego, docker-credential-prego and prego (see the full file)

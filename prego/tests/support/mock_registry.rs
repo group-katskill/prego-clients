@@ -16,7 +16,10 @@ use std::thread;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-pub const REALM_PATH: &str = "/v1/oci/token";
+/// The realm of the repositories: the edge code of the repository's tenant (`State::repo_code`).
+pub const REALM_PREFIX: &str = "/v1/oci/token/e/";
+/// The realm without a code, as in the challenge of `GET /v2/` (no repository).
+pub const BARE_REALM: &str = "/v1/oci/token";
 
 pub fn sha256(b: &[u8]) -> String {
     let d = Sha256::digest(b);
@@ -62,6 +65,8 @@ pub struct State {
     pub min_chunk: u64,
     /// The realm in the challenge. `None` means this server's own realm.
     pub realm_override: Option<String>,
+    /// The edge code in the realm of repository challenges. `k7mq` if not set.
+    pub repo_code: Option<String>,
     /// Expected Basic credentials `tenant:secret`.
     pub basic: String,
     // Faults.
@@ -107,7 +112,7 @@ impl MockRegistry {
     }
 
     pub fn sts_url(&self) -> String {
-        format!("http://127.0.0.1:{}/v1/sts/token", self.port)
+        format!("http://127.0.0.1:{}/v1/sts/token/e/k7mq", self.port)
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&mut State) -> R) -> R {
@@ -269,8 +274,16 @@ fn read(reader: &mut BufReader<TcpStream>) -> Option<(Req, Seen)> {
 }
 
 fn handle(s: &mut State, port: u16, req: &Req) -> Res {
-    if req.path == REALM_PATH {
+    if req.path.starts_with(REALM_PREFIX) {
         return realm(s, req);
+    }
+    if req.path == BARE_REALM {
+        // The bare realm serves only the scope-less login check.
+        return Res::err(
+            400,
+            "invalid_request",
+            "this token URL does not issue repository tokens",
+        );
     }
     if !req.path.starts_with("/v2/") {
         return Res::new(404);
@@ -280,10 +293,14 @@ fn handle(s: &mut State, port: u16, req: &Req) -> Res {
         .get("authorization")
         .and_then(|a| a.strip_prefix("Bearer "))
         .map(str::to_string);
-    let realm = s
-        .realm_override
-        .clone()
-        .unwrap_or_else(|| format!("http://127.0.0.1:{port}{REALM_PATH}"));
+    let code = s.repo_code.clone().unwrap_or_else(|| "k7mq".into());
+    let realm = s.realm_override.clone().unwrap_or_else(|| {
+        if req.path == "/v2/" {
+            format!("http://127.0.0.1:{port}{BARE_REALM}")
+        } else {
+            format!("http://127.0.0.1:{port}{REALM_PREFIX}{code}")
+        }
+    });
     let challenge = || {
         Res::err(401, "UNAUTHORIZED", "authentication required").h(
             "WWW-Authenticate",

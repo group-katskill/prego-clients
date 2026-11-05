@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- PROTOCOL.md 1.7.0: the edge code. Registry tokens at `POST /v1/sts/token/e/<edge code>`, the OCI realm at
+  `/v1/oci/token/e/<edge code>`, the refusals for the URL without the code, and the settings key `edge_code`.
+  README, quickstarts and CI examples set `PREGO_EDGE_CODE`.
 - The Unreleased items in every CHANGELOG move under `## [0.5.0] - 2026-11-04`.
 - PROTOCOL.md 1.6.0: section 10, npm packages (client files, tokens, trusted publishing), and the settings
   key `npm_host`.

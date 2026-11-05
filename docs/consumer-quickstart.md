@@ -53,6 +53,10 @@ index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
 credential-provider = ["cargo-credential-prego", "--tenant", "acme"]
 ```
 
+From 0.6.0 the provider also needs your tenant's [edge code](../README.md#edge-code). The Prego console shows
+it. Set it one time for all Prego tools: `edge_code = "k7mq"` in `~/.config/prego/config.toml`, or
+`PREGO_EDGE_CODE=k7mq`. Replace `k7mq` with your code.
+
 ## 3. Give the provider your API key
 
 Put the key in your shell environment. Do not write it into `config.toml` or a file in your project.
@@ -83,7 +87,7 @@ cargo build
 ```
 
 Cargo starts `cargo-credential-prego`. The provider sends your API key to the Prego STS
-(`https://sts.prego.k8skill.com/v1/sts/token`) and gets a registry token (15 minutes by default; the grant of
+(`https://sts.prego.k8skill.com/v1/sts/token/e/k7mq`) and gets a registry token (15 minutes by default; the grant of
 the tenant that shares the crates can set a shorter or longer one). Cargo uses that token for the registry
 and asks for a new one shortly before it expires. The API key itself never goes to the
 registry.

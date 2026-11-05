@@ -461,6 +461,35 @@ fn never_sends_the_identity_to_another_realm() {
 }
 
 #[test]
+fn uses_the_realm_of_the_repository_tenant() {
+    // `GET /v2/` names no repository, so its challenge has the realm without a code. The repository's
+    // challenge has the code of the repository's tenant, here another tenant than the configured `k7mq`.
+    let reg = registry();
+    reg.with(|s| s.repo_code = Some("ab2c".into()));
+    let dir = temp_dir("cross");
+    let input = dir.join("img");
+    std::fs::create_dir_all(&input).unwrap();
+    oci_layout(&input, &image(&[10], 14));
+
+    let r = push(&reg, &input, "v1", &[]);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let targets: Vec<String> = reg.requests().into_iter().map(|q| q.target).collect();
+    assert!(
+        targets
+            .iter()
+            .any(|t| t.starts_with("/v1/oci/token/e/ab2c?")),
+        "{targets:?}"
+    );
+    assert!(
+        !targets
+            .iter()
+            .any(|t| t.starts_with("/v1/oci/token?") || t.starts_with("/v1/oci/token/e/k7mq")),
+        "{targets:?}"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn input_and_reference_errors() {
     let reg = registry();
     let dir = temp_dir("errors");

@@ -70,6 +70,7 @@ mod tests {
         Config {
             tenant: "acme".into(),
             sts_url: format!("{}/v1/sts/token", server.base_url()),
+            edge_code: Some("k7mq".into()),
             audience: crate::DEFAULT_AUDIENCE.into(),
             source: crate::SourceChoice::Auto,
             ca_file: None,
@@ -94,7 +95,7 @@ mod tests {
 
         let reqs = server.requests();
         assert_eq!(reqs[0].method, "POST");
-        assert_eq!(reqs[0].target, "/v1/sts/token");
+        assert_eq!(reqs[0].target, "/v1/sts/token/e/k7mq");
         assert_eq!(
             reqs[0].header("content-type").as_deref(),
             Some("application/x-www-form-urlencoded")

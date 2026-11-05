@@ -41,7 +41,7 @@ Prego registries accept only a short-lived **registry token** (15 minutes by def
 
 1. It finds a **subject token** on the machine: a SPIFFE JWT-SVID, a CI OIDC ID token, a token file, or an
    API key (`prk_...`).
-2. It sends the subject token to the Prego **STS** (`POST /v1/sts/token`, RFC 8693 token exchange).
+2. It sends the subject token to the Prego **STS** (`POST /v1/sts/token/e/<edge code>`, RFC 8693 token exchange).
 3. The STS checks the subject token against the trust config and principals of your tenant. It returns a
    registry token.
 4. The provider gives the registry token to Cargo, with an expiry time so Cargo can cache it.
@@ -149,7 +149,8 @@ then a fallback in the [settings file](#settings-file).
 | Argument | Environment | Default | Meaning |
 | --- | --- | --- | --- |
 | `--tenant <slug>` | `PREGO_TENANT` | required | Tenant slug sent to the STS. Can also come from the [settings file](#settings-file). |
-| `--sts-url <url>` | `PREGO_STS_URL` | `https://sts.prego.k8skill.com/v1/sts/token` | STS endpoint. |
+| `--sts-url <url>` | `PREGO_STS_URL` | `https://sts.prego.k8skill.com/v1/sts/token` | STS endpoint. The console's token URL (`.../v1/sts/token/e/<edge code>`) also works. |
+| `--edge-code <code>` | `PREGO_EDGE_CODE` | required | Your tenant's edge code, 4 characters, for example `k7mq`. The console shows it. See [Edge code](#edge-code). |
 | `--audience <aud>` | `PREGO_AUDIENCE` | `prego.k8skill.com` | Audience to request for SVIDs and CI tokens. |
 | `--source <name>` | `PREGO_SOURCE` | `auto` | Use only one source: `spiffe`, `svid-file`, `gitlab`, `github`, `token-file`, `api-key`. |
 | | `PREGO_CA_FILE` | none | PEM CA bundle to trust in addition to the built-in roots. For on-prem TLS proxies. |
@@ -183,7 +184,7 @@ docker pull oci.prego.k8skill.com/acme/default/api:1.0.0
 
 For a Prego host, the helper gives Docker the tenant as the username and the subject token (from the
 [identity sources](#identity-sources)) as the password. Docker sends them only to the Prego token realm
-(`https://sts.prego.k8skill.com/v1/oci/token`). For all other hosts the helper answers "not found", so Docker
+(`https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's challenge). For all other hosts the helper answers "not found", so Docker
 uses its other credentials. `docker login` and `docker logout` do not change anything in the helper. Podman
 uses the same `credHelpers` key in `auth.json`.
 
@@ -305,9 +306,24 @@ All Prego client tools read `~/.config/prego/config.toml` (or `$XDG_CONFIG_HOME/
 
 ```toml
 tenant = "acme"
+edge_code = "k7mq"   # from the console (0.6.0)
 # Optional: sts_url, audience, source, oci_hosts = ["..."] for more OCI hosts,
 # go_hosts = ["..."] and go_prefixes = ["go.acme.com"] (0.4.0), npm_host = "..." (0.6.0).
 ```
+
+### Edge code
+
+From 0.6.0 the tools get registry tokens at `https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>`. The
+edge code is 4 characters, fixed for your tenant, for example `k7mq`. It is not a secret. The Prego console
+shows it, and the answer that creates a principal (API key or trust) has it as `edge_code` and as the full
+`token_url`. Set it one time: `edge_code` in the settings file, `PREGO_EDGE_CODE`, or `--edge-code`. You can
+also set `sts_url` to the `token_url`. Without it, the tools stop with "the edge code of your tenant is not
+set". Tools before 0.6.0 get "this client uses an old token URL" from the STS: upgrade them.
+
+Docker and `prego push` take the token realm from the registry's `401` answer for the repository. It has the
+edge code of the repository's tenant, which can be another tenant that gives you a grant. `prego token
+--scope` uses your own tenant's realm. The
+admin API exchange (`prego setup` defaults) does not need it.
 
 An argument or a `PREGO_*` variable wins over the file. The file must not hold a secret: a key such as
 `api_key` or `token` is an error. [PROTOCOL.md](PROTOCOL.md) section 8 has the format.

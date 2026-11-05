@@ -100,6 +100,9 @@ pub fn whoami(
     let t = &config.tenant;
     println!("tenant:     {t}");
     println!("source:     {}", kind.name());
+    if let Ok(url) = config.token_url() {
+        println!("token URL:  {url}");
+    }
     // Read from the token without a signature check. Show only, never trust.
     println!("principal:  {} (not verified)", claim("sub"));
     println!("tenant id:  {} (not verified)", claim("tid"));

@@ -22,6 +22,7 @@ Cargo runs this program. Configure it in .cargo/config.toml:
 Provider arguments (environment fallback, then ~/.config/prego/config.toml):
   --tenant <slug>    (PREGO_TENANT)    tenant slug, required
   --sts-url <url>    (PREGO_STS_URL)   default https://sts.prego.k8skill.com/v1/sts/token
+  --edge-code <code> (PREGO_EDGE_CODE) your tenant's edge code (the console shows it)
   --audience <aud>   (PREGO_AUDIENCE)  default prego.k8skill.com
   --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key
 

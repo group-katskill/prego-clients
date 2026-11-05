@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use prego_auth::http::{Body, FullResponse, Http};
-use prego_auth::oci::{realm_url, RealmTokens};
+use prego_auth::oci::{check_challenge_realm, RealmTokens};
 use prego_auth::{Config, SubjectToken};
 use serde_json::Value;
 
@@ -55,9 +55,9 @@ pub struct Registry<'a> {
 }
 
 impl<'a> Registry<'a> {
-    /// Calls `GET /v2/` without a token, checks the `401` challenge, gets a token from the realm and checks
-    /// it with a second `GET /v2/`. The realm must be the realm of the configured STS, so the subject token
-    /// never goes to another host.
+    /// Calls `GET /v2/` without a token, then `GET /v2/<name>/tags/list` without a token for the challenge of
+    /// the repository, gets a token from that realm and checks it with a second `GET /v2/`. The realm must be
+    /// on the host of the configured STS, so the subject token never goes to another host.
     #[allow(clippy::too_many_arguments)]
     pub fn connect(
         http: &'a Http,
@@ -90,25 +90,31 @@ impl<'a> Registry<'a> {
             401 => {}
             s => return Err(registry_error("GET /v2/", &first, s)),
         }
-        let challenge = first
+        // The `/v2/` challenge names no repository, so its realm has no edge code. The challenge of a
+        // repository path has the realm of the repository's tenant.
+        let tags = format!("{}/v2/{}/tags/list", reg.base, reg.name);
+        let probe = reg.send_once("GET", &tags, &[], &Payload::Empty, None)?;
+        if probe.status != 401 {
+            return Err(registry_error(
+                "GET /v2/<name>/tags/list",
+                &probe,
+                probe.status,
+            ));
+        }
+        let challenge = probe
             .header("www-authenticate")
             .and_then(parse_bearer_challenge)
             .ok_or("prego: the registry answered 401 without a Bearer challenge")?;
-        let ours = realm_url(config).map_err(|e| e.to_string())?;
-        if challenge.realm != ours {
-            return Err(format!(
-                "prego: the registry asks for credentials at `{}`, not at the Prego realm `{ours}`. \
-                 The identity was not sent.",
-                challenge.realm
-            ));
-        }
+        let realm = check_challenge_realm(config, &challenge.realm)?;
         let host = reg
             .base
             .split_once("://")
             .map(|(_, h)| h.to_string())
             .unwrap_or_default();
         let service = challenge.service.unwrap_or(host);
-        reg.tokens = Some(RealmTokens::new(http, config, &service, subject, sleep));
+        reg.tokens = Some(RealmTokens::new(
+            http, realm, config, &service, subject, sleep,
+        ));
         let check = reg.call("GET", &url, &[], &Payload::Empty, true)?;
         if check.status != 200 {
             return Err(registry_error("GET /v2/", &check, check.status));

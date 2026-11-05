@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- No code change. Docker takes the token realm, now `/v1/oci/token/e/<edge code>`, from the registry's `401`
+  answer. The helper still sends the tenant and the subject token only for Prego hosts.
+
 ## [0.5.1] - 2026-11-05
 
 ### Changed

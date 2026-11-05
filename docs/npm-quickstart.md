@@ -74,7 +74,8 @@ npmScopes:
 `prego` never changes YAML or TOML that is already there. If `.yarnrc.yml` already has `npmScopes`, or
 `bunfig.toml` already has scopes, it prints the lines for you to add by hand.
 
-Set your identity as for the other Prego tools, for example `PREGO_API_KEY` and `PREGO_TENANT` on a laptop.
+Set your identity as for the other Prego tools, for example `PREGO_API_KEY`, `PREGO_TENANT` and
+`PREGO_EDGE_CODE` (your tenant's [edge code](../README.md#edge-code)) on a laptop.
 See the [identity sources](../README.md#identity-sources).
 
 ## 2. Install
@@ -132,6 +133,7 @@ install:
       aud: prego.k8skill.com
   variables:
     PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
   script:
     - export PREGO_NPM_TOKEN="$(prego token)"   # install prego first (see the README)
     - npm ci
@@ -143,7 +145,7 @@ OIDC token with audience `prego.k8skill.com`.
 **Without the `prego` tool.** Exchange the CI ID token at the STS with curl:
 
 ```sh
-export PREGO_NPM_TOKEN="$(curl -fsS https://sts.prego.k8skill.com/v1/sts/token \
+export PREGO_NPM_TOKEN="$(curl -fsS https://sts.prego.k8skill.com/v1/sts/token/e/k7mq \
   -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
   -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
   -d tenant=acme --data-urlencode "subject_token=$PREGO_ID_TOKEN" | jq -r .access_token)"

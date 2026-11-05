@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.6.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.7.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -13,16 +13,34 @@ client. A change that breaks this contract is a MAJOR version change for the reg
 - **Admin token**: what the STS returns when the request asks for the `prego-admin` audience. A short-lived
   (15 min) JWT with admin scopes. Machines send it to the admin API. See section 4.
 - **Tenant**: one organization. Identified by its slug, for example `acme`.
+- **Edge code**: 4 characters, fixed per tenant, for example `k7mq`. The characters are `a` to `z` and `2` to
+  `9`, without `i`, `l`, `0` and `1`, lower case only. It is not a secret and it does not name the caller (the
+  subject token does). The console shows it. Registry token URLs carry it (sections 1 and 7).
 - **Audience**: who a token is for. Subject tokens for Prego use `prego.k8skill.com`.
 
 ## 1. STS request
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/token
+POST https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>
 Content-Type: application/x-www-form-urlencoded
 ```
 
 A JSON body with the same fields is also accepted.
+
+The path must be exactly `/v1/sts/token/e/<edge code>`: no `/` at the end, no upper case, no `%` escapes.
+Other paths under `/v1/sts/token/` get `404`. Clients check the code with `^[a-hjkmnop-z2-9]{4}$` before they
+send. A JWT without a `tenant` field uses the tenant of the edge code. The principal create answer of the
+admin API has `edge_code` and `token_url` (this full URL), and the tenant object has `edge_code`. There is no
+lookup without a credential.
+
+Refusals for the token URL, all `400 invalid_request`:
+
+| Request | `error_description` |
+| --- | --- |
+| Registry token on `POST /v1/sts/token` (no edge code), or on the old `/v1/sts/token/t/<tenant>` | `this client uses an old token URL; update prego-clients to 0.6.0 or later, which uses /v1/sts/token/e/<edge code> (the console shows your tenant's edge code)` |
+| An edge code that no tenant has | `unknown token URL; ` and the text above |
+
+Clients before 0.6.0 use the URL without the edge code. Upgrade them.
 
 | Field | Required | Value |
 | --- | --- | --- |
@@ -124,7 +142,8 @@ can never set admin scopes.
 
 ### 4.1 Request
 
-The same `POST /v1/sts/token`, with two more fields:
+`POST /v1/sts/token` (the URL without the edge code; `/v1/sts/token/e/<edge code>` also works), with the
+fields of section 1 and two more:
 
 ```
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
@@ -247,8 +266,13 @@ The OCI registry is `oci.prego.k8skill.com`. Image names are `oci.prego.k8skill.
 The registry uses the Docker token flow:
 
 1. A request without a registry token gets `401` with
-   `WWW-Authenticate: Bearer realm="https://sts.prego.k8skill.com/v1/oci/token",service="oci.prego.k8skill.com",scope="..."`.
-2. The client calls the realm, `GET https://sts.prego.k8skill.com/v1/oci/token?service=...&scope=...`, with HTTP
+   `WWW-Authenticate: Bearer realm="https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>",service="oci.prego.k8skill.com",scope="..."`.
+   Use the realm from the challenge of a repository path (for example `GET /v2/<name>/tags/list`) as it is.
+   Its code is the code of the repository's tenant, which can be another tenant than the caller's. The
+   challenge of `GET /v2/` names no repository and has the realm without a code. Do not make the realm URL yourself: the realm without the edge
+   code refuses requests with a scope (`400 invalid_request`, "this token URL does not issue repository
+   tokens"). It serves only the `docker login` check without a scope.
+2. The client calls the realm, `GET https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>?service=...&scope=...`, with HTTP
    Basic auth. `POST` with the form fields `grant_type=password`, `username`, `password`, `service` and `scope`
    is also accepted.
    - **username**: the tenant slug of the caller's principal. It is not used for API keys.
@@ -311,6 +335,7 @@ All Prego client tools read the same settings file: `$XDG_CONFIG_HOME/prego/conf
 tenant = "acme"
 # All keys are optional.
 # sts_url = "https://sts.prego.k8skill.com/v1/sts/token"
+# edge_code = "k7mq"
 # audience = "prego.k8skill.com"
 # source = "auto"
 # oci_hosts = ["oci.example.internal"]
@@ -321,6 +346,9 @@ tenant = "acme"
 
 - Order for each value: command-line argument, then the `PREGO_*` environment variable, then the file, then
   the default.
+- `edge_code` (`--edge-code`, `PREGO_EDGE_CODE`): the tenant's edge code. `sts_url` can also be the console's
+  token URL, `.../v1/sts/token/e/<edge code>`; the client then takes the code from it. Two different codes
+  are an error.
 - A missing file is not an error. A file that does not parse, an unknown key or a value of the wrong type is
   an error.
 - The file never holds a secret. A key such as `api_key`, `token`, `secret` or `password` is an error. Put a

@@ -105,7 +105,7 @@ impl MockGo {
     }
 
     pub fn sts_url(&self) -> String {
-        format!("http://127.0.0.1:{}/v1/sts/token", self.port)
+        format!("http://127.0.0.1:{}/v1/sts/token/e/k7mq", self.port)
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&mut State) -> R) -> R {
@@ -280,8 +280,18 @@ fn handle(s: &mut State, req: &Req) -> Res {
             return Res::text(status, &body);
         }
     }
-    if req.method == "POST" && req.path == "/v1/sts/token" {
+    // Registry tokens only on the edge code path; the bare path serves admin tokens only (as the STS).
+    if req.method == "POST" && req.path == "/v1/sts/token/e/k7mq" {
         return sts(s, req);
+    }
+    if req.method == "POST" && req.path == "/v1/sts/token" {
+        if form(&req.body).get("audience").map(String::as_str) == Some("prego-admin") {
+            return sts(s, req);
+        }
+        return Res::json(
+            400,
+            json!({"error": "invalid_request", "error_description": "this client uses an old token URL"}),
+        );
     }
     if req.path.starts_with("/v1/admin/") {
         return admin(s, req);

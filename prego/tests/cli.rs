@@ -50,7 +50,7 @@ fn sts_ok() -> MockResponse {
 #[test]
 fn token_prints_only_the_registry_token() {
     let server = MockServer::start(vec![sts_ok()]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let r = run(
         &["token", "--tenant", "acme", "--sts-url", &sts],
         &[("PREGO_API_KEY", API_KEY)],
@@ -69,7 +69,7 @@ fn token_with_scope_uses_the_oci_realm() {
         200,
         &json!({ "token": REG_TOKEN, "access_token": REG_TOKEN, "expires_in": 900 }).to_string(),
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let r = run(
         &[
             "token",
@@ -86,7 +86,7 @@ fn token_with_scope_uses_the_oci_realm() {
     assert_eq!(req.method, "GET");
     assert!(
         req.target
-            .starts_with("/v1/oci/token?service=oci.prego.k8skill.com&scope="),
+            .starts_with("/v1/oci/token/e/k7mq?service=oci.prego.k8skill.com&scope="),
         "{}",
         req.target
     );
@@ -99,7 +99,7 @@ fn refused_identity_shows_no_secret() {
         400,
         r#"{"error":"invalid_grant"}"#,
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let r = run(
         &["token", "--tenant", "acme", "--sts-url", &sts],
         &[("PREGO_API_KEY", API_KEY)],
@@ -117,7 +117,7 @@ fn refused_identity_shows_no_secret() {
 #[test]
 fn whoami_shows_the_principal_but_not_the_token() {
     let server = MockServer::start(vec![sts_ok()]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let r = run(
         &["whoami", "--sts-url", &sts, "--namespace", "rel"],
         &[("PREGO_TENANT", "acme"), ("PREGO_API_KEY", API_KEY)],
@@ -150,7 +150,7 @@ fn resource_sets_the_lifetime_scope() {
             .to_string(),
     );
     let server = MockServer::start(vec![five, sts_ok()]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let res = "https://cargo.prego.k8skill.com/t/acme/rel/";
     let env = [("PREGO_TENANT", "acme"), ("PREGO_API_KEY", API_KEY)];
     let r = run(&["whoami", "--sts-url", &sts, "--resource", res], &env);
