@@ -14,6 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CI installs pnpm 10.28.0 and runs the live npm and pnpm tests (`PREGO_TEST_NPM=1`).
 - The Go quickstart and PROTOCOL.md section 9.3 name 0.5.0, not 0.4.1, for the 300 MiB check before the
   upload. There was no 0.4.1 release.
+- Website footer: the version and the commit of the deploy, on the right of the copyright line. The Pages
+  workflow fills them in from `prego/Cargo.toml` and the commit, and also the hero version. The site deploys
+  on every push to `main`.
 - npm quickstart: `npm whoami` and `npm ping` with `--registry`; Prego's message on a `401` is an
   `npm notice` line next to npm's "Unable to authenticate"; npm 11 refuses a republish before any request,
   npm 10 shows the `403`.
