@@ -6,8 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- Registry tokens come from the edge code URL `<sts_url>/e/<edge code>` (`Config::token_url`), and the OCI
+  realm is `/v1/oci/token/e/<edge code>`. The STS refuses registry tokens on the URL without the code from
+  registry 1.4.0. Admin tokens stay on `sts_url`.
+- `oci::check_challenge_realm`: the realm from a `401` challenge must be on the STS host with the path
+  `/v1/oci/token/e/<edge code>`, and with the configured code if one is set. `RealmTokens::new` takes the
+  realm URL, and `realm_token_at` gets a token at a given realm.
+
 ### Added
 
+- `Config::edge_code` from `--edge-code`, `PREGO_EDGE_CODE` or the settings key `edge_code`, checked with
+  `check_edge_code` (`^[a-hjkmnop-z2-9]{4}$`). `sts_url` can also be the console's token URL
+  (`.../v1/sts/token/e/<code>`); two different codes are an error.
 - `npm` module: `npm_host` (`PREGO_NPM_HOST`, then `npm_host` in the settings file, then
   `npm.prego.k8skill.com`), `registry_url` and `TOKEN_VAR`.
 - Settings file key `npm_host`.

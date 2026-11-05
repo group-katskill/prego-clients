@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use prego_auth::http::{Body, FullResponse, Http};
-use prego_auth::oci::{realm_url, RealmTokens};
+use prego_auth::oci::{check_challenge_realm, RealmTokens};
 use prego_auth::{Config, SubjectToken};
 use serde_json::Value;
 
@@ -94,21 +94,16 @@ impl<'a> Registry<'a> {
             .header("www-authenticate")
             .and_then(parse_bearer_challenge)
             .ok_or("prego: the registry answered 401 without a Bearer challenge")?;
-        let ours = realm_url(config).map_err(|e| e.to_string())?;
-        if challenge.realm != ours {
-            return Err(format!(
-                "prego: the registry asks for credentials at `{}`, not at the Prego realm `{ours}`. \
-                 The identity was not sent.",
-                challenge.realm
-            ));
-        }
+        let realm = check_challenge_realm(config, &challenge.realm)?;
         let host = reg
             .base
             .split_once("://")
             .map(|(_, h)| h.to_string())
             .unwrap_or_default();
         let service = challenge.service.unwrap_or(host);
-        reg.tokens = Some(RealmTokens::new(http, config, &service, subject, sleep));
+        reg.tokens = Some(RealmTokens::new(
+            http, realm, config, &service, subject, sleep,
+        ));
         let check = reg.call("GET", &url, &[], &Payload::Empty, true)?;
         if check.status != 200 {
             return Err(registry_error("GET /v2/", &check, check.status));

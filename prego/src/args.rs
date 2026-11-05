@@ -65,7 +65,13 @@ pub enum Command {
     },
 }
 
-const GLOBAL: [&str; 4] = ["--tenant", "--sts-url", "--audience", "--source"];
+const GLOBAL: [&str; 5] = [
+    "--tenant",
+    "--sts-url",
+    "--edge-code",
+    "--audience",
+    "--source",
+];
 const WITH_VALUE: [&str; 10] = [
     "--scope",
     "--resource",

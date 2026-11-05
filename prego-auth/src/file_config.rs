@@ -7,6 +7,7 @@
 //! ```toml
 //! tenant = "acme"
 //! sts_url = "https://sts.prego.k8skill.com/v1/sts/token"
+//! edge_code = "k7mq"
 //! audience = "prego.k8skill.com"
 //! source = "auto"
 //! oci_hosts = ["oci.example.internal"]
@@ -43,6 +44,8 @@ pub struct FileConfig {
     pub tenant: Option<String>,
     /// STS endpoint URL.
     pub sts_url: Option<String>,
+    /// The tenant's edge code, for the registry token URL.
+    pub edge_code: Option<String>,
     /// Audience for SVIDs and CI tokens.
     pub audience: Option<String>,
     /// Identity source name (`auto`, `spiffe`, ...).
@@ -127,6 +130,7 @@ impl FileConfig {
             match key.as_str() {
                 "tenant" => string(&mut out.tenant)?,
                 "sts_url" => string(&mut out.sts_url)?,
+                "edge_code" => string(&mut out.edge_code)?,
                 "audience" => string(&mut out.audience)?,
                 "source" => string(&mut out.source)?,
                 "oci_hosts" => list(&mut out.oci_hosts)?,
@@ -135,7 +139,7 @@ impl FileConfig {
                 "npm_host" => string(&mut out.npm_host)?,
                 other => {
                     return Err(format!(
-                        "unknown key `{other}`. Known keys: tenant, sts_url, audience, source, oci_hosts, \
+                        "unknown key `{other}`. Known keys: tenant, sts_url, edge_code, audience, source, oci_hosts, \
                          go_hosts, go_prefixes, npm_host."
                     ))
                 }
@@ -156,6 +160,7 @@ mod tests {
             r#"
 tenant = "acme"
 sts_url = "https://sts.example.test/v1/sts/token"
+edge_code = "k7mq"
 audience = "example.test"
 source = "api-key"
 oci_hosts = ["oci.example.test", "oci2.example.test"]
@@ -167,6 +172,7 @@ oci_hosts = ["oci.example.test", "oci2.example.test"]
             c.sts_url.as_deref(),
             Some("https://sts.example.test/v1/sts/token")
         );
+        assert_eq!(c.edge_code.as_deref(), Some("k7mq"));
         assert_eq!(c.audience.as_deref(), Some("example.test"));
         assert_eq!(c.source.as_deref(), Some("api-key"));
         assert_eq!(c.oci_hosts, vec!["oci.example.test", "oci2.example.test"]);

@@ -104,6 +104,7 @@ build:
       aud: prego.k8skill.com
   variables:
     PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
   script:
     - prego setup go --write --prefix go.acme.com   # install prego first (see the README)
     - go build ./...
@@ -115,6 +116,7 @@ publish:
       aud: prego.k8skill.com
   variables:
     PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
   rules:
     - if: $CI_COMMIT_TAG
   script:

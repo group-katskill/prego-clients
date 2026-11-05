@@ -25,7 +25,7 @@ pub mod sts;
 pub mod testing;
 
 pub use client::TokenClient;
-pub use config::{Config, SourceChoice, DEFAULT_AUDIENCE, DEFAULT_STS_URL};
+pub use config::{check_edge_code, Config, SourceChoice, DEFAULT_AUDIENCE, DEFAULT_STS_URL};
 pub use env::{Env, MapEnv, ProcessEnv};
 pub use error::Error;
 pub use file_config::FileConfig;

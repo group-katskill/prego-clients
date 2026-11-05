@@ -78,7 +78,7 @@ fn get_with_api_key_returns_registry_token() {
         })
         .to_string(),
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let (_, responses, stderr) = session(
         &[("PREGO_API_KEY", "prk_protocol_test_key")],
         &[get_request(&["--tenant", "acme", "--sts-url", &sts])],
@@ -122,7 +122,7 @@ fn one_minute_token_is_cached_for_45_seconds() {
         200,
         &json!({ "access_token": REG_TOKEN, "expires_in": 60 }).to_string(),
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let (_, responses, _) = session(
         &[("PREGO_API_KEY", "prk_protocol_test_key")],
         &[get_request(&["--tenant", "acme", "--sts-url", &sts])],
@@ -139,7 +139,7 @@ fn tenant_from_environment() {
         200,
         &json!({ "access_token": REG_TOKEN, "expires_in": 900 }).to_string(),
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let (_, responses, _) = session(
         &[
             ("PREGO_TENANT", "envco"),
@@ -166,7 +166,7 @@ fn invalid_grant_gives_clear_error_without_token() {
         401,
         r#"{"error":"invalid_grant","error_description":"subject token not accepted"}"#,
     )]);
-    let sts = format!("{}/v1/sts/token", server.base_url());
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
     let (_, responses, _) = session(
         &[("PREGO_API_KEY", "prk_refused_key")],
         &[get_request(&["--tenant", "acme", "--sts-url", &sts])],

@@ -16,7 +16,7 @@ use std::thread;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-pub const REALM_PATH: &str = "/v1/oci/token";
+pub const REALM_PATH: &str = "/v1/oci/token/e/k7mq";
 
 pub fn sha256(b: &[u8]) -> String {
     let d = Sha256::digest(b);
@@ -107,7 +107,7 @@ impl MockRegistry {
     }
 
     pub fn sts_url(&self) -> String {
-        format!("http://127.0.0.1:{}/v1/sts/token", self.port)
+        format!("http://127.0.0.1:{}/v1/sts/token/e/k7mq", self.port)
     }
 
     pub fn with<R>(&self, f: impl FnOnce(&mut State) -> R) -> R {

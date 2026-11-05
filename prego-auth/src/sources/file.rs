@@ -46,6 +46,7 @@ mod tests {
         let cfg = Config {
             tenant: "acme".into(),
             sts_url: crate::DEFAULT_STS_URL.into(),
+            edge_code: Some("k7mq".into()),
             audience: crate::DEFAULT_AUDIENCE.into(),
             source: SourceChoice::Only(kind),
             ca_file: None,

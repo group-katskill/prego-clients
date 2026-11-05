@@ -1,7 +1,7 @@
 //! The Prego OCI registry: its hosts and the Docker token realm.
 //!
 //! An OCI client sends the tenant and a subject token as HTTP Basic auth to the realm,
-//! `https://<STS host>/v1/oci/token`. The realm does the normal STS exchange and returns a registry token.
+//! `https://<STS host>/v1/oci/token/e/<edge code>`. The realm does the normal STS exchange and returns a registry token.
 
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -64,16 +64,56 @@ pub fn normalize_host(server_url: &str) -> Option<String> {
     }
 }
 
-/// The realm URL on the same scheme and host as the STS URL in `config`.
-pub fn realm_url(config: &Config) -> Result<String, Error> {
+/// `scheme://authority` of the STS URL in `config`.
+fn sts_origin(config: &Config) -> Result<String, Error> {
     let uri: ureq::http::Uri = config
         .sts_url
         .parse()
         .map_err(|_| Error::Config(format!("bad STS URL `{}`", config.sts_url)))?;
     match (uri.scheme_str(), uri.authority()) {
-        (Some(scheme), Some(authority)) => Ok(format!("{scheme}://{authority}{REALM_PATH}")),
+        (Some(scheme), Some(authority)) => Ok(format!("{scheme}://{authority}")),
         _ => Err(Error::Config(format!("bad STS URL `{}`", config.sts_url))),
     }
+}
+
+/// The realm URL on the same scheme and host as the STS URL in `config`, with the edge code:
+/// `<origin>/v1/oci/token/e/<edge code>`. An error if the edge code is not set.
+pub fn realm_url(config: &Config) -> Result<String, Error> {
+    let origin = sts_origin(config)?;
+    let code = config
+        .edge_code
+        .as_deref()
+        .ok_or_else(|| Error::Config(crate::config::MISSING_EDGE_CODE.into()))?;
+    Ok(format!("{origin}{REALM_PATH}/e/{code}"))
+}
+
+/// Checks the realm from a registry's `401` challenge and returns it. The realm must be on the STS host of
+/// `config`, with the path `/v1/oci/token/e/<edge code>`, so the subject token never goes to another host.
+/// If `config` has an edge code, the realm must have the same one. Without an edge code in `config`, the
+/// realm gives it.
+pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, String> {
+    let origin = sts_origin(config).map_err(|e| e.to_string())?;
+    let refuse = || {
+        format!(
+            "prego: the registry asks for credentials at `{realm}`, not at the Prego realm \
+             `{origin}{REALM_PATH}/e/<edge code>`. The identity was not sent."
+        )
+    };
+    let code = realm
+        .strip_prefix(&origin)
+        .and_then(|p| p.strip_prefix(REALM_PATH))
+        .and_then(|p| p.strip_prefix("/e/"))
+        .ok_or_else(refuse)?;
+    crate::config::check_edge_code(code).map_err(|_| refuse())?;
+    if let Some(ours) = &config.edge_code {
+        if ours != code {
+            return Err(format!(
+                "prego: the registry's realm has the edge code `{code}`, but your edge code is `{ours}`. \
+                 The identity was not sent. Check PREGO_EDGE_CODE or `edge_code` in the settings file."
+            ));
+        }
+    }
+    Ok(realm.to_string())
 }
 
 #[derive(Deserialize)]
@@ -106,11 +146,26 @@ pub fn realm_token(
     sleep: &dyn Fn(Duration),
 ) -> Result<RegistryToken, Error> {
     let url = realm_url(config)?;
+    realm_token_at(http, &url, config, service, scopes, subject, now, sleep)
+}
+
+/// [`realm_token`] at a given realm URL, for example one that [`check_challenge_realm`] accepted.
+#[allow(clippy::too_many_arguments)]
+pub fn realm_token_at(
+    http: &Http,
+    url: &str,
+    config: &Config,
+    service: &str,
+    scopes: &[String],
+    subject: &SubjectToken,
+    now: i64,
+    sleep: &dyn Fn(Duration),
+) -> Result<RegistryToken, Error> {
     let basic =
         Secret::new(STANDARD.encode(format!("{}:{}", config.tenant, subject.value.expose())));
     let mut query: Vec<(&str, &str)> = vec![("service", service)];
     query.extend(scopes.iter().map(|s| ("scope", s.as_str())));
-    let res = send_with_retry(|| http.get_with_basic(&url, &query, &basic), sleep)?;
+    let res = send_with_retry(|| http.get_with_basic(url, &query, &basic), sleep)?;
     parse_realm_response(res.status, &res.body, &config.tenant, now)
 }
 
@@ -210,6 +265,7 @@ impl Pacer {
 /// [`MAX_REALM_REQUESTS_PER_MINUTE`] requests per minute, and waits when it must.
 pub struct RealmTokens<'a> {
     http: &'a Http,
+    realm: String,
     config: &'a Config,
     service: String,
     subject: &'a SubjectToken,
@@ -221,9 +277,11 @@ pub struct RealmTokens<'a> {
 }
 
 impl<'a> RealmTokens<'a> {
-    /// A token source for `service` (the OCI host). `sleep` is used for pacing and retries.
+    /// A token source for `service` (the OCI host) at `realm` (from [`check_challenge_realm`] or
+    /// [`realm_url`]). `sleep` is used for pacing and retries.
     pub fn new(
         http: &'a Http,
+        realm: String,
         config: &'a Config,
         service: &str,
         subject: &'a SubjectToken,
@@ -231,6 +289,7 @@ impl<'a> RealmTokens<'a> {
     ) -> Self {
         RealmTokens {
             http,
+            realm,
             config,
             service: service.to_string(),
             subject,
@@ -257,8 +316,9 @@ impl<'a> RealmTokens<'a> {
         }
         self.pacer.record(self.start.elapsed());
         self.requests += 1;
-        let t = realm_token(
+        let t = realm_token_at(
             self.http,
+            &self.realm,
             self.config,
             &self.service,
             scopes,
@@ -349,6 +409,7 @@ mod tests {
         Config {
             tenant: "acme".into(),
             sts_url: sts_url.into(),
+            edge_code: Some("k7mq".into()),
             audience: crate::DEFAULT_AUDIENCE.into(),
             source: crate::SourceChoice::Auto,
             ca_file: None,
@@ -359,12 +420,45 @@ mod tests {
     fn realm_is_on_the_sts_host() {
         assert_eq!(
             realm_url(&config(crate::DEFAULT_STS_URL)).unwrap(),
-            "https://sts.prego.k8skill.com/v1/oci/token"
+            "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq"
         );
         assert_eq!(
             realm_url(&config("http://127.0.0.1:8787/v1/sts/token")).unwrap(),
-            "http://127.0.0.1:8787/v1/oci/token"
+            "http://127.0.0.1:8787/v1/oci/token/e/k7mq"
         );
+        let mut none = config(crate::DEFAULT_STS_URL);
+        none.edge_code = None;
+        assert!(realm_url(&none)
+            .unwrap_err()
+            .to_string()
+            .contains("PREGO_EDGE_CODE"));
+    }
+
+    #[test]
+    fn challenge_realm_checks() {
+        let cfg = config(crate::DEFAULT_STS_URL);
+        let good = "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq";
+        assert_eq!(check_challenge_realm(&cfg, good).unwrap(), good);
+        for bad in [
+            "https://sts.prego.k8skill.com/v1/oci/token",
+            "https://sts.prego.k8skill.com/v1/oci/token/t/acme",
+            "https://sts.prego.k8skill.com/v1/oci/token/e/K7MQ",
+            "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq/x",
+            "https://evil.example.test/v1/oci/token/e/k7mq",
+            "http://sts.prego.k8skill.com/v1/oci/token/e/k7mq",
+            "https://sts.prego.k8skill.com.evil.example.test/v1/oci/token/e/k7mq",
+        ] {
+            let e = check_challenge_realm(&cfg, bad).unwrap_err();
+            assert!(e.contains("not sent"), "{bad}: {e}");
+        }
+        let e = check_challenge_realm(&cfg, "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c")
+            .unwrap_err();
+        assert!(e.contains("your edge code is `k7mq`"));
+        // Without an edge code in the settings, the realm gives it.
+        let mut none = cfg.clone();
+        none.edge_code = None;
+        let other = "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c";
+        assert_eq!(check_challenge_realm(&none, other).unwrap(), other);
     }
 
     #[test]
@@ -395,7 +489,7 @@ mod tests {
         assert_eq!(reqs[0].method, "GET");
         assert_eq!(
             reqs[0].target,
-            "/v1/oci/token?service=oci.prego.k8skill.com&scope=repository%3Aacme%2Fdefault%2Fapi%3Apull%2Cpush"
+            "/v1/oci/token/e/k7mq?service=oci.prego.k8skill.com&scope=repository%3Aacme%2Fdefault%2Fapi%3Apull%2Cpush"
         );
         assert_eq!(
             reqs[0].header("authorization").as_deref(),
@@ -485,7 +579,14 @@ mod tests {
         let cfg = config(&format!("{}/v1/sts/token", server.base_url()));
         let http = Http::new("test");
         let subject = api_key();
-        let mut tokens = RealmTokens::new(&http, &cfg, DEFAULT_OCI_HOST, &subject, &|_| {});
+        let mut tokens = RealmTokens::new(
+            &http,
+            realm_url(&cfg).unwrap(),
+            &cfg,
+            DEFAULT_OCI_HOST,
+            &subject,
+            &|_| {},
+        );
         let a = vec![
             "repository:acme/d/a:pull,push".to_string(),
             "repository:acme/d/b:pull".into(),
@@ -510,7 +611,14 @@ mod tests {
         let cfg = config(&format!("{}/v1/sts/token", server.base_url()));
         let http = Http::new("test");
         let subject = api_key();
-        let mut tokens = RealmTokens::new(&http, &cfg, DEFAULT_OCI_HOST, &subject, &|_| {});
+        let mut tokens = RealmTokens::new(
+            &http,
+            realm_url(&cfg).unwrap(),
+            &cfg,
+            DEFAULT_OCI_HOST,
+            &subject,
+            &|_| {},
+        );
         let s = vec!["repository:acme/d/a:pull".to_string()];
         assert_eq!(tokens.token(&s).unwrap().expose(), "t1");
         assert_eq!(tokens.token(&s).unwrap().expose(), "t1");

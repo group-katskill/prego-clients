@@ -144,13 +144,14 @@ pub fn exchange(
     if let Some(r) = resource {
         fields.push(("resource", r));
     }
-    let res = send_rate_limited(|| http.post_form(&config.sts_url, &fields), sleep)?;
+    let url = config.token_url()?;
+    let res = send_rate_limited(|| http.post_form(&url, &fields), sleep)?;
     if resource.is_some()
         && res.status == 400
         && error_code(&res).as_deref() == Some("invalid_target")
     {
         fields.pop();
-        let res = send_rate_limited(|| http.post_form(&config.sts_url, &fields), sleep)?;
+        let res = send_rate_limited(|| http.post_form(&url, &fields), sleep)?;
         return parse_response(&res, &config.tenant, now);
     }
     parse_response(&res, &config.tenant, now)

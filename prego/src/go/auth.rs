@@ -210,6 +210,7 @@ fn cache_key(config: &Config, resource: Option<&str>, env: &dyn Env) -> String {
     let mut h = Sha256::new();
     for part in [
         config.sts_url.as_str(),
+        config.edge_code.as_deref().unwrap_or(""),
         config.tenant.as_str(),
         config.audience.as_str(),
         &format!("{:?}", config.source),
