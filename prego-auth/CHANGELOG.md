@@ -6,8 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-11-05
+
 ### Changed
 
+- Pre-release 0.6.0-rc.1 (GitHub pre-release, not Latest; not on crates.io) with the edge code token URLs:
+  registry tokens at `/v1/sts/token/e/<edge code>` and the OCI realm at `/v1/oci/token/e/<edge code>`.
 - Registry tokens come from the edge code URL `<sts_url>/e/<edge code>` (`Config::token_url`), and the OCI
   realm is `/v1/oci/token/e/<edge code>`. The STS refuses registry tokens on the URL without the code from
   registry 1.4.0. Admin tokens stay on `sts_url`.

@@ -20,12 +20,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The tags, to find the newest X.Y.Z release when Cargo.toml has a pre-release version.
+          fetch-tags: true
+          fetch-depth: 0
       - name: Stamp the version and the commit
         env:
           SHA: ${{ github.sha }}
         run: |
           version="$(sed -n 's/^version = "\(.*\)"$/\1/p' prego/Cargo.toml | head -n 1)"
           test -n "$version"
+          # A pre-release (a version with "-") is not shown on the site: show the newest X.Y.Z release.
+          case "$version" in
+            *-*)
+              version="$(git tag -l 'prego-clients-v*' | sed -n 's/^prego-clients-v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -V | tail -n 1)"
+              if [ -z "$version" ]; then
+                echo "No prego-clients-vX.Y.Z tag found for the site version." >&2
+                exit 1
+              fi
+              ;;
+          esac
+          echo "Site version: $version"
           sed -i -e "s/__PREGO_VERSION__/$version/g" \
             -e "s/__PREGO_COMMIT_SHORT__/${SHA:0:7}/g" \
             -e "s/__PREGO_COMMIT__/$SHA/g" site/index.html
