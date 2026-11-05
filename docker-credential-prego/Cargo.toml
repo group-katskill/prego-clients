@@ -1,6 +1,6 @@
 [package]
 name = "docker-credential-prego"
-version = "0.5.1"
+version = "0.6.0-rc.1"
 description = "Docker credential helper for Prego by Katskill OCI registries. Gives Docker a machine identity for the Prego token realm."
 readme = "README.md"
 keywords = ["docker", "credential-helper", "oci", "prego", "spiffe"]
@@ -18,8 +18,8 @@ default = ["spiffe"]
 spiffe = ["prego-auth/spiffe"]
 
 [dependencies]
-prego-auth = { version = "0.5.1", path = "../prego-auth", default-features = false }
+prego-auth = { version = "0.6.0-rc.1", path = "../prego-auth", default-features = false }
 serde_json = "1"
 
 [dev-dependencies]
-prego-auth = { version = "0.5.1", path = "../prego-auth", default-features = false, features = ["test-support"] }
+prego-auth = { version = "0.6.0-rc.1", path = "../prego-auth", default-features = false, features = ["test-support"] }

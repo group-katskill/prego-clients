@@ -6,8 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-11-05
+
 ### Changed
 
+- Release 0.6.0-rc.1, a GitHub pre-release for tests on staging: npm packages and the edge code token URLs.
+  The release workflow makes a tag with `-` a pre-release that is not Latest, so `releases/latest` and the
+  install script without `--version` still give the newest X.Y.Z release. `install.sh --version` also
+  takes `X.Y.Z-rc.N`.
 - PROTOCOL.md 1.7.0: the edge code. Registry tokens at `POST /v1/sts/token/e/<edge code>`, the OCI realm at
   `/v1/oci/token/e/<edge code>`, the refusals for the URL without the code, and the settings key `edge_code`.
   README, quickstarts and CI examples set `PREGO_EDGE_CODE`.
