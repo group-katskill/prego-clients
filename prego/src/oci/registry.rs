@@ -55,9 +55,9 @@ pub struct Registry<'a> {
 }
 
 impl<'a> Registry<'a> {
-    /// Calls `GET /v2/` without a token, checks the `401` challenge, gets a token from the realm and checks
-    /// it with a second `GET /v2/`. The realm must be the realm of the configured STS, so the subject token
-    /// never goes to another host.
+    /// Calls `GET /v2/` without a token, then `GET /v2/<name>/tags/list` without a token for the challenge of
+    /// the repository, gets a token from that realm and checks it with a second `GET /v2/`. The realm must be
+    /// on the host of the configured STS, so the subject token never goes to another host.
     #[allow(clippy::too_many_arguments)]
     pub fn connect(
         http: &'a Http,
@@ -90,7 +90,18 @@ impl<'a> Registry<'a> {
             401 => {}
             s => return Err(registry_error("GET /v2/", &first, s)),
         }
-        let challenge = first
+        // The `/v2/` challenge names no repository, so its realm has no edge code. The challenge of a
+        // repository path has the realm of the repository's tenant.
+        let tags = format!("{}/v2/{}/tags/list", reg.base, reg.name);
+        let probe = reg.send_once("GET", &tags, &[], &Payload::Empty, None)?;
+        if probe.status != 401 {
+            return Err(registry_error(
+                "GET /v2/<name>/tags/list",
+                &probe,
+                probe.status,
+            ));
+        }
+        let challenge = probe
             .header("www-authenticate")
             .and_then(parse_bearer_challenge)
             .ok_or("prego: the registry answered 401 without a Bearer challenge")?;

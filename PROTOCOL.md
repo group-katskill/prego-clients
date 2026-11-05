@@ -267,7 +267,9 @@ The registry uses the Docker token flow:
 
 1. A request without a registry token gets `401` with
    `WWW-Authenticate: Bearer realm="https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>",service="oci.prego.k8skill.com",scope="..."`.
-   Use the realm from the challenge as it is. Do not make the realm URL yourself: the realm without the edge
+   Use the realm from the challenge of a repository path (for example `GET /v2/<name>/tags/list`) as it is.
+   Its code is the code of the repository's tenant, which can be another tenant than the caller's. The
+   challenge of `GET /v2/` names no repository and has the realm without a code. Do not make the realm URL yourself: the realm without the edge
    code refuses requests with a scope (`400 invalid_request`, "this token URL does not issue repository
    tokens"). It serves only the `docker login` check without a scope.
 2. The client calls the realm, `GET https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>?service=...&scope=...`, with HTTP

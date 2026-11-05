@@ -320,7 +320,9 @@ shows it, and the answer that creates a principal (API key or trust) has it as `
 also set `sts_url` to the `token_url`. Without it, the tools stop with "the edge code of your tenant is not
 set". Tools before 0.6.0 get "this client uses an old token URL" from the STS: upgrade them.
 
-Docker and `prego push` take the token realm from the registry's `401` answer, which has the edge code. The
+Docker and `prego push` take the token realm from the registry's `401` answer for the repository. It has the
+edge code of the repository's tenant, which can be another tenant that gives you a grant. `prego token
+--scope` uses your own tenant's realm. The
 admin API exchange (`prego setup` defaults) does not need it.
 
 An argument or a `PREGO_*` variable wins over the file. The file must not hold a secret: a key such as

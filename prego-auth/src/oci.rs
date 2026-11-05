@@ -76,8 +76,10 @@ fn sts_origin(config: &Config) -> Result<String, Error> {
     }
 }
 
-/// The realm URL on the same scheme and host as the STS URL in `config`, with the edge code:
-/// `<origin>/v1/oci/token/e/<edge code>`. An error if the edge code is not set.
+/// The realm URL on the same scheme and host as the STS URL in `config`, with the configured (home) edge
+/// code: `<origin>/v1/oci/token/e/<edge code>`. An error if the edge code is not set. `prego token --scope`
+/// uses it for all scopes, also for repositories of another tenant. `prego push` uses the realm from the
+/// repository's challenge ([`check_challenge_realm`]).
 pub fn realm_url(config: &Config) -> Result<String, Error> {
     let origin = sts_origin(config)?;
     let code = config
@@ -87,10 +89,11 @@ pub fn realm_url(config: &Config) -> Result<String, Error> {
     Ok(format!("{origin}{REALM_PATH}/e/{code}"))
 }
 
-/// Checks the realm from a registry's `401` challenge and returns it. The realm must be on the STS host of
-/// `config`, with the path `/v1/oci/token/e/<edge code>`, so the subject token never goes to another host.
-/// If `config` has an edge code, the realm must have the same one. Without an edge code in `config`, the
-/// realm gives it.
+/// Checks the realm from a registry's `401` challenge for a repository and returns it. The realm must be on
+/// the STS host of `config`, with the path `/v1/oci/token/e/<edge code>`, so the subject token never goes to
+/// another host. The code is the edge code of the repository's tenant. It can be another tenant's code (a
+/// grant from that tenant): the subject token still names the caller, so the code is not compared with the
+/// configured one.
 pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, String> {
     let origin = sts_origin(config).map_err(|e| e.to_string())?;
     let refuse = || {
@@ -105,14 +108,6 @@ pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, Str
         .and_then(|p| p.strip_prefix("/e/"))
         .ok_or_else(refuse)?;
     crate::config::check_edge_code(code).map_err(|_| refuse())?;
-    if let Some(ours) = &config.edge_code {
-        if ours != code {
-            return Err(format!(
-                "prego: the registry's realm has the edge code `{code}`, but your edge code is `{ours}`. \
-                 The identity was not sent. Check PREGO_EDGE_CODE or `edge_code` in the settings file."
-            ));
-        }
-    }
     Ok(realm.to_string())
 }
 
@@ -451,9 +446,9 @@ mod tests {
             let e = check_challenge_realm(&cfg, bad).unwrap_err();
             assert!(e.contains("not sent"), "{bad}: {e}");
         }
-        let e = check_challenge_realm(&cfg, "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c")
-            .unwrap_err();
-        assert!(e.contains("your edge code is `k7mq`"));
+        // Another tenant's code (a cross-tenant grant) is accepted: the subject token names the caller.
+        let other = "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c";
+        assert_eq!(check_challenge_realm(&cfg, other).unwrap(), other);
         // Without an edge code in the settings, the realm gives it.
         let mut none = cfg.clone();
         none.edge_code = None;

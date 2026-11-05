@@ -25,8 +25,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 
 - The tenant's edge code is required for registry tokens: `--edge-code`, `PREGO_EDGE_CODE` or `edge_code` in
-  the settings file (or the console's token URL as `--sts-url`). `prego push` uses the realm from the
-  registry's `401` challenge and checks it. `prego whoami` shows the token URL.
+  the settings file (or the console's token URL as `--sts-url`). `prego push` takes the realm from the
+  `401` challenge of the repository (`GET /v2/<name>/tags/list`), because the `/v2/` challenge names no
+  repository and has no edge code. `prego token --scope` uses your own tenant's realm. `prego whoami` shows the token URL.
 - `prego exec` also sets `PREGO_NPM_TOKEN` and `PREGO_TOKEN` for the command. The short-lifetime warning
   now says "long Go builds need GOAUTH, see prego setup go. npm, pnpm: run the command again with prego
   exec."

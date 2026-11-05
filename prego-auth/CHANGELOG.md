@@ -11,8 +11,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Registry tokens come from the edge code URL `<sts_url>/e/<edge code>` (`Config::token_url`), and the OCI
   realm is `/v1/oci/token/e/<edge code>`. The STS refuses registry tokens on the URL without the code from
   registry 1.4.0. Admin tokens stay on `sts_url`.
-- `oci::check_challenge_realm`: the realm from a `401` challenge must be on the STS host with the path
-  `/v1/oci/token/e/<edge code>`, and with the configured code if one is set. `RealmTokens::new` takes the
+- `oci::check_challenge_realm`: the realm from a repository's `401` challenge must be on the STS host with the
+  path `/v1/oci/token/e/<edge code>` and a valid code. The code can be another tenant's (a grant from that
+  tenant), so it is not compared with the configured one. `RealmTokens::new` takes the
   realm URL, and `realm_token_at` gets a token at a given realm.
 
 ### Added
