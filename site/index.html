@@ -44,7 +44,7 @@
           <a href="#configure">Cargo</a>
           <a href="#oci">Images</a>
           <a href="#go">Go</a>
-          <a href="#npm">npm <span class="soon">soon</span></a>
+          <a href="#npm">npm</a>
           <a href="#sources">Identity sources</a>
           <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
@@ -72,7 +72,7 @@
             <p class="eyebrow">Open source · Apache-2.0 · Version __PREGO_VERSION__</p>
             <h1 class="display">Prego clients</h1>
             <p class="lede">
-              Client tools for Prego registries: crates, OCI images and Go modules, and soon npm packages. They find the machine identity of your
+              Client tools for Prego registries: crates, OCI images, Go modules and npm packages. They find the machine identity of your
               build, exchange it at the Prego STS, and give Cargo, Docker and other tools a registry token that is
               valid for 15 minutes by default. No long-lived secret goes into your config.
             </p>
@@ -202,7 +202,7 @@
       <section class="section section-band" id="configure" aria-labelledby="configure-title">
         <div class="wrap">
           <h2 class="section-title display" id="configure-title">Configure Cargo</h2>
-          <p class="section-lede">Replace <code>acme</code> with your tenant slug, and <code>default</code> with your namespace.</p>
+          <p class="section-lede">Replace <code>acme</code> with your tenant slug, and <code>default</code> with your namespace. From 0.6.0, also set your tenant's edge code (the console shows it): <code>edge_code = "k7mq"</code> in <code>~/.config/prego/config.toml</code>, or <code>PREGO_EDGE_CODE</code>.</p>
           <div class="terminal">
             <div class="terminal-bar"><span></span><span></span><span></span><b>.cargo/config.toml</b></div>
             <pre><code>[registries.acme]
@@ -219,8 +219,9 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
                 <tr>
                   <td><code>--sts-url &lt;url&gt;</code></td>
                   <td><code>PREGO_STS_URL</code></td>
-                  <td><code>https://sts.prego.k8skill.com/v1/sts/token</code></td>
+                  <td><code>https://sts.prego.k8skill.com/v1/sts/token</code> (registry tokens at <code>/v1/sts/token/e/&lt;edge code&gt;</code>)</td>
                 </tr>
+                <tr><td><code>--edge-code &lt;code&gt;</code></td><td><code>PREGO_EDGE_CODE</code></td><td>required (the console shows it)</td></tr>
                 <tr><td><code>--audience &lt;aud&gt;</code></td><td><code>PREGO_AUDIENCE</code></td><td><code>prego.k8skill.com</code></td></tr>
                 <tr><td><code>--source &lt;name&gt;</code></td><td><code>PREGO_SOURCE</code></td><td><code>auto</code></td></tr>
                 <tr><td>none</td><td><code>PREGO_CA_FILE</code></td><td>none (extra PEM CA bundle)</td></tr>
@@ -293,9 +294,9 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
 
       <section class="section" id="npm" aria-labelledby="npm-title">
         <div class="wrap">
-          <h2 class="section-title display" id="npm-title">npm packages <span class="soon">Coming soon</span></h2>
+          <h2 class="section-title display" id="npm-title">npm packages</h2>
           <p class="section-lede">
-            The npm host is not live yet. When it is, prego 0.6.0 connects npm, pnpm, Yarn and Bun to private
+            prego 0.6.0 and later connect npm, pnpm, Yarn and Bun to private
             <strong>scoped</strong> packages (<code>@acme/core</code>). All other packages still come from
             registry.npmjs.org.
           </p>
@@ -392,7 +393,6 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
               <p>From 0.4.0: private Go modules with <code>GOAUTH='prego go-auth'</code>, and <code>prego go publish</code> from the git tree of a tag. A module zip can be at most 300 MiB.</p>
             </li>
             <li class="card">
-              <span class="soon">Coming soon</span>
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a></h3>
               <p>From 0.6.0: private scoped npm packages for npm, pnpm, Yarn and Bun. <code>prego setup npm</code> writes no token; trusted publishing from GitLab CI and GitHub Actions; dependency confusion.</p>
             </li>

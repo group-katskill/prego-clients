@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-05
+
 ### Changed
 
 - The tenant's edge code is required: `--edge-code`, `PREGO_EDGE_CODE` or `edge_code` in the settings file.

@@ -518,30 +518,6 @@ code {
   line-height: 1.6;
   color: var(--ink-2);
 }
-/* "Coming soon" mark for a part that is not live yet. Remove it at the release. */
-.soon {
-  display: inline-block;
-  margin-left: 0.4em;
-  padding: 0.15em 0.5em;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  font-family: var(--font-body);
-  font-size: 0.6em;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  text-transform: uppercase;
-  vertical-align: middle;
-  white-space: nowrap;
-  color: var(--accent);
-}
-.card .soon {
-  margin: 0 0 10px;
-  font-size: 0.75rem;
-}
-.site-nav .soon {
-  font-size: 0.65rem;
-}
 .card-tag {
   display: inline-block;
   margin-bottom: 10px;

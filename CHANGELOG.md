@@ -6,8 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-05
+
 ### Changed
 
+- Release 0.6.0: npm packages and the edge code token URLs. Website: the "Coming soon" marks and their CSS
+  are removed, and the Cargo section and the options table show the edge code.
 - PROTOCOL.md 1.7.0: the edge code. Registry tokens at `POST /v1/sts/token/e/<edge code>`, the OCI realm at
   `/v1/oci/token/e/<edge code>`, the refusals for the URL without the code, and the settings key `edge_code`.
   README, quickstarts and CI examples set `PREGO_EDGE_CODE`.
