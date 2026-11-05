@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-05
+
+### Changed
+
+- Release 0.5.1: the 0.5.0 code, released again from the new public repository (fresh history, signed commits).
+  0.5.0 stays in the archived repository; it is not tagged again here.
+
 ### Changed
 
 - The Unreleased items in every CHANGELOG move under `## [0.5.0] - 2026-11-04`.
