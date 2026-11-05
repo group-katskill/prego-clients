@@ -26,6 +26,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/npm-quickstart.md`: install, publish, CI, trusted publishing from GitLab CI and GitHub Actions, and
   dependency confusion. Links from the README and the website.
 
+## [0.5.1] - 2026-11-05
+
+### Changed
+
+- Release 0.5.1: the 0.5.0 code, released again from the new public repository (fresh history, signed commits).
+  0.5.0 stays in the archived repository; it is not tagged again here.
+
 ## [0.5.0] - 2026-11-04
 
 ### Changed
