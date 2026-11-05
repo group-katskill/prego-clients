@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   The release workflow makes a tag with `-` a pre-release that is not Latest, so `releases/latest` and the
   install script without `--version` still give the newest X.Y.Z release. `install.sh --version` also
   takes `X.Y.Z-rc.N`.
+- The Pages workflow shows the newest X.Y.Z release tag on the site when `prego/Cargo.toml` has a
+  pre-release version, so the site never shows an rc. It fails if it finds no such tag.
 - PROTOCOL.md 1.7.0: the edge code. Registry tokens at `POST /v1/sts/token/e/<edge code>`, the OCI realm at
   `/v1/oci/token/e/<edge code>`, the refusals for the URL without the code, and the settings key `edge_code`.
   README, quickstarts and CI examples set `PREGO_EDGE_CODE`.
