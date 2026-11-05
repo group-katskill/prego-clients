@@ -15,6 +15,7 @@ pub mod file_config;
 pub mod go;
 pub mod http;
 pub mod jwt;
+pub mod npm;
 pub mod oci;
 mod secret;
 pub mod sources;

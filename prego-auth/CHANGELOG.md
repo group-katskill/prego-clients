@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `npm` module: `npm_host` (`PREGO_NPM_HOST`, then `npm_host` in the settings file, then
+  `npm.prego.k8skill.com`), `registry_url` and `TOKEN_VAR`.
+- Settings file key `npm_host`.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added

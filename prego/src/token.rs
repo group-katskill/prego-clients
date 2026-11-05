@@ -2,10 +2,10 @@
 
 use prego_auth::http::Http;
 use prego_auth::sources::find_subject_token;
-use prego_auth::{jwt, oci, sts, Config, Env, RegistryToken, SourceKind};
+use prego_auth::{jwt, npm, oci, sts, Config, Env, FileConfig, RegistryToken, SourceKind};
 
 /// Gets a registry token: from the STS, or from the OCI realm if `scopes` is not empty.
-fn registry_token(
+pub(crate) fn registry_token(
     config: &Config,
     scopes: &[String],
     resource: Option<&str>,
@@ -45,7 +45,7 @@ fn check_resource(resource: Option<&str>) -> Result<(), String> {
 }
 
 /// The lifetime as text: `15 min`, or `1 min 30 s`.
-fn minutes(secs: i64) -> String {
+pub(crate) fn minutes(secs: i64) -> String {
     match (secs / 60, secs % 60) {
         (m, 0) => format!("{m} min"),
         (0, s) => format!("{s} s"),
@@ -81,7 +81,8 @@ pub fn whoami(
 ) -> Result<(), String> {
     crate::setup::check_slug("namespace", namespace)?;
     check_resource(resource)?;
-    let config = Config::from_args(globals, env).map_err(|e| e.to_string())?;
+    let file = FileConfig::load(env).map_err(|e| e.to_string())?;
+    let config = Config::from_parts(globals, env, &file).map_err(|e| e.to_string())?;
     let (kind, token) = registry_token(&config, &[], resource, env)?;
     let claims = jwt::unverified_claims(token.token.expose()).unwrap_or_default();
     let claim = |name: &str| {
@@ -107,6 +108,10 @@ pub fn whoami(
     println!(
         "oci:        {}/{t}/{namespace}/<repo>",
         oci::DEFAULT_OCI_HOST
+    );
+    println!(
+        "npm:        {} (scoped packages)",
+        npm::registry_url(&npm::npm_host(&file, env), t, namespace)
     );
     Ok(())
 }

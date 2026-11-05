@@ -55,6 +55,10 @@ pub enum Command {
         prefixes: Vec<String>,
         write: bool,
     },
+    /// `prego setup npm`.
+    SetupNpm(crate::npm::SetupOptions),
+    /// `prego npm-env`.
+    NpmEnv,
     /// `prego exec -- <command>`.
     Exec {
         command: Vec<String>,
@@ -62,7 +66,7 @@ pub enum Command {
 }
 
 const GLOBAL: [&str; 4] = ["--tenant", "--sts-url", "--audience", "--source"];
-const WITH_VALUE: [&str; 9] = [
+const WITH_VALUE: [&str; 10] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -72,9 +76,10 @@ const WITH_VALUE: [&str; 9] = [
     "--dir",
     "--tag",
     "--prefix",
+    "--client",
 ];
 /// Options without a value.
-const FLAGS: [&str; 4] = ["--write", "--print", "--dry-run", "--json"];
+const FLAGS: [&str; 5] = ["--write", "--print", "--dry-run", "--json", "--user"];
 
 /// Parses the arguments after the program name.
 pub fn parse(args: &[String]) -> Result<Parsed, String> {
@@ -252,6 +257,27 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
                 write: flag("--write"),
             }
         }
+        ["setup", "npm"] => {
+            allow(&["--namespace", "--scope", "--client"], &["--user", "--print"])?;
+            if flag("--user") && flag("--print") {
+                return Err("give --user or --print, not both".into());
+            }
+            let client = match one("--client")? {
+                Some(c) => crate::npm::Client::parse(&c)?,
+                None => crate::npm::Client::Npm,
+            };
+            Command::SetupNpm(crate::npm::SetupOptions {
+                namespace: one("--namespace")?.unwrap_or_else(|| "default".into()),
+                scope: one("--scope")?,
+                client,
+                user: flag("--user"),
+                print: flag("--print"),
+            })
+        }
+        ["npm-env"] => {
+            allow(&[], &[])?;
+            Command::NpmEnv
+        }
         ["exec"] => {
             allow(&[], &[])?;
             match rest {
@@ -346,7 +372,7 @@ mod tests {
         assert!(p(&["token", "--write"]).is_err());
         assert!(p(&["setup", "cargo", "--write"]).is_err());
         assert!(p(&["whoami", "--scope", "x"]).is_err());
-        assert!(p(&["setup", "npm"]).is_err());
+        assert!(p(&["setup", "pip"]).is_err());
         assert!(p(&["oci", "push", "img.tar"]).is_err());
         assert!(p(&["oci", "push", "a", "b", "--chunk-size", "0"]).is_err());
         assert!(p(&["oci", "push", "a", "b", "--chunk-size", "x"]).is_err());
@@ -391,6 +417,56 @@ mod tests {
             }
         );
         assert!(p(&["whoami", "--namespace", "a", "--namespace", "b"]).is_err());
+    }
+
+    #[test]
+    fn npm_commands() {
+        use crate::npm::{Client, SetupOptions};
+        let run = |args: &[&str]| match p(args).unwrap() {
+            Parsed::Run { command, .. } => command,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            run(&["setup", "npm"]),
+            Command::SetupNpm(SetupOptions {
+                namespace: "default".into(),
+                scope: None,
+                client: Client::Npm,
+                user: false,
+                print: false,
+            })
+        );
+        assert_eq!(
+            run(&[
+                "setup",
+                "npm",
+                "--scope",
+                "@acme",
+                "--client=pnpm",
+                "--namespace",
+                "rel",
+                "--user"
+            ]),
+            Command::SetupNpm(SetupOptions {
+                namespace: "rel".into(),
+                scope: Some("@acme".into()),
+                client: Client::Pnpm,
+                user: true,
+                print: false,
+            })
+        );
+        assert_eq!(run(&["npm-env"]), Command::NpmEnv);
+        for bad in [
+            &["setup", "npm", "--client", "deno"][..],
+            &["setup", "npm", "--user", "--print"],
+            &["setup", "npm", "--write"],
+            &["setup", "npm", "--scope", "a", "--scope", "b"],
+            &["npm-env", "--scope", "x"],
+            &["npm-env", "x"],
+            &["token", "--user"],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

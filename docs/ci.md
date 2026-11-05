@@ -168,6 +168,19 @@ minute, so many parallel jobs behind one NAT address are limited only by that bu
 repository and gets a new one only shortly before it expires. Very short grant lifetimes (1 or 2 minutes)
 mean many more token requests.
 
+## npm packages
+
+Commit the `.npmrc` from `prego setup npm`: it holds `${PREGO_NPM_TOKEN}`, never a token. In the job, with the
+same `id_tokens` (GitLab) or `id-token: write` (GitHub) as above:
+
+```sh
+export PREGO_NPM_TOKEN="$(prego token)"
+npm ci
+```
+
+To publish with no Prego tool and no stored secret, use npm trusted publishing (npm 11.5.1 and later, ID token
+audience `npm:npm.prego.k8skill.com`). The [npm quickstart](npm-quickstart.md) has the jobs.
+
 ## Manage Prego from CI
 
 A pipeline can also manage objects in its own tenant: namespaces, trust configs, principals and grants. It uses

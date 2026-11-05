@@ -133,6 +133,9 @@ fn whoami_shows_the_principal_but_not_the_token() {
     assert!(r.stdout.contains("oci.prego.k8skill.com/acme/rel/<repo>"));
     assert!(r
         .stdout
+        .contains("npm:        https://npm.prego.k8skill.com/t/acme/rel/ (scoped packages)"));
+    assert!(r
+        .stdout
         .contains("token:      lifetime 15 min for all your grants (not shown"));
     assert!(!r.stdout.contains(REG_TOKEN));
     assert!(!r.stdout.contains(API_KEY));

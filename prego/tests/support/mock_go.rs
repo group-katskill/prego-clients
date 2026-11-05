@@ -4,6 +4,9 @@
 //! `X-Prego-Go-H1` and `X-Prego-Go-Origin`, and the chunked session (exact part sizes, `409` for a part that
 //! was already sent, `X-Prego-Go-Received`). It reads each zip it gets and computes the h1 and the go.mod h1
 //! itself, so the tests check the zip, not only the client's own numbers. Tests can inject faults.
+//!
+//! It also serves the npm routes of one namespace (`/t/acme/default/@scope%2fname`): packuments, tarballs
+//! and publish, with the same Bearer check, for the `prego setup npm` and live npm and pnpm tests.
 
 #![allow(dead_code)]
 
@@ -64,6 +67,12 @@ pub struct State {
     pub too_old: usize,
     /// Wait this long before the answer to each `PATCH`.
     pub patch_delay: Option<Duration>,
+    /// The port, for tarball URLs.
+    pub port: u16,
+    /// The npm scopes that the admin API returns.
+    pub npm_scopes: Vec<String>,
+    /// npm packages: name, then version, then (manifest, tarball).
+    pub npm: HashMap<String, BTreeMap<String, (Value, Vec<u8>)>>,
 }
 
 pub struct MockGo {
@@ -77,6 +86,7 @@ impl MockGo {
         let port = listener.local_addr().unwrap().port();
         let state = Arc::new(Mutex::new(State {
             chunk_bytes: 40 << 20,
+            port,
             ..State::default()
         }));
         let st = Arc::clone(&state);
@@ -276,6 +286,11 @@ fn handle(s: &mut State, req: &Req) -> Res {
     if req.path.starts_with("/v1/admin/") {
         return admin(s, req);
     }
+    if let Some(rest) = req.path.strip_prefix("/t/acme/default/") {
+        if !rest.starts_with("-/") {
+            return npm(s, req, rest);
+        }
+    }
     let Some(rest) = req.path.strip_prefix("/t/acme/default/-/") else {
         return Res::text(404, "not found");
     };
@@ -373,7 +388,168 @@ fn admin(_s: &mut State, req: &Req) -> Res {
             ]}),
         );
     }
+    if req.path == "/v1/admin/tenants/acme/npm/scopes" {
+        let items: Vec<Value> = _s
+            .npm_scopes
+            .iter()
+            .enumerate()
+            .map(|(i, sc)| json!({"id": format!("scp_{i}"), "scope": sc}))
+            .collect();
+        return Res::json(200, json!({ "items": items }));
+    }
     Res::text(404, "no")
+}
+
+/// A package tarball: `package/package.json` and `package/index.js`.
+pub fn npm_tarball(name: &str, version: &str) -> Vec<u8> {
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    {
+        let mut tar = tar::Builder::new(&mut gz);
+        let files = [
+            (
+                "package/package.json",
+                json!({"name": name, "version": version, "main": "index.js"}).to_string(),
+            ),
+            (
+                "package/index.js",
+                format!("module.exports = \"{name}@{version}\";\n"),
+            ),
+        ];
+        for (path, body) in files {
+            let mut h = tar::Header::new_gnu();
+            h.set_size(body.len() as u64);
+            h.set_mode(0o644);
+            h.set_mtime(0);
+            h.set_cksum();
+            tar.append_data(&mut h, path, body.as_bytes()).unwrap();
+        }
+        tar.finish().unwrap();
+    }
+    gz.finish().unwrap()
+}
+
+fn integrity(data: &[u8]) -> String {
+    let d = sha2::Sha512::digest(data);
+    format!(
+        "sha512-{}",
+        base64::engine::general_purpose::STANDARD.encode(d)
+    )
+}
+
+/// Adds a version of an npm package, as a publish would.
+pub fn add_npm(s: &mut State, name: &str, version: &str) {
+    let tgz = npm_tarball(name, version);
+    let manifest = json!({"name": name, "version": version, "main": "index.js"});
+    s.npm
+        .entry(name.to_string())
+        .or_default()
+        .insert(version.to_string(), (manifest, tgz));
+}
+
+fn npm(s: &mut State, req: &Req, rest: &str) -> Res {
+    let auth = req
+        .headers
+        .get("authorization")
+        .cloned()
+        .unwrap_or_default();
+    let token = auth.strip_prefix("Bearer ").unwrap_or_default();
+    if token == "${PREGO_NPM_TOKEN}" {
+        return Res::json(
+            401,
+            json!({"error": "PREGO_NPM_TOKEN is not set in this shell"}),
+        );
+    }
+    if token == "admintok" || !s.tokens.contains(token) {
+        return Res::json(
+            401,
+            json!({"error": "Prego needs a registry token from the STS. Run `prego setup npm`"}),
+        );
+    }
+    let rest = rest.replace("%2f", "/").replace("%2F", "/");
+    if let Some((name, file)) = rest.split_once("/-/") {
+        let short = name.rsplit('/').next().unwrap_or_default();
+        let version = file
+            .strip_prefix(&format!("{short}-"))
+            .and_then(|f| f.strip_suffix(".tgz"));
+        let found = version.and_then(|v| s.npm.get(name).and_then(|p| p.get(v)));
+        return match (req.method.as_str(), found) {
+            ("GET", Some((_, tgz))) => {
+                let mut r = Res::new(200);
+                r.body = tgz.clone();
+                r.headers
+                    .push(("Content-Type".into(), "application/octet-stream".into()));
+                r
+            }
+            _ => Res::json(404, json!({"error": "not found"})),
+        };
+    }
+    let name = rest.as_str();
+    if !name.starts_with('@') {
+        return Res::json(404, json!({"error": "Prego serves scoped packages only"}));
+    }
+    match req.method.as_str() {
+        "GET" => {
+            let Some(pkg) = s.npm.get(name) else {
+                return Res::json(404, json!({"error": "not found"}));
+            };
+            let short = name.rsplit('/').next().unwrap_or_default();
+            let mut versions = serde_json::Map::new();
+            let mut latest = String::new();
+            for (v, (manifest, tgz)) in pkg {
+                let mut m = manifest.clone();
+                m["dist"] = json!({
+                    "tarball": format!("http://127.0.0.1:{}/t/acme/default/{name}/-/{short}-{v}.tgz", s.port),
+                    "integrity": integrity(tgz),
+                });
+                versions.insert(v.clone(), m);
+                latest = v.clone();
+            }
+            Res::json(
+                200,
+                json!({"name": name, "dist-tags": {"latest": latest}, "versions": versions}),
+            )
+        }
+        "PUT" => {
+            let Ok(body) = serde_json::from_slice::<Value>(&req.body) else {
+                return Res::json(400, json!({"error": "bad JSON"}));
+            };
+            let Some((version, manifest)) = body["versions"]
+                .as_object()
+                .and_then(|v| v.iter().next())
+                .map(|(k, v)| (k.clone(), v.clone()))
+            else {
+                return Res::json(400, json!({"error": "no version"}));
+            };
+            let Some(data) = body["_attachments"]
+                .as_object()
+                .and_then(|a| a.values().next())
+                .and_then(|a| a["data"].as_str())
+            else {
+                return Res::json(400, json!({"error": "no attachment"}));
+            };
+            let Ok(tgz) = base64::engine::general_purpose::STANDARD.decode(data) else {
+                return Res::json(400, json!({"error": "bad base64"}));
+            };
+            if manifest["dist"]["integrity"].as_str() != Some(integrity(&tgz).as_str()) {
+                return Res::json(400, json!({"error": "integrity does not match"}));
+            }
+            let pkg = s.npm.entry(name.to_string()).or_default();
+            if pkg.contains_key(&version) {
+                return Res::json(
+                    403,
+                    json!({"error": format!("cannot publish over previously published version {version}")}),
+                );
+            }
+            let mut m = manifest;
+            if let Some(o) = m.as_object_mut() {
+                o.remove("dist");
+                o.retain(|k, _| !k.starts_with('_'));
+            }
+            pkg.insert(version, (m, tgz));
+            Res::json(200, json!({"ok": true}))
+        }
+        _ => Res::json(405, json!({"error": "method not allowed"})),
+    }
 }
 
 /// Computes (h1, mod_h1) of a module zip, and checks its entry names.

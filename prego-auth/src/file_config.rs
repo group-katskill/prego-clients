@@ -12,6 +12,7 @@
 //! oci_hosts = ["oci.example.internal"]
 //! go_hosts = ["go.example.internal"]
 //! go_prefixes = ["go.acme.com", "github.com/acme"]
+//! npm_host = "npm.example.internal"
 //! ```
 
 use std::path::PathBuf;
@@ -52,6 +53,8 @@ pub struct FileConfig {
     pub go_hosts: Vec<String>,
     /// The Go module path prefixes of the tenant, for `GONOSUMDB`.
     pub go_prefixes: Vec<String>,
+    /// The npm host, in place of `npm.prego.k8skill.com`.
+    pub npm_host: Option<String>,
 }
 
 impl FileConfig {
@@ -129,10 +132,11 @@ impl FileConfig {
                 "oci_hosts" => list(&mut out.oci_hosts)?,
                 "go_hosts" => list(&mut out.go_hosts)?,
                 "go_prefixes" => list(&mut out.go_prefixes)?,
+                "npm_host" => string(&mut out.npm_host)?,
                 other => {
                     return Err(format!(
                         "unknown key `{other}`. Known keys: tenant, sts_url, audience, source, oci_hosts, \
-                         go_hosts, go_prefixes."
+                         go_hosts, go_prefixes, npm_host."
                     ))
                 }
             }

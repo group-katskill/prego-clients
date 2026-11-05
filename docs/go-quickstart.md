@@ -11,7 +11,7 @@ Prego serves private Go modules through the GOPROXY protocol. Public modules sti
 
 - Go 1.24 or later for the GOAUTH helper. For older Go, see [Old Go and other build tools](#old-go-and-other-build-tools).
 - `prego` 0.4.0 or later: the [install script](../README.md#install), or `cargo install prego` when crates.io
-  has 0.4.0 or later. Use 0.4.1 or later for the 300 MiB check before the upload.
+  has 0.4.0 or later. Use 0.5.0 or later for the 300 MiB check before the upload.
 - In the Prego console (<https://app.prego.k8skill.com>), a tenant admin:
   - registers the **module path prefixes** of the tenant under **Settings**, for example `go.acme.com` or
     `github.com/acme`. On a shared code host the prefix has at least two parts (`github.com/acme`, not
@@ -84,7 +84,7 @@ prego go publish                    # prints: go get go.acme.com/core@v1.4.0
 - Versions are immutable. A second publish of the same version gets `409`, also after a delete. To withdraw a
   version, add a `retract` line to `go.mod` and publish a new version.
 - A zip can be up to 300 MiB, compressed and uncompressed (Go itself allows 500 MiB). `go.mod` can be up to
-  1 MiB. A zip above 95 MiB is sent in parts. From 0.4.1, `prego go publish` refuses a bigger module before it
+  1 MiB. A zip above 95 MiB is sent in parts. From 0.5.0, `prego go publish` refuses a bigger module before it
   sends anything. Move large files out of the module, for example into an OCI artifact.
 - The file rules are Go's own: no vendored packages, no files of nested modules, no symlinks. If a module in
   a subdirectory has no `LICENSE`, the root `LICENSE` is added, as the go command does.

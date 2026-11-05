@@ -16,7 +16,9 @@ cargo install prego
 | `prego go publish [<dir>] [<tag>]` | From 0.4.0. Builds a Go module zip from the git tree of the tag (never from the working directory) and publishes it. `--dry-run` prints the files and the h1. `--json` prints `{module, version, h1, mod_h1}`. `--namespace` chooses the namespace. |
 | `prego go-auth` | From 0.4.0. The GOAUTH helper for Go 1.24 and later: `GOAUTH='prego go-auth'`. |
 | `prego setup go` | From 0.4.0. Prints the `go env -w` lines for `GOPROXY`, `GONOSUMDB` and `GOAUTH`. `--write` runs them. `--prefix` gives a module path prefix. |
-| `prego exec -- <command>` | From 0.4.0. Runs the command with `NETRC` set to a temporary file (mode 0600) that holds a registry token, for Go before 1.24. |
+| `prego setup npm [--scope @acme]` | From 0.6.0. Writes the scope line and `${PREGO_NPM_TOKEN}` (never a token) to `.npmrc`. `--client pnpm\|yarn\|bun` for the other tools (`.yarnrc.yml`, `bunfig.toml`), `--user` for `~/.npmrc`, `--print` to write nothing, `--namespace` for another namespace. |
+| `prego npm-env` | From 0.6.0. Prints `export PREGO_NPM_TOKEN='<token>'`, for `eval "$(prego npm-env)"`. |
+| `prego exec -- <command>` | From 0.4.0. Runs the command with `NETRC` set to a temporary file (mode 0600) that holds a registry token, for Go before 1.24. From 0.6.0 also with the token in `PREGO_NPM_TOKEN` and `PREGO_TOKEN`, for npm, pnpm, Yarn and Bun. |
 | `prego setup docker` | Prints the `~/.docker/config.json` snippet. With `--write`, adds `credHelpers` for the Prego OCI hosts to that file. It makes a backup copy first and keeps all other keys. |
 
 Stock `docker push`, Podman and BuildKit send each layer in one request, and Prego accepts at most 95 MiB in one
@@ -29,7 +31,7 @@ prego oci push api.tar acme/default/api:1.4.0
 
 `prego` uses the same identity sources, options and settings file (`~/.config/prego/config.toml`) as
 `cargo-credential-prego` and `docker-credential-prego`. See the repository `README.md` and
-`docs/go-quickstart.md`.
+`docs/go-quickstart.md` and `docs/npm-quickstart.md`.
 
 `prego token` prints a secret. Use it in a variable (`export PREGO_NPM_TOKEN="$(prego token)"`), not in a
 log.

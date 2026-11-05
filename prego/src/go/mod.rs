@@ -9,9 +9,7 @@ pub mod zip;
 use std::io::Write;
 use std::process::Command;
 
-use prego_auth::http::Http;
-use prego_auth::sources::find_subject_token;
-use prego_auth::{go, sts, Config, Env, FileConfig};
+use prego_auth::{go, Config, Env, FileConfig};
 
 /// The public proxy and `direct` after the Prego entry.
 const PUBLIC_TAIL: &str = "https://proxy.golang.org,direct";
@@ -78,37 +76,7 @@ fn check_prefix(p: &str) -> Result<(), String> {
 /// The tenant's prefixes from the admin API, if the identity may read them (`admin:read`). Any refusal
 /// gives `None`, with no error.
 fn admin_prefixes(config: &Config, env: &dyn Env) -> Option<Vec<String>> {
-    let http = Http::with_ca_file(crate::USER_AGENT, config.ca_file.as_deref()).ok()?;
-    let subject = find_subject_token(config, env, &http).ok()?;
-    let fields = [
-        ("grant_type", sts::GRANT_TYPE),
-        ("subject_token", subject.value.expose()),
-        ("subject_token_type", subject.token_type.urn()),
-        ("tenant", config.tenant.as_str()),
-        ("audience", "prego-admin"),
-        ("scope", "admin:read"),
-    ];
-    let res = http.post_form(&config.sts_url, &fields).ok()?;
-    if res.status != 200 {
-        return None;
-    }
-    let token: serde_json::Value = serde_json::from_str(&res.body).ok()?;
-    let token = token["access_token"].as_str()?.to_string();
-    let base = config.sts_url.strip_suffix("/v1/sts/token")?;
-    let url = format!("{base}/v1/admin/tenants/{}/go/prefixes", config.tenant);
-    let auth = format!("Bearer {token}");
-    let res = http
-        .send(
-            "GET",
-            &url,
-            &[("Authorization", &auth), ("Accept", "application/json")],
-            prego_auth::http::Body::Empty,
-        )
-        .ok()?;
-    if res.status != 200 {
-        return None;
-    }
-    let v: serde_json::Value = serde_json::from_str(&res.body).ok()?;
+    let v = crate::admin::get(config, env, "/go/prefixes")?;
     let list: Vec<String> = v["items"]
         .as_array()?
         .iter()
@@ -198,8 +166,9 @@ fn no_prefix_note() -> &'static str {
      turns off the checksum database for nothing more."
 }
 
-/// `prego exec -- <command>`: runs the command with `NETRC` set to a temporary file that holds a registry
-/// token for the Prego Go host. The file has mode 0600 and is deleted when the command ends.
+/// `prego exec -- <command>`: runs the command with a registry token in `PREGO_NPM_TOKEN` and `PREGO_TOKEN`
+/// (npm, pnpm, Yarn, Bun), and with `NETRC` set to a temporary file that holds the same token for the Prego
+/// Go host (Go before 1.24). The file has mode 0600 and is deleted when the command ends.
 pub fn exec(globals: &[&str], command: &[String], env: &dyn Env) -> Result<i32, String> {
     let (program, rest) = command
         .split_first()
@@ -234,6 +203,8 @@ pub fn exec(globals: &[&str], command: &[String], env: &dyn Env) -> Result<i32, 
     let status = Command::new(program)
         .args(rest)
         .env("NETRC", &netrc.path)
+        .env(prego_auth::npm::TOKEN_VAR, token.token.expose())
+        .env("PREGO_TOKEN", token.token.expose())
         .status()
         .map_err(|e| format!("prego: cannot run `{program}`: {e}"))?;
     drop(netrc);
@@ -244,7 +215,7 @@ pub fn exec(globals: &[&str], command: &[String], env: &dyn Env) -> Result<i32, 
 const SHORT_LIFETIME_SECONDS: i64 = 10 * 60;
 
 /// The line that `prego exec` prints on stderr: the token lifetime, with a warning when it is short. The
-/// netrc file cannot get a new token, because Go reads it once.
+/// netrc file and the variables cannot get a new token, because the command reads them once.
 fn lifetime_note(lifetime: i64) -> String {
     let min = lifetime / 60;
     let secs = lifetime % 60;
@@ -255,8 +226,8 @@ fn lifetime_note(lifetime: i64) -> String {
     };
     if lifetime < SHORT_LIFETIME_SECONDS {
         format!(
-            "prego exec: warning: token valid for {len}; long builds need GOAUTH, see prego setup go. \
-             The netrc file cannot get a new token."
+            "prego exec: warning: token valid for {len}; long Go builds need GOAUTH, see prego setup go. \
+             npm, pnpm: run the command again with prego exec."
         )
     } else {
         format!("prego exec: token valid for {len}")
@@ -295,7 +266,7 @@ mod tests {
         assert_eq!(lifetime_note(600), "prego exec: token valid for 10 min");
         let w = lifetime_note(300);
         assert!(
-            w.starts_with("prego exec: warning: token valid for 5 min; long builds need GOAUTH, see prego setup go."),
+            w.starts_with("prego exec: warning: token valid for 5 min; long Go builds need GOAUTH, see prego setup go. npm, pnpm: run the command again with prego exec."),
             "{w}"
         );
         assert!(lifetime_note(60).contains("token valid for 1 min;"));

@@ -11,19 +11,22 @@
 [![MSRV: 1.91](https://img.shields.io/badge/MSRV-1.91-orange)](Cargo.toml)
 
 Open source client tools for **Prego by Katskill**, a private package registry with federated machine identity.
+They serve four package types: Rust **crates** (Cargo), **OCI images** (Docker, Podman, Helm and others), **Go
+modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; coming soon, when the npm host is live).
 
 | Crate | Kind | What it does |
 | --- | --- | --- |
 | [`cargo-credential-prego`](cargo-credential-prego/) | binary | Cargo credential provider. Cargo runs it to get a registry token for a Prego registry. |
 | [`docker-credential-prego`](docker-credential-prego/) | binary | Docker credential helper. Docker, Podman, BuildKit, crane and ORAS run it to sign in to the Prego OCI registry. |
-| [`prego`](prego/) | binary | CLI: `prego token`, `prego whoami`, `prego setup cargo\|docker\|go`, `prego oci push`, and from 0.4.0 `prego go publish`, `prego go-auth` (GOAUTH) and `prego exec`. |
+| [`prego`](prego/) | binary | CLI: `prego token`, `prego whoami`, `prego setup cargo\|docker\|go`, `prego oci push`, and from 0.4.0 `prego go publish`, `prego go-auth` (GOAUTH) and `prego exec`, and from 0.6.0 `prego setup npm` and `prego npm-env`. |
 | [`prego-auth`](prego-auth/) | library | Identity sources, the settings file and the STS exchange. All binaries use it. |
 
 Website: <https://clients.prego.k8skill.com>. Releases: <https://github.com/group-katskill/prego-clients/releases>.
 
 Guides: [consumer quickstart](docs/consumer-quickstart.md) (crates on a laptop, API key),
 [OCI quickstart](docs/oci-quickstart.md) (images, Helm charts, signatures, Kubernetes),
-[Go quickstart](docs/go-quickstart.md) (Go modules, from 0.4.0), [CI guide](docs/ci.md)
+[Go quickstart](docs/go-quickstart.md) (Go modules, from 0.4.0),
+[npm quickstart](docs/npm-quickstart.md) (scoped npm packages, pnpm, Yarn, Bun, from 0.6.0), [CI guide](docs/ci.md)
 (GitLab, GitHub Actions, SPIFFE, cloud workloads), [examples](examples/), and the public API as
 [OpenAPI](docs/openapi.yaml).
 
@@ -231,6 +234,26 @@ git tag v1.4.0 && prego go publish --dry-run && prego go publish
 The [Go quickstart](docs/go-quickstart.md) has the console setup, publishing, CI, the privacy note on module
 paths, and the errors. [PROTOCOL.md](PROTOCOL.md) section 9 has the helper contract.
 
+## npm packages
+
+From prego 0.6.0. Prego serves private **scoped** npm packages (`@acme/core`) on `npm.prego.k8skill.com`. All
+other packages still come from registry.npmjs.org.
+
+```sh
+prego setup npm --scope @acme        # .npmrc: the scope line and ${PREGO_NPM_TOKEN}, never a token
+prego exec -- npm install            # or: eval "$(prego npm-env)"
+prego exec -- npm publish
+```
+
+- `prego setup npm` writes `.npmrc` (npm, pnpm), `.yarnrc.yml` (`--client yarn`) or `bunfig.toml`
+  (`--client bun`). Commit the file: it holds the variable name only.
+- `prego exec` sets `PREGO_NPM_TOKEN` for one command. `prego npm-env` exports it in the shell. In CI:
+  `export PREGO_NPM_TOKEN="$(prego token)"`.
+- Create the free organization `@acme` on npmjs.com too, against dependency confusion.
+
+The [npm quickstart](docs/npm-quickstart.md) has the console setup, publishing, CI, trusted publishing, the
+dependency-confusion note and the errors. [PROTOCOL.md](PROTOCOL.md) section 10 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -254,6 +277,8 @@ prego setup docker --write       # add credHelpers to ~/.docker/config.json
 prego oci push api.tar acme/default/api:1.4.0   # push an image, big layers in parts
 prego setup go --prefix go.acme.com             # the go env -w lines (0.4.0)
 prego go publish --dry-run                      # a Go module zip from the tag (0.4.0)
+prego setup npm --scope @acme                   # .npmrc lines with ${PREGO_NPM_TOKEN} (0.6.0)
+prego exec -- npm install                       # a fresh token in PREGO_NPM_TOKEN (0.6.0)
 ```
 
 `prego oci push <input> <image>`:
@@ -281,7 +306,7 @@ All Prego client tools read `~/.config/prego/config.toml` (or `$XDG_CONFIG_HOME/
 ```toml
 tenant = "acme"
 # Optional: sts_url, audience, source, oci_hosts = ["..."] for more OCI hosts,
-# go_hosts = ["..."] and go_prefixes = ["go.acme.com"] (0.4.0).
+# go_hosts = ["..."] and go_prefixes = ["go.acme.com"] (0.4.0), npm_host = "..." (0.6.0).
 ```
 
 An argument or a `PREGO_*` variable wins over the file. The file must not hold a secret: a key such as

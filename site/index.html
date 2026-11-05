@@ -43,6 +43,8 @@
           <a href="#install">Install</a>
           <a href="#configure">Cargo</a>
           <a href="#oci">Images</a>
+          <a href="#go">Go</a>
+          <a href="#npm">npm <span class="soon">soon</span></a>
           <a href="#sources">Identity sources</a>
           <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
@@ -67,10 +69,10 @@
       <section class="hero" id="top">
         <div class="wrap hero-grid">
           <div>
-            <p class="eyebrow">Open source · Apache-2.0 · Version 0.4.0</p>
+            <p class="eyebrow">Open source · Apache-2.0 · Version 0.5.0</p>
             <h1 class="display">Prego clients</h1>
             <p class="lede">
-              Client tools for Prego registries, for crates and OCI images. They find the machine identity of your
+              Client tools for Prego registries: crates, OCI images and Go modules, and soon npm packages. They find the machine identity of your
               build, exchange it at the Prego STS, and give Cargo, Docker and other tools a registry token that is
               valid for 15 minutes by default. No long-lived secret goes into your config.
             </p>
@@ -259,6 +261,61 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
+      <section class="section section-band" id="go" aria-labelledby="go-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="go-title">Go modules</h2>
+          <p class="section-lede">
+            From 0.4.0. Prego serves private Go modules on <code>go.prego.k8skill.com</code> through the GOPROXY
+            protocol. Public modules still come from <code>proxy.golang.org</code>. Go 1.24 or later.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego setup go --prefix go.acme.com --write   <span class="c"># GOPROXY, GONOSUMDB, GOAUTH</span>
+<span class="p">$ </span>go get go.acme.com/core@v1.4.0
+<span class="c"># publish from the git tree of a tag, never from the working directory</span>
+<span class="p">$ </span>git tag v1.4.0
+<span class="p">$ </span>prego go publish --dry-run
+<span class="p">$ </span>prego go publish</code></pre>
+          </div>
+          <ul class="rules">
+            <li><code>GOAUTH='prego go-auth'</code> gives Go a registry token for the Prego URL only. Write it with no word <code>command</code> in front.</li>
+            <li><code>GONOSUMDB</code> holds only your module path prefixes. All other modules are still checked against <code>sum.golang.org</code>.</li>
+            <li>A module zip can be at most 300 MiB, compressed and uncompressed. From 0.5.0, <code>prego go publish</code> refuses a bigger module before it sends anything.</li>
+            <li>Versions are immutable. To withdraw one, add a <code>retract</code> line and publish a new version.</li>
+            <li>Grants use <code>ecosystem = go</code> with <code>read</code>, <code>publish</code> and <code>delete</code>, on the full module path.</li>
+          </ul>
+          <p>
+            For Go before 1.24, use <code>prego exec -- go build ./...</code>. See the
+            <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="npm" aria-labelledby="npm-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="npm-title">npm packages <span class="soon">Coming soon</span></h2>
+          <p class="section-lede">
+            The npm host is not live yet. When it is, prego 0.6.0 connects npm, pnpm, Yarn and Bun to private
+            <strong>scoped</strong> packages (<code>@acme/core</code>). All other packages still come from
+            registry.npmjs.org.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego setup npm --scope @acme   <span class="c"># .npmrc with ${PREGO_NPM_TOKEN}, never a token</span>
+<span class="p">$ </span>prego exec -- npm install
+<span class="p">$ </span>prego exec -- npm publish</code></pre>
+          </div>
+          <ul class="rules">
+            <li>Commit <code>.npmrc</code>: it holds the variable name only. <code>prego exec</code> or <code>eval "$(prego npm-env)"</code> gives the token.</li>
+            <li>CI can publish with npm trusted publishing, with no Prego tool and no stored secret.</li>
+            <li>Create the free organization <code>@acme</code> on npmjs.com too, against dependency confusion.</li>
+          </ul>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a>.
+          </p>
+        </div>
+      </section>
+
       <section class="section section-band" id="sources" aria-labelledby="sources-title">
         <div class="wrap">
           <h2 class="section-title display" id="sources-title">Identity sources</h2>
@@ -335,6 +392,11 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
               <p>From 0.4.0: private Go modules with <code>GOAUTH='prego go-auth'</code>, and <code>prego go publish</code> from the git tree of a tag. A module zip can be at most 300 MiB.</p>
             </li>
             <li class="card">
+              <span class="soon">Coming soon</span>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a></h3>
+              <p>From 0.6.0: private scoped npm packages for npm, pnpm, Yarn and Bun. <code>prego setup npm</code> writes no token; trusted publishing from GitLab CI and GitHub Actions; dependency confusion.</p>
+            </li>
+            <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a></h3>
               <p>GitLab <code>id_tokens</code>, GitHub Actions OIDC, SPIFFE and cloud workloads, image builds, and how to manage Prego from CI with an admin token. No stored secret.</p>
             </li>
@@ -381,6 +443,8 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
           <a href="https://github.com/group-katskill/prego-clients/blob/main/PROTOCOL.md">Protocol</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Quickstart</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a>
           <a href="https://crates.io/crates/prego">crates.io</a>
           <a href="https://github.com/group-katskill/prego-clients/tree/main/site/fonts">Font licenses</a>

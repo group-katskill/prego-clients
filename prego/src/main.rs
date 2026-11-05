@@ -2,9 +2,11 @@
 
 #![forbid(unsafe_code)]
 
+mod admin;
 mod args;
 mod docker_config;
 mod go;
+mod npm;
 mod oci;
 mod setup;
 mod token;
@@ -49,8 +51,15 @@ Commands:
   setup go [--namespace <ns>] [--prefix <path>]... [--write]
                                   print the go env -w lines for GOPROXY, GONOSUMDB and GOAUTH. With
                                   --write, run them. --prefix gives a module path prefix for GONOSUMDB
-  exec -- <command> [args]        run a command with NETRC set to a temporary file (mode 0600, deleted at
-                                  the end) that holds a registry token, for Go before 1.24
+  setup npm [--scope @<scope>] [--namespace <ns>] [--client npm|pnpm|yarn|bun] [--user] [--print]
+                                  write the scope line and a ${PREGO_NPM_TOKEN} reference (never a token)
+                                  to .npmrc (npm, pnpm), .yarnrc.yml (yarn) or bunfig.toml (bun) in the
+                                  current directory. --user writes ~/.npmrc. --print writes nothing. The
+                                  scope defaults to the tenant's only npm scope
+  npm-env                         print export PREGO_NPM_TOKEN='<token>', for eval \"$(prego npm-env)\"
+  exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
+                                  PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
+                                  (mode 0600, deleted at the end) that holds it (Go before 1.24)
 
 Options (environment fallback, then ~/.config/prego/config.toml):
   --tenant <slug>    (PREGO_TENANT)    tenant slug
@@ -62,6 +71,7 @@ Environment only:
   PREGO_OCI_HOSTS    more OCI hosts, comma-separated (also oci_hosts in config.toml)
   PREGO_GO_HOSTS     Go hosts, comma-separated; the first is used (also go_hosts in config.toml;
                      default go.prego.k8skill.com)
+  PREGO_NPM_HOST     the npm host (also npm_host in config.toml; default npm.prego.k8skill.com)
   PREGO_CA_FILE      PEM CA bundle added to the built-in roots (on-prem TLS proxies)
   DOCKER_CONFIG      directory of the Docker config.json (default ~/.docker)
 
@@ -137,6 +147,8 @@ fn main() {
                     prefixes,
                     write,
                 } => go::setup(&globals, &namespace, &prefixes, write, &env),
+                Command::SetupNpm(opts) => npm::setup(&globals, &opts, &env),
+                Command::NpmEnv => npm::npm_env(&globals, &env),
                 Command::Exec { command } => match go::exec(&globals, &command, &env) {
                     Ok(code) => std::process::exit(code),
                     Err(e) => Err(e),

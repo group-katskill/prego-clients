@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `prego setup npm [--scope @acme] [--namespace ns] [--client npm|pnpm|yarn|bun] [--user] [--print]`: writes
+  the scope line and a `${PREGO_NPM_TOKEN}` reference, never a token, to `.npmrc` (npm, pnpm; `--user` for
+  `~/.npmrc`), `.yarnrc.yml` (Yarn 4) or `bunfig.toml` (Bun). It keeps all other lines, replaces a pasted
+  token, and warns on a `registry=` line that points to Prego. It never rewrites YAML or TOML: when a
+  scopes section is already there, it prints the lines. The scope defaults to the tenant's only npm scope
+  (admin API, `admin:read`).
+- `prego setup npm` also prints `prego exec -- npm whoami --registry <URL>` for npm and pnpm: `npm whoami`
+  and `npm ping` do not use the scope line.
+- `prego npm-env`: prints `export PREGO_NPM_TOKEN='<token>'` for `eval`, and the lifetime on stderr.
+- `prego whoami` shows the npm registry URL of the namespace.
+- `PREGO_NPM_HOST` for another npm host.
+- Tests: live `npm` and `pnpm` install through `prego exec` and `prego token`, and `npm publish` through
+  `prego exec`, against a mock registry. CI runs them with pnpm 10.28.0.
+
+### Changed
+
+- `prego exec` also sets `PREGO_NPM_TOKEN` and `PREGO_TOKEN` for the command. The short-lifetime warning
+  now says "long Go builds need GOAUTH, see prego setup go. npm, pnpm: run the command again with prego
+  exec."
+
 ## [0.5.0] - 2026-11-04
 
 ### Added

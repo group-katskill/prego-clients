@@ -9,6 +9,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - The Unreleased items in every CHANGELOG move under `## [0.5.0] - 2026-11-04`.
+- PROTOCOL.md 1.6.0: section 10, npm packages (client files, tokens, trusted publishing), and the settings
+  key `npm_host`.
+- CI installs pnpm 10.28.0 and runs the live npm and pnpm tests (`PREGO_TEST_NPM=1`).
+- The Go quickstart and PROTOCOL.md section 9.3 name 0.5.0, not 0.4.1, for the 300 MiB check before the
+  upload. There was no 0.4.1 release.
+- npm quickstart: `npm whoami` and `npm ping` with `--registry`; Prego's message on a `401` is an
+  `npm notice` line next to npm's "Unable to authenticate"; npm 11 refuses a republish before any request,
+  npm 10 shows the `403`.
+- Website: a "Go modules" section and a "Go" nav item; an "npm packages" section and nav item marked
+  "Coming soon" until the npm host is live; the Go and npm quickstarts in the footer links; the hero names
+  Go modules and version 0.5.0. The README top section names crates, images, Go modules and npm packages.
+
+### Added
+
+- `docs/npm-quickstart.md`: install, publish, CI, trusted publishing from GitLab CI and GitHub Actions, and
+  dependency confusion. Links from the README and the website.
 
 ## [0.5.0] - 2026-11-04
 

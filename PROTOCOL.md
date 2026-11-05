@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.5.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.6.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -316,6 +316,7 @@ tenant = "acme"
 # oci_hosts = ["oci.example.internal"]
 # go_hosts = ["go.example.internal"]
 # go_prefixes = ["go.acme.com", "github.com/acme"]
+# npm_host = "npm.example.internal"
 ```
 
 - Order for each value: command-line argument, then the `PREGO_*` environment variable, then the file, then
@@ -361,7 +362,8 @@ that `prego go publish`, `prego setup go` and `prego exec` use.
 `prego exec -- <command>` writes `machine <host> login <tenant> password <registry token>` to a temporary
 file with mode 0600, sets `NETRC` to its path for the command, and deletes the file when the command ends.
 Go reads the file once, so the token in it cannot be renewed. `prego exec` prints the token lifetime on
-stderr, and a warning when it is less than 10 minutes.
+stderr, and a warning when it is less than 10 minutes. From prego 0.6.0, the command also gets the same
+token in `PREGO_NPM_TOKEN` and `PREGO_TOKEN` (section 10).
 Go sends it as HTTP Basic auth. The Go host takes a registry token, or a read-only API key, as the Basic
 password. A key that can publish or delete is refused.
 
@@ -381,8 +383,47 @@ the working directory, with the file rules of `golang.org/x/mod/zip`. If a modul
   the client gets a new token (for `resource` = the namespace base URL) if the current one has less than
   the margin left (section 6), so short tokens do not expire between parts.
 - Limits: the zip is at most 300 MiB, compressed and uncompressed (Go itself allows 500 MiB). `go.mod` is at
-  most 1 MiB, and the zip has at most 65535 files. The registry refuses a bigger zip. From prego 0.4.1, the
+  most 1 MiB, and the zip has at most 65535 files. The registry refuses a bigger zip. From prego 0.5.0, the
   client refuses it before any request.
 - The module path and the version in the URL are case-encoded (`A` becomes `!a`).
 - Success is `201 {"module", "version", "h1", "mod_h1"}`. The client fails if the registry's `h1` differs
   from its own. Errors are plain text, and the client shows them as they are.
+
+## 10. npm packages (scoped)
+
+From prego 0.6.0. The npm host is `npm.prego.k8skill.com` (`PREGO_NPM_HOST` or `npm_host` in the settings
+file for another host). The registry URL of one namespace is `https://<host>/t/<tenant>/<ns>/`, with the `/`
+at the end. Prego serves scoped packages only (`@scope/name`); a scope is registered by one tenant and is
+unique across Prego.
+
+### 10.1 Client files
+
+`prego setup npm` writes the scope line and a **reference** to the variable `PREGO_NPM_TOKEN`, never a token:
+
+- npm and pnpm, `.npmrc`: `@<scope>:registry=<registry URL>` and
+  `//<host>/t/<tenant>/<ns>/:_authToken=${PREGO_NPM_TOKEN}`. Lines with the same keys are replaced; all other
+  lines stay. A token value on the auth line is replaced.
+- Yarn 4, `.yarnrc.yml`: `npmScopes.<scope>.npmRegistryServer` and `npmAuthToken: "${PREGO_NPM_TOKEN}"`.
+- Bun, `bunfig.toml`: `[install.scopes]` `"@<scope>" = { url = "<registry URL>", token = "$PREGO_NPM_TOKEN" }`.
+- The client adds a Yarn or Bun block only when the file has no scopes section. It never rewrites YAML or
+  TOML.
+- With no `--scope`, the client reads `GET /v1/admin/tenants/<tenant>/npm/scopes` with an `admin:read` admin
+  token (section 4), and uses the scope if there is exactly one. A scope is accepted with or without `@`.
+
+### 10.2 Tokens
+
+- npm, pnpm, Yarn and Bun send `Authorization: Bearer <registry token>`. The npm host accepts only registry
+  tokens. It answers `401` with `{"error": "..."}` for any other kind, and a special message when it gets the
+  literal text `${PREGO_NPM_TOKEN}` (the variable was not set).
+- `prego exec -- <command>` runs the command with a fresh registry token in `PREGO_NPM_TOKEN` and
+  `PREGO_TOKEN`. `prego npm-env` prints `export PREGO_NPM_TOKEN='<token>'` on stdout and the lifetime on
+  stderr. `prego token` prints the token only.
+- The client sends no `resource` for the npm host yet. The lifetime is the one for all your grants.
+- A single command that runs longer than the token lifetime gets `401` part way. The client does not renew
+  the variable during a command.
+
+### 10.3 Trusted publishing
+
+npm 11.5.1 and later exchange a CI ID token on the npm host itself, with audience `npm:<npm host>`, and get a
+normal registry token. The STS rules, rate limits and audit apply. On any failure npm uses the `.npmrc`
+token. The Prego client has no part in this exchange.

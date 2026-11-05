@@ -852,7 +852,7 @@ fn exec_writes_a_private_netrc_and_deletes_it() {
     assert_eq!(r.code, 0, "{}", r.stderr);
     assert!(
         r.stderr.contains(
-            "prego exec: warning: token valid for 1 min; long builds need GOAUTH, see prego setup go."
+            "prego exec: warning: token valid for 1 min; long Go builds need GOAUTH, see prego setup go."
         ),
         "{}",
         r.stderr

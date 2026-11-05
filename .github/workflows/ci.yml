@@ -43,8 +43,15 @@ jobs:
       - name: cargo clippy (no default features)
         run: cargo clippy --locked --workspace --all-targets --no-default-features -- -D warnings
 
+      - name: Install pnpm for the live npm and pnpm tests
+        run: npm install --global pnpm@10.28.0
+
       - name: cargo test (default features)
         run: cargo test --locked --workspace
+        env:
+          PREGO_TEST_NPM: "1"
 
       - name: cargo test (no default features)
         run: cargo test --locked --workspace --no-default-features
+        env:
+          PREGO_TEST_NPM: "1"
