@@ -1,0 +1,1589 @@
+openapi: 3.1.0
+info:
+  title: Prego public API
+  version: 1.3.0
+  summary: STS token exchange, Cargo registry endpoints and the tenant admin API of Prego by Katskill.
+  description: |
+    The public, tenant-facing API of Prego by Katskill.
+
+    - **STS** (`sts.prego.k8skill.com`): exchange a subject token (JWT-SVID, OIDC ID token or API key) for a
+      short-lived registry token. See `PROTOCOL.md`.
+    - **Cargo registry** (`cargo.prego.k8skill.com`): the Cargo sparse registry protocol. Every request carries a
+      registry token from the STS. Cargo gets it from `cargo-credential-prego`.
+    - **Admin API** (`sts.prego.k8skill.com/v1/admin`): manage tenants, members, namespaces, trust configs,
+      principals and grants. Two kinds of callers:
+      - **Humans** (the Prego console at `app.prego.k8skill.com`): a Firebase ID token. Access follows the
+        member's role: `reader`, `publisher`, `admin` or `owner`.
+      - **Machines** (CI jobs, OpenTofu, Ansible): an **admin token** from the STS (`audience=prego-admin`).
+        Access follows the admin scopes that a human admin gave the principal. Each operation lists the scope it
+        needs under `security`. Operations marked `x-human-only` always return `403` for an admin token.
+
+    An admin token works only on its own tenant: another `{tenant}` returns `404`. An admin token can never
+    change, revoke or delete a principal that has admin scopes, or change or delete the trust config that its
+    own principal uses (`403`). See `PROTOCOL.md` section 4.
+
+    Common rules:
+
+    - IDs are prefixed ULIDs (`ten_`, `ns_`, `usr_`, `inv_`, `tc_`, `prn_`, `grt_`, `crt_`, `ver_`, `aud_`,
+      `tok_`). An ID with the wrong prefix returns `404`, the same as an unknown ID.
+    - JSON field names are snake_case. Times are RFC 3339 UTC strings.
+    - Every response has an `X-Request-Id` header. Responses also carry `X-Prego-Version`.
+    - Tenant and namespace slugs match `^[a-z][a-z0-9-]{1,38}[a-z0-9]$`.
+    - A caller without access to a crate or namespace gets `404`, the same as when it does not exist.
+    - Fields and routes marked "registry 1.2.0" are new in that registry release. Older registries do not
+      return them.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+  contact:
+    name: Prego security contact
+    email: security@k8skill.com
+
+servers:
+  - url: https://sts.prego.k8skill.com
+    description: STS and admin API
+
+tags:
+  - name: sts
+    description: Token exchange and public keys.
+  - name: cargo
+    description: Cargo sparse registry. Base path `/t/{tenant}/{ns}`.
+  - name: admin
+    description: Tenant administration. Used by the Prego console.
+
+paths:
+  /v1/version:
+    get:
+      tags: [sts]
+      operationId: getVersion
+      summary: Get the service version.
+      security: []
+      responses:
+        "200":
+          description: Version information.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, version, commit]
+                properties:
+                  name: { type: string, examples: [prego-registry] }
+                  version: { type: string, examples: ["1.0.0"] }
+                  commit: { type: string }
+
+  /.well-known/jwks.json:
+    get:
+      tags: [sts]
+      operationId: getJwks
+      summary: Get the public keys that sign registry tokens.
+      security: []
+      responses:
+        "200":
+          description: JSON Web Key Set with the current and the previous key.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+
+  /v1/sts/token:
+    post:
+      tags: [sts]
+      operationId: exchangeToken
+      summary: Exchange a subject token for a registry token or an admin token (RFC 8693).
+      description: |
+        Send a subject token. The STS checks it against the trust configs and principals of the tenant. On
+        success it returns a token and its lifetime in `expires_in`. All refusal causes return the same
+        `invalid_grant` error.
+
+        Token lifetime (registry 1.2.0): each grant has `token_ttl_minutes`. A registry token gets the
+        shortest lifetime of the grants it can be used with: with `resource`, the grants for that tenant,
+        namespace and package type; without it, all grants of the principal; with no grant in scope, 900 s.
+        Admin tokens are always 900 s. Clients compute the expiry from `expires_in` and the local time, not from
+        the `exp` claim, and cache a token until the expiry minus `min(60 s, lifetime / 4)`.
+
+        Rate limits (registry 1.2.0): a refused or unauthenticated exchange counts against the caller's IP
+        address (60 per minute). A successful exchange counts against the budget per minute of the principal's
+        home tenant, not against the IP address. Over a limit: `429 rate_limited` with `Retry-After`.
+
+        Without `audience`, the result is a registry token for the Cargo endpoints. With
+        `audience=prego-admin` and `scope`, the result is an admin token for the admin API. The issued scope is
+        the requested scope that the principal also holds; if it holds none, the STS returns `invalid_scope`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/StsTokenRequest" }
+          application/json:
+            schema: { $ref: "#/components/schemas/StsTokenRequest" }
+      responses:
+        "200":
+          description: A registry token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StsTokenResponse" }
+        "400":
+          $ref: "#/components/responses/StsError"
+        "401":
+          $ref: "#/components/responses/StsError"
+        "429":
+          description: Rate limited. Wait for `Retry-After` and try again.
+          headers:
+            Retry-After:
+              schema: { type: integer, examples: [5] }
+              description: Seconds to wait.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StsError" }
+
+  # ---------------- Admin API ----------------
+
+  /v1/admin/me:
+    get:
+      tags: [admin]
+      operationId: getMe
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Get the signed-in user and the user's memberships.
+      description: Creates the user on the first call. Binds pending invites for the verified email of the caller.
+      responses:
+        "200":
+          description: The user and memberships.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants:
+    post:
+      tags: [admin]
+      operationId: createTenant
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Create a tenant.
+      description: |
+        Creates the tenant, its `default` namespace, and makes the caller its `owner`. Without `plan`, the
+        tenant starts as a 30-day trial. With `plan: consumer`, the tenant can only read crates that other
+        tenants grant to it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name]
+              properties:
+                slug: { $ref: "#/components/schemas/Slug" }
+                name: { type: string, maxLength: 200 }
+                plan: { type: string, enum: [consumer] }
+      responses:
+        "201":
+          description: The new tenant.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "401": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: getTenant
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: Get a tenant. Role reader or higher.
+      responses:
+        "200":
+          description: The tenant with the caller's role and the usage.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantDetail" }
+        "401": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    patch:
+      tags: [admin]
+      operationId: updateTenant
+      x-human-only: true
+      security:
+        - firebaseIdToken: []
+      summary: Change tenant settings (registry 1.2.0). Role owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                separate_publish_delete:
+                  type: boolean
+                  description: |
+                    When true, the API refuses a grant that would leave one grantee with both `publish` and
+                    `delete` on an overlapping scope (`409 separation_of_duties`). Default false.
+      responses:
+        "200":
+          description: The tenant.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantDetail" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/members:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listMembers
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: List members and pending invites. Role admin or higher.
+      responses:
+        "200":
+          description: Members and invites.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, invites]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Membership" }
+                  invites:
+                    type: array
+                    items: { $ref: "#/components/schemas/Invite" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    post:
+      tags: [admin]
+      operationId: addMember
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Add a member by email, or store an invite. Role admin; owner to add an owner.
+      description: |
+        If a user with this email exists, the user becomes a member. If not, the API stores a pending invite. The
+        invite binds when that user calls `GET /v1/admin/me` with the email verified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "201":
+          description: The membership. `user_id` is null and `pending` is true when an invite was stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MembershipCreated" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/members/{user_id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: string, pattern: "^usr_" }
+    delete:
+      tags: [admin]
+      operationId: removeMember
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Remove a member. Role admin; owner to remove an owner.
+      description: Removing the last owner returns `409`.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/members/invites/{inv_id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - name: inv_id
+        in: path
+        required: true
+        schema: { type: string, pattern: "^inv_" }
+    delete:
+      tags: [admin]
+      operationId: cancelInvite
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Cancel a pending invite. Role admin or higher.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/namespaces:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listNamespaces
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List namespaces. Role reader or higher.
+      responses:
+        "200":
+          description: Namespaces.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Namespace" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    post:
+      tags: [admin]
+      operationId: createNamespace
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["namespaces:write"]
+      summary: Create a namespace. Role admin or higher.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug]
+              properties:
+                slug: { $ref: "#/components/schemas/Slug" }
+                description: { type: string }
+      responses:
+        "201":
+          description: The new namespace.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Namespace" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/namespaces/{ns}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+    delete:
+      tags: [admin]
+      operationId: deleteNamespace
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Delete an empty namespace. Role owner.
+      description: The namespace must have no crates. `default` cannot be deleted.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/trust-configs:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listTrustConfigs
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List trust configs. Role reader or higher.
+      responses:
+        "200":
+          description: Trust configs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/TrustConfig" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    post:
+      tags: [admin]
+      operationId: createTrustConfig
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["trust_configs:write"]
+      summary: Create a trust config. Role admin or higher.
+      description: |
+        Give exactly one of `jwks_url` or `jwks_inline`. For OIDC you can give neither; then the STS uses OIDC
+        discovery on the issuer. `issuer` and `spiffe_trust_domain` are unique in a tenant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrustConfigInput" }
+      responses:
+        "201":
+          description: The new trust config.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrustConfig" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/trust-configs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    delete:
+      tags: [admin]
+      operationId: deleteTrustConfig
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["trust_configs:write"]
+      summary: Delete a trust config. Role admin or higher.
+      description: Also revokes the tokens of its principals.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/trust-configs/{id}/test:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    post:
+      tags: [admin]
+      operationId: testTrustConfig
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["trust_configs:write"]
+      summary: Check a sample subject token against a trust config. Role admin or higher.
+      description: The API never stores the token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, maxLength: 8192 }
+      responses:
+        "200":
+          description: The result. On failure `ok` is false, `principal_id` is null and `reason` says why.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, principal_id, reason]
+                properties:
+                  ok: { type: boolean }
+                  principal_id: { type: [string, "null"] }
+                  reason: { type: string }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/principals:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listPrincipals
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List principals. Role reader or higher.
+      responses:
+        "200":
+          description: Principals. API key values are never returned here.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Principal" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    post:
+      tags: [admin]
+      operationId: createPrincipal
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["principals:write"]
+      summary: Create a principal. Role admin or higher.
+      description: For kind `api_key`, the response holds the key value `api_key` once. It is never returned again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrincipalInput" }
+      responses:
+        "201":
+          description: The new principal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrincipalCreated" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/principals/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    patch:
+      tags: [admin]
+      operationId: updatePrincipal
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["principals:write"]
+      summary: Rename, disable or enable a principal. Role admin or higher.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                disabled: { type: boolean }
+                admin_scopes:
+                  $ref: "#/components/schemas/AdminScopes"
+                  description: Humans only. An admin token that sends this field gets `403`.
+                admin_namespace_id:
+                  type: [string, "null"]
+                  description: |
+                    Registry 1.2.0. Humans only. The namespace (`ns_...`) in which this principal may manage
+                    grants. Required when `admin_scopes` holds `grants:write`, else `400 admin_namespace_required`.
+      responses:
+        "200":
+          description: The principal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Principal" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    delete:
+      tags: [admin]
+      operationId: deletePrincipal
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["principals:write"]
+      summary: Delete and revoke a principal. Role admin or higher.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/principals/{id}/effective:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    get:
+      tags: [admin]
+      operationId: getEffectiveAccess
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: The effective access of a principal (registry 1.2.0). Role reader or higher.
+      description: |
+        Per namespace and package type: the actions the principal holds, the grants that give them, and the
+        token lifetime that the STS gives for that `resource`.
+      responses:
+        "200":
+          description: Effective access.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [namespace, ecosystem, actions, grant_ids, token_ttl_minutes]
+                      properties:
+                        namespace: { type: string }
+                        ecosystem: { $ref: "#/components/schemas/Ecosystem" }
+                        actions:
+                          type: array
+                          items: { $ref: "#/components/schemas/Action" }
+                        grant_ids:
+                          type: array
+                          items: { type: string }
+                        token_ttl_minutes: { type: integer, minimum: 1, maximum: 30 }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/principals/{id}/revoke:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    post:
+      tags: [admin]
+      operationId: revokePrincipal
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["principals:write"]
+      summary: Revoke all live tokens of a principal. Role admin or higher.
+      description: Live registry tokens stop working in about 60 s.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/grants:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listGrants
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List grants. Role reader or higher.
+      responses:
+        "200":
+          description: Grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Grant" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    post:
+      tags: [admin]
+      operationId: createGrant
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["grants:write"]
+      summary: Create a grant. Role admin or higher.
+      description: |
+        `package_glob` is a crate name, or a prefix that ends with `*`, or `*`. Names compare lowercase, and `-`
+        and `_` are equal. A grant to another tenant (`grantee.tenant_slug`) allows only `read`. `publish`,
+        `yank` and `delete` imply `read`.
+
+        Registry 1.2.0:
+
+        - `token_ttl_minutes` must be in the plan range of the granting tenant: 5 to 30 on Indie and Org, 1 to
+          30 on Publisher, fixed 15 on Trial and Consumer. Else `400 token_ttl_out_of_range` ("your plan allows
+          5 to 30 minutes").
+        - `yank` is refused on `oci` and `go` grants, and `delete` on `cargo` grants:
+          `400 action_not_supported`.
+        - A grant with `ecosystem = any` and `package_glob = *` needs `"broad": true`, else
+          `400 broad_grant_needs_confirm`.
+        - Grant ceiling, for admin tokens only: no grant to the caller itself, and every action, glob, package
+          type, expiry and token lifetime must be covered by a live grant that the caller holds in its own
+          tenant. Update and delete only on grants that the caller could create. Else `403 grant_ceiling`
+          (naming the first action that is not covered). The grant must also be in the caller's
+          `admin_namespace`, else `403 admin_namespace`.
+        - With the tenant setting `separate_publish_delete`, a grant that leaves one grantee with `publish` and
+          `delete` on an overlapping scope gets `409 separation_of_duties`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GrantInput" }
+      responses:
+        "201":
+          description: The new grant.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Grant" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/grants/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    delete:
+      tags: [admin]
+      operationId: deleteGrant
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["grants:write"]
+      summary: Delete a grant. Role admin or higher.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/crates:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listCrates
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List crates with their versions. Role reader or higher.
+      parameters:
+        - name: ns
+          in: query
+          required: false
+          description: Only crates in this namespace.
+          schema: { $ref: "#/components/schemas/Slug" }
+      responses:
+        "200":
+          description: Crates.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Crate" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/audit:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listAudit
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List audit events, newest first. Role admin or higher.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: before
+          in: query
+          required: false
+          description: Return events older than this event ID. Use `next_before` from the previous page.
+          schema: { type: string }
+        - name: actor_kind
+          in: query
+          required: false
+          description: Only events by humans (`user`) or by machines (`principal`).
+          schema: { type: string, enum: [user, principal] }
+      responses:
+        "200":
+          description: A page of audit events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+                  next_before: { type: [string, "null"] }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  # ---------------- Cargo registry ----------------
+
+  /t/{tenant}/{ns}/index/config.json:
+    servers: &cargo
+      - url: https://cargo.prego.k8skill.com
+        description: Cargo registry
+    parameters: &tenant-ns
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+    get:
+      tags: [cargo]
+      operationId: getRegistryConfig
+      summary: Get the registry config. Needs any grant in the namespace.
+      description: |
+        Without a valid registry token the response is `401` with
+        `WWW-Authenticate: Cargo login_url="https://app.prego.k8skill.com"`. This tells Cargo to call the
+        credential provider.
+      security:
+        - registryToken: []
+      responses:
+        "200":
+          description: Registry config.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dl, api, auth-required]
+                properties:
+                  dl: { type: string, examples: ["https://cargo.prego.k8skill.com/t/acme/default/api/v1/crates"] }
+                  api: { type: string, examples: ["https://cargo.prego.k8skill.com/t/acme/default"] }
+                  auth-required: { type: boolean, const: true }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/index/{prefix}/{name}:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - name: prefix
+        in: path
+        required: true
+        description: "`1` for 1-char names, `2` for 2-char names."
+        schema: { type: string, enum: ["1", "2"] }
+      - $ref: "#/components/parameters/IndexName"
+    get:
+      tags: [cargo]
+      operationId: getIndexFileShort
+      summary: Get the index file of a crate with a 1- or 2-character name. Needs `read`.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/IndexFile" }
+        "304": { description: Not modified (the `If-None-Match` ETag matches). }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/index/{p1}/{p2}/{name}:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - name: p1
+        in: path
+        required: true
+        description: "`3` for 3-char names, else the first 2 characters of the lowercase name."
+        schema: { type: string }
+      - name: p2
+        in: path
+        required: true
+        description: The first character (3-char names), else characters 3 and 4 of the lowercase name.
+        schema: { type: string }
+      - $ref: "#/components/parameters/IndexName"
+    get:
+      tags: [cargo]
+      operationId: getIndexFile
+      summary: Get the index file of a crate with a name of 3 or more characters. Needs `read`.
+      description: |
+        Index paths follow the Cargo registry rules: `3/a/abc`, `co/re/core-types`. A path whose prefix does not
+        match the name returns `404`.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/IndexFile" }
+        "304": { description: Not modified (the `If-None-Match` ETag matches). }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/api/v1/crates/{name}/{version}/download:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - $ref: "#/components/parameters/CrateName"
+      - $ref: "#/components/parameters/Version"
+    get:
+      tags: [cargo]
+      operationId: downloadCrate
+      summary: Download a `.crate` file. Needs `read`.
+      description: Yanked versions can still be downloaded, so that lockfiles keep working.
+      security:
+        - registryToken: []
+      responses:
+        "200":
+          description: The `.crate` file. `ETag` is the SHA-256 checksum.
+          content:
+            application/gzip:
+              schema: { type: string, contentMediaType: application/gzip }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/api/v1/crates/new:
+    servers: *cargo
+    parameters: *tenant-ns
+    put:
+      tags: [cargo]
+      operationId: publishCrate
+      summary: Publish a crate version (`cargo publish`). Needs `publish`.
+      description: |
+        Binary body: a u32 little-endian JSON length, the JSON metadata, a u32 little-endian `.crate` length, and
+        the `.crate` bytes. Maximum body size is 10 MiB + 64 KiB. A version that exists returns an error. A new
+        crate whose name differs from an existing crate only in case or `-`/`_` is refused. A tenant on a plan
+        without publish, or over its storage quota, gets `403` with a Cargo error detail.
+      security:
+        - registryToken: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, contentMediaType: application/octet-stream }
+      responses:
+        "200":
+          description: Published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  warnings:
+                    type: object
+                    properties:
+                      invalid_categories: { type: array, items: { type: string } }
+                      invalid_badges: { type: array, items: { type: string } }
+                      other: { type: array, items: { type: string } }
+        "400": { $ref: "#/components/responses/CargoError" }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "403": { $ref: "#/components/responses/CargoError" }
+        "404": { $ref: "#/components/responses/CargoError" }
+        "409": { $ref: "#/components/responses/CargoError" }
+        "413": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/api/v1/crates/{name}/{version}/yank:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - $ref: "#/components/parameters/CrateName"
+      - $ref: "#/components/parameters/Version"
+    delete:
+      tags: [cargo]
+      operationId: yankVersion
+      summary: Yank a version (`cargo yank`). Needs `yank`.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "403": { $ref: "#/components/responses/CargoError" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/api/v1/crates/{name}/{version}/unyank:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - $ref: "#/components/parameters/CrateName"
+      - $ref: "#/components/parameters/Version"
+    put:
+      tags: [cargo]
+      operationId: unyankVersion
+      summary: Unyank a version (`cargo yank --undo`). Needs `yank`.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+        "403": { $ref: "#/components/responses/CargoError" }
+        "404": { $ref: "#/components/responses/CargoError" }
+
+  /t/{tenant}/{ns}/api/v1/crates:
+    servers: *cargo
+    parameters: *tenant-ns
+    get:
+      tags: [cargo]
+      operationId: searchCrates
+      summary: Search crates. Not supported yet; returns an empty result.
+      security:
+        - registryToken: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Always empty for now.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  crates: { type: array, maxItems: 0, items: {} }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer, const: 0 }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+
+  /t/{tenant}/{ns}/api/v1/crates/{name}/owners:
+    servers: *cargo
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Namespace"
+      - $ref: "#/components/parameters/CrateName"
+    get:
+      tags: [cargo]
+      operationId: listOwners
+      summary: List owners. Not supported; owners are managed in the Prego console.
+      security:
+        - registryToken: []
+      responses:
+        "200":
+          description: Always empty.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users: { type: array, maxItems: 0, items: {} }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+    put:
+      tags: [cargo]
+      operationId: addOwners
+      summary: Add owners. Not supported; owners are managed in the Prego console.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/OwnersStub" }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+    delete:
+      tags: [cargo]
+      operationId: removeOwners
+      summary: Remove owners. Not supported; owners are managed in the Prego console.
+      security:
+        - registryToken: []
+      responses:
+        "200": { $ref: "#/components/responses/OwnersStub" }
+        "401": { $ref: "#/components/responses/CargoUnauthorized" }
+
+security:
+  - firebaseIdToken: []
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID token of a user signed in to the Prego console (humans). Admin API only.
+    adminToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An admin token from `POST /v1/sts/token` with `audience=prego-admin` (machines). The JWT has
+        `aud` = `prego-admin` and a `scope` claim. The names in a security requirement are the admin scope
+        that the operation needs: `admin:read`, `namespaces:write`, `trust_configs:write`, `principals:write`
+        or `grants:write`.
+    registryToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        A registry token from `POST /v1/sts/token`, as `Bearer <token>` or as the raw token (Cargo sends the raw
+        token). Registry endpoints refuse API keys, JWT-SVIDs, OIDC ID tokens and admin tokens.
+
+  parameters:
+    Tenant:
+      name: tenant
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Slug" }
+      example: acme
+    Namespace:
+      name: ns
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Slug" }
+      example: default
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    CrateName:
+      name: name
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/CrateName" }
+    IndexName:
+      name: name
+      in: path
+      required: true
+      description: The lowercase crate name.
+      schema: { type: string }
+    Version:
+      name: version
+      in: path
+      required: true
+      schema: { type: string, examples: ["1.2.0"] }
+
+  responses:
+    Ok:
+      description: Done.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok: { type: boolean, const: true }
+    OwnersStub:
+      description: Owners are managed in the Prego console.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: { type: boolean }
+              msg: { type: string, examples: ["owners are managed in the Prego console"] }
+    StsError:
+      description: The exchange failed (RFC 6749 error).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/StsError" }
+    AdminError:
+      description: An error from the admin API.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    CargoError:
+      description: An error. Cargo shows `errors[].detail` to the user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CargoError" }
+    CargoUnauthorized:
+      description: No token or a bad token. Cargo then calls the credential provider.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, examples: ['Cargo login_url="https://app.prego.k8skill.com"'] }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CargoError" }
+    IndexFile:
+      description: |
+        One JSON line per version, oldest first, as in the Cargo sparse index format. `ETag` is the quoted SHA-256
+        of the body.
+      headers:
+        ETag:
+          schema: { type: string }
+      content:
+        text/plain:
+          schema: { type: string }
+
+  schemas:
+    Slug:
+      type: string
+      pattern: "^[a-z][a-z0-9-]{1,38}[a-z0-9]$"
+    CrateName:
+      type: string
+      pattern: "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+    Role:
+      type: string
+      enum: [owner, admin, publisher, reader]
+    AdminScope:
+      type: string
+      enum: [admin:read, namespaces:write, trust_configs:write, principals:write, grants:write]
+    AdminScopes:
+      type: [array, "null"]
+      uniqueItems: true
+      items: { $ref: "#/components/schemas/AdminScope" }
+      description: |
+        Admin scopes of a machine principal. Null means none. Only a human admin or owner can set or change them
+        (an admin token gets `403`). `api_key` principals can hold `admin:read` only. A write scope on a GitLab
+        or GitHub OIDC principal needs a protected-ref pin in `claims_match` (GitLab `ref_protected: "true"` or
+        `environment`; GitHub an exact `ref` or `environment`). A broken rule returns `400` with a message.
+    Action:
+      type: string
+      enum: [read, publish, yank, delete]
+      description: "`yank` is Cargo and npm. `delete` is OCI, npm and Go."
+    Ecosystem:
+      type: string
+      enum: [cargo, oci, npm, go, any]
+
+    StsTokenRequest:
+      type: object
+      required: [grant_type, subject_token, subject_token_type]
+      properties:
+        grant_type:
+          type: string
+          const: urn:ietf:params:oauth:grant-type:token-exchange
+        subject_token:
+          type: string
+          maxLength: 8192
+          description: The JWT or the API key (`prk_...`).
+        subject_token_type:
+          type: string
+          enum:
+            - urn:ietf:params:oauth:token-type:jwt
+            - urn:k8skill:prego:token-type:api-key
+        tenant:
+          $ref: "#/components/schemas/Slug"
+          description: Required for JWTs. Ignored for API keys (the key implies the tenant).
+        audience:
+          type: string
+          enum: [prego-admin]
+          description: Absent for a registry token. `prego-admin` for an admin token. Other values give `invalid_target`.
+        scope:
+          type: string
+          description: Space-separated admin scopes. Required with `audience=prego-admin`.
+          examples: ["admin:read grants:write"]
+        resource:
+          type: string
+          format: uri
+          description: |
+            Registry 1.2.0. The registry base URL that the token is for, `https://<host>/t/<tenant>/<namespace>/`.
+            The token then gets the lifetime of the grants for that namespace and package type. A value that the
+            STS cannot parse gives `invalid_target`; clients then ask again once without it. Older registries
+            ignore the field.
+          examples: ["https://cargo.prego.k8skill.com/t/acme/default/", "https://go.prego.k8skill.com/t/acme/default"]
+    StsTokenResponse:
+      type: object
+      required: [access_token, issued_token_type, token_type, expires_in]
+      properties:
+        access_token: { type: string, description: The registry token (a JWT). }
+        issued_token_type: { type: string, const: "urn:ietf:params:oauth:token-type:access_token" }
+        token_type: { type: string, const: Bearer }
+        expires_in:
+          type: integer
+          minimum: 60
+          maximum: 1800
+          examples: [900]
+          description: |
+            The token lifetime in seconds. 900 by default. From registry 1.2.0, 60 to 1800 (whole minutes) from
+            the grants. Admin tokens are always 900.
+        scope:
+          type: string
+          description: Only for an admin token. The issued admin scopes.
+          examples: ["admin:read grants:write"]
+    StsError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_request, unsupported_grant_type, invalid_grant, invalid_target, invalid_scope, rate_limited]
+        error_description: { type: string }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                [bad_request, unauthorized, forbidden, not_found, conflict, payload_too_large, plan_limit, rate_limited, internal,
+                 token_ttl_out_of_range, action_not_supported, broad_grant_needs_confirm, grant_ceiling,
+                 separation_of_duties, admin_namespace, admin_namespace_required]
+              description: The last seven codes are new in registry 1.2.0.
+            message: { type: string }
+            request_id: { type: string }
+    CargoError:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            required: [detail]
+            properties:
+              detail: { type: string }
+
+    Me:
+      type: object
+      required: [user, memberships]
+      properties:
+        user:
+          type: object
+          required: [id, email, created_at]
+          properties:
+            id: { type: string }
+            email: { type: string, format: email }
+            display_name: { type: [string, "null"] }
+            created_at: { type: string, format: date-time }
+        memberships:
+          type: array
+          items:
+            type: object
+            required: [tenant_id, tenant_slug, role]
+            properties:
+              tenant_id: { type: string }
+              tenant_slug: { $ref: "#/components/schemas/Slug" }
+              role: { $ref: "#/components/schemas/Role" }
+
+    Tenant:
+      type: object
+      required: [id, slug, name, created_at]
+      properties:
+        id: { type: string }
+        slug: { $ref: "#/components/schemas/Slug" }
+        name: { type: string }
+        plan: { type: string }
+        trial_ends_at: { type: [string, "null"], format: date-time }
+        separate_publish_delete: { type: boolean, description: Registry 1.2.0. }
+        created_at: { type: string, format: date-time }
+      additionalProperties: true
+    TenantDetail:
+      allOf:
+        - $ref: "#/components/schemas/Tenant"
+        - type: object
+          required: [role]
+          properties:
+            role: { $ref: "#/components/schemas/Role" }
+            usage:
+              type: object
+              description: Usage of the tenant, for example storage and downloads.
+              additionalProperties: true
+
+    Membership:
+      type: object
+      required: [user_id, email, role, created_at]
+      properties:
+        user_id: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+        created_at: { type: string, format: date-time }
+    MembershipCreated:
+      type: object
+      required: [user_id, email, role, created_at, pending]
+      properties:
+        user_id: { type: [string, "null"] }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+        created_at: { type: string, format: date-time }
+        pending: { type: boolean }
+    Invite:
+      type: object
+      required: [id, email, role, created_by, created_at]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Namespace:
+      type: object
+      required: [id, slug, created_at]
+      properties:
+        id: { type: string }
+        slug: { $ref: "#/components/schemas/Slug" }
+        description: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+
+    TrustConfigInput:
+      oneOf:
+        - type: object
+          title: SPIFFE trust config
+          required: [kind, name, spiffe_trust_domain]
+          properties:
+            kind: { const: spiffe }
+            name: { type: string }
+            spiffe_trust_domain: { type: string, examples: [prod.acme.io] }
+            jwks_url: { type: string, format: uri }
+            jwks_inline: { type: object, additionalProperties: true }
+        - type: object
+          title: OIDC trust config
+          required: [kind, name, issuer]
+          properties:
+            kind: { const: oidc }
+            name: { type: string }
+            issuer: { type: string, examples: ["https://gitlab.com", "https://token.actions.githubusercontent.com"] }
+            jwks_url: { type: string, format: uri }
+            jwks_inline: { type: object, additionalProperties: true }
+            audience:
+              type: [string, "null"]
+              maxLength: 255
+              description: Expected `aud`. Null means `prego.k8skill.com`. Needed for Microsoft Entra ID.
+    TrustConfig:
+      type: object
+      required: [id, kind, name, created_at]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [spiffe, oidc] }
+        name: { type: string }
+        spiffe_trust_domain: { type: [string, "null"] }
+        issuer: { type: [string, "null"] }
+        jwks_url: { type: [string, "null"] }
+        jwks_inline: { type: [object, "null"] }
+        audience: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+
+    PrincipalInput:
+      oneOf:
+        - type: object
+          title: SPIFFE principal
+          required: [kind, name, trust_config_id, spiffe_id, match_type]
+          properties:
+            admin_scopes: { $ref: "#/components/schemas/AdminScopes" }
+            kind: { const: spiffe }
+            name: { type: string }
+            trust_config_id: { type: string }
+            spiffe_id: { type: string, examples: ["spiffe://prod.acme.io/ci/"] }
+            match_type: { type: string, enum: [exact, prefix] }
+        - type: object
+          title: OIDC principal
+          required: [kind, name, trust_config_id, claims_match]
+          properties:
+            admin_scopes: { $ref: "#/components/schemas/AdminScopes" }
+            kind: { const: oidc }
+            name: { type: string }
+            trust_config_id: { type: string }
+            claims_match:
+              type: object
+              description: |
+                Every key must match the token claim. A string matches exactly; a string that ends with `*`
+                matches a prefix; an array matches any item. Shared issuers need a pinning key, for example
+                `project_path` (GitLab) or `repository` (GitHub).
+              additionalProperties:
+                oneOf:
+                  - type: string
+                  - type: array
+                    items: { type: string }
+              examples:
+                - { project_path: acme/core, ref_protected: "true" }
+        - type: object
+          title: API key principal
+          required: [kind, name]
+          properties:
+            admin_scopes: { $ref: "#/components/schemas/AdminScopes" }
+            kind: { const: api_key }
+            name: { type: string }
+            expires_in_days: { type: integer, minimum: 1, maximum: 90 }
+    Principal:
+      type: object
+      required: [id, kind, name, disabled, created_at]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [spiffe, oidc, api_key] }
+        name: { type: string }
+        trust_config_id: { type: [string, "null"] }
+        spiffe_id: { type: [string, "null"] }
+        match_type: { type: [string, "null"], enum: [exact, prefix, null] }
+        claims_match: { type: [object, "null"] }
+        api_key_hint: { type: [string, "null"], description: The last characters of an API key. }
+        admin_scopes: { $ref: "#/components/schemas/AdminScopes" }
+        admin_namespace_id:
+          type: [string, "null"]
+          description: Registry 1.2.0. The namespace in which a principal with `grants:write` manages grants.
+        expires_at: { type: [string, "null"], format: date-time }
+        not_before: { type: [string, "null"], format: date-time }
+        disabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+    PrincipalCreated:
+      allOf:
+        - $ref: "#/components/schemas/Principal"
+        - type: object
+          properties:
+            api_key:
+              type: string
+              description: Only for kind `api_key`, and only in this response.
+
+    GrantInput:
+      type: object
+      required: [namespace, package_glob, actions, grantee]
+      properties:
+        namespace: { $ref: "#/components/schemas/Slug" }
+        package_glob: { type: string, examples: ["*", "core-*", "core-types"] }
+        actions:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/Action" }
+        grantee: { $ref: "#/components/schemas/Grantee" }
+        expires_at: { type: [string, "null"], format: date-time }
+        ecosystem:
+          allOf: [{ $ref: "#/components/schemas/Ecosystem" }]
+          default: cargo
+        token_ttl_minutes:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 15
+          description: |
+            Registry 1.2.0. The registry token lifetime for this grant, in whole minutes, within the plan range
+            of the granting tenant (5 to 30 on Indie and Org, 1 to 30 on Publisher, fixed 15 on Trial and
+            Consumer). Outside: `400 token_ttl_out_of_range`.
+        broad:
+          type: boolean
+          description: |
+            Registry 1.2.0. On create and update: required as `true` for a grant with `ecosystem = any` and
+            `package_glob = *` ("this grant covers every package type in the namespace, including types added
+            later"). In responses: computed, true when `ecosystem = any` and `package_glob = *`.
+    Grantee:
+      oneOf:
+        - type: object
+          required: [principal_id]
+          properties:
+            principal_id: { type: string }
+        - type: object
+          required: [tenant_slug]
+          properties:
+            tenant_slug: { $ref: "#/components/schemas/Slug" }
+    Grant:
+      allOf:
+        - $ref: "#/components/schemas/GrantInput"
+        - type: object
+          required: [id, created_by, created_at]
+          properties:
+            id: { type: string }
+            created_by: { type: string }
+            created_by_principal:
+              type: [string, "null"]
+              description: Registry 1.2.0. The principal (`prn_...`) when a machine created the grant.
+            effective_token_ttl_minutes:
+              type: integer
+              minimum: 1
+              maximum: 30
+              description: |
+                Registry 1.2.0. The lifetime that is used. After a plan change down it is raised to the new
+                plan's floor (or set to 15 on Trial and Consumer); `token_ttl_minutes` keeps the stored value.
+            ineffective_actions:
+              type: array
+              items: { $ref: "#/components/schemas/Action" }
+              description: Registry 1.2.0. Stored actions that do not apply to the grant's package type.
+            created_at: { type: string, format: date-time }
+
+    Crate:
+      type: object
+      required: [id, namespace, name, created_at, versions]
+      properties:
+        id: { type: string }
+        namespace: { type: string }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        versions:
+          type: array
+          items:
+            type: object
+            required: [id, vers, yanked, size, created_at]
+            properties:
+              id: { type: string }
+              vers: { type: string }
+              yanked: { type: boolean }
+              size: { type: integer }
+              created_at: { type: string, format: date-time }
+
+    AuditEvent:
+      type: object
+      required: [id, action, created_at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        actor_kind: { type: string, enum: [user, principal] }
+        actor_id: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+      additionalProperties: true

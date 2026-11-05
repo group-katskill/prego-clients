@@ -1,0 +1,82 @@
+# Make sure that the listed grants exist in tenant `acme`. Creates the missing ones. It does not delete
+# grants that are not in the list.
+#
+# Needs PREGO_ADMIN_TOKEN in the environment: an admin token with admin:read (and grants:write to create).
+# Get it in CI with examples/admin/prego-admin-token.sh. In --check mode the playbook only reads.
+#
+# Every task that sends the token uses no_log, so the token never shows in the output.
+
+- name: Prego grants as code
+  hosts: localhost
+  gather_facts: false
+  vars:
+    prego_tenant: acme
+    prego_admin_url: "https://sts.prego.k8skill.com/v1/admin/tenants/{{ prego_tenant }}"
+    prego_admin_token: "{{ lookup('ansible.builtin.env', 'PREGO_ADMIN_TOKEN') }}"
+    # The wanted grants. Same body as POST .../grants (see docs/openapi.yaml).
+    prego_grants:
+      - namespace: default
+        package_glob: "core-*"
+        actions: [read]
+        grantee: { principal_id: prn_01EXAMPLEBUILDERS000000000 }
+        expires_at: null
+      - namespace: releases
+        package_glob: "*"
+        actions: [read]
+        grantee: { tenant_slug: customer-b }
+        expires_at: null
+
+  tasks:
+    - name: Check that an admin token is set
+      ansible.builtin.assert:
+        that: prego_admin_token | length > 0
+        fail_msg: Set PREGO_ADMIN_TOKEN (see examples/admin/prego-admin-token.sh).
+      no_log: true
+
+    - name: Read the current grants
+      ansible.builtin.uri:
+        url: "{{ prego_admin_url }}/grants"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ prego_admin_token }}"
+        status_code: 200
+        return_content: true
+      register: prego_current
+      check_mode: false # reading is safe in --check mode
+      no_log: true
+
+    - name: Make a key for each current grant
+      ansible.builtin.set_fact:
+        prego_current_keys: "{{ (prego_current_keys | default([])) + [prego_key] }}"
+      vars:
+        prego_key: "{{ g.namespace }}|{{ g.package_glob }}|{{ g.actions | sort | join(',') }}|{{ g.grantee | to_json(sort_keys=true) }}"
+      loop: "{{ prego_current.json['items'] }}"
+      loop_control:
+        loop_var: g
+        label: "{{ g.id }}"
+
+    - name: Show the missing grants
+      ansible.builtin.debug:
+        msg: "missing: {{ prego_key }}"
+      loop: "{{ prego_grants }}"
+      loop_control:
+        label: "{{ item.namespace }} {{ item.package_glob }}"
+      when: prego_key not in (prego_current_keys | default([]))
+      vars:
+        prego_key: "{{ item.namespace }}|{{ item.package_glob }}|{{ item.actions | sort | join(',') }}|{{ item.grantee | to_json(sort_keys=true) }}"
+
+    - name: Create the missing grants
+      ansible.builtin.uri:
+        url: "{{ prego_admin_url }}/grants"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ prego_admin_token }}"
+        body_format: json
+        body: "{{ item }}"
+        status_code: 201
+      changed_when: true
+      loop: "{{ prego_grants }}"
+      when: prego_key not in (prego_current_keys | default([]))
+      vars:
+        prego_key: "{{ item.namespace }}|{{ item.package_glob }}|{{ item.actions | sort | join(',') }}|{{ item.grantee | to_json(sort_keys=true) }}"
+      no_log: true

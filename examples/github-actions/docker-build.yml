@@ -1,0 +1,59 @@
+# .github/workflows/docker-build.yml: build an image and push it to the Prego registry of tenant `acme`.
+#
+# Console setup (once, by a tenant admin):
+#   - trust config: kind oidc, issuer https://token.actions.githubusercontent.com
+#   - principal: kind oidc, claims_match {"repository": "acme/api", "ref": "refs/heads/main"}
+#   - grant: publish on the repository acme/default/api (ecosystem oci, or any)
+#
+# The job stores no secret. docker-credential-prego asks GitHub for a short-lived OIDC token (audience
+# prego.k8skill.com) and gives it to the Prego token realm only. Nothing is written to the Docker config except
+# the credHelpers entry.
+
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # lets the job request an OIDC token for Prego
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    env:
+      PREGO_VERSION: "0.3.0"
+      PREGO_TARGET: x86_64-unknown-linux-musl
+      PREGO_TENANT: acme
+      IMAGE: oci.prego.k8skill.com/acme/default/api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Install the three Prego tools and check the SHA-256 sum of the archive.
+      - name: Install the Prego clients
+        run: |
+          base="https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v${PREGO_VERSION}"
+          file="prego-clients-${PREGO_TARGET}.tar.gz"
+          curl -fsSLO "${base}/${file}"
+          curl -fsSLO "${base}/${file}.sha256"
+          sha256sum -c "${file}.sha256"
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "${file}" -C "$HOME/.local/bin" cargo-credential-prego docker-credential-prego prego
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Connect Docker to Prego
+        run: |
+          prego setup docker --write
+          prego whoami
+
+      - name: Build and push
+        run: |
+          docker build -t "${IMAGE}:${GITHUB_SHA}" .
+          docker push "${IMAGE}:${GITHUB_SHA}"
+
+      # If a layer is larger than 95 MiB, docker push fails. Use prego oci push in place of the step above:
+      #   docker build -t api:build . && docker save api:build -o api.tar
+      #   prego oci push api.tar "acme/default/api:${GITHUB_SHA}"

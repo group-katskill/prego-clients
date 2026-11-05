@@ -1,0 +1,77 @@
+# Consumer side only: install cargo-credential-prego and write the Cargo registry config for a user.
+# Use it for CI runners or developer machines.
+#
+# Run:  ansible-playbook -i inventory playbook.yml -e prego_user=builder
+#
+# This playbook changes nothing in your Prego tenant. To manage trust configs, principals and grants as code,
+# see examples/admin/. It stores no secret: the identity comes from the build environment.
+
+- name: Install the Prego Cargo credential provider
+  hosts: all
+  become: true
+  vars:
+    prego_tenant: acme
+    prego_namespace: default
+    prego_version: "0.3.0"
+    prego_target: x86_64-unknown-linux-musl
+    prego_user: builder
+    prego_base_url: "https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v{{ prego_version }}"
+    prego_archive: "cargo-credential-prego-{{ prego_target }}.tar.gz"
+    prego_cargo_home: "/home/{{ prego_user }}/.cargo"
+
+  tasks:
+    - name: Check the slugs
+      ansible.builtin.assert:
+        that:
+          - prego_tenant is match('^[a-z][a-z0-9-]{1,38}[a-z0-9]$')
+          - prego_namespace is match('^[a-z][a-z0-9-]{1,38}[a-z0-9]$')
+
+    - name: Make a temporary folder
+      ansible.builtin.tempfile:
+        state: directory
+      register: prego_tmp
+
+    - name: Download the release archive and check its SHA-256 sum
+      ansible.builtin.get_url:
+        url: "{{ prego_base_url }}/{{ prego_archive }}"
+        dest: "{{ prego_tmp.path }}/{{ prego_archive }}"
+        checksum: "sha256:{{ prego_base_url }}/{{ prego_archive }}.sha256"
+        mode: "0644"
+
+    - name: Unpack the binary
+      ansible.builtin.unarchive:
+        src: "{{ prego_tmp.path }}/{{ prego_archive }}"
+        dest: "{{ prego_tmp.path }}"
+        remote_src: true
+        include:
+          - cargo-credential-prego
+
+    - name: Install the binary
+      ansible.builtin.copy:
+        src: "{{ prego_tmp.path }}/cargo-credential-prego"
+        dest: /usr/local/bin/cargo-credential-prego
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Remove the temporary folder
+      ansible.builtin.file:
+        path: "{{ prego_tmp.path }}"
+        state: absent
+
+    - name: Make the Cargo home folder
+      ansible.builtin.file:
+        path: "{{ prego_cargo_home }}"
+        state: directory
+        owner: "{{ prego_user }}"
+        mode: "0755"
+
+    - name: Write the Prego registry block into config.toml
+      ansible.builtin.blockinfile:
+        path: "{{ prego_cargo_home }}/config.toml"
+        create: true
+        owner: "{{ prego_user }}"
+        mode: "0644"
+        marker: "# {mark} Prego registry {{ prego_tenant }} (managed by Ansible)"
+        block: "{{ lookup('ansible.builtin.template', 'templates/prego-registry.toml.j2') }}"

@@ -1,0 +1,96 @@
+# Changelog
+
+All notable changes to `prego` are listed here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the crate uses
+[Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [0.5.0] - 2026-11-04
+
+### Added
+
+- `prego token --resource <url>` and `prego whoami --resource <url>`: the token for one registry
+  namespace. `prego whoami` shows the token lifetime.
+
+### Changed
+
+- `prego go publish`: a module zip can be at most 300 MiB, compressed and uncompressed (was 500 MiB, Go's own
+  limit). The registry has the same cap. A bigger module is refused before any token exchange or upload,
+  with the size and the cap in the message. Tests at 300 MiB + 1 byte.
+- Token lifetime from the STS (`expires_in`), never assumed to be 15 minutes:
+  - `prego go-auth` sends the `GOPROXY` Prego entry as `resource` when there is one namespace, and caches a
+    token until its expiry minus `min(60 s, lifetime / 4)` (was 60 s). The cache file holds the lifetime.
+  - `prego go publish` sends the namespace as `resource` and gets a new token before a request when the
+    current one is no longer fresh, so short tokens do not expire between parts.
+  - `prego exec` sends `resource`, prints the token lifetime on stderr, and warns under 10 minutes ("token
+    valid for N min; long builds need GOAUTH, see prego setup go"). The netrc file cannot be renewed.
+  - `prego oci push` uses the same margin for realm tokens.
+  - After a `429` from the STS, the tools wait for `Retry-After` (at most 60 s) and try again at most two
+    times.
+- Tests with 1-minute tokens, and with 2-second tokens that the mock registry refuses when they are older.
+- Version 0.5.0. All crates in this workspace have the same version.
+
+## [0.4.0] - 2026-11-04
+
+### Added
+
+- `prego go publish [<module dir>] [<tag>]`: builds a Go module zip from the git tree of the tag (`git ls-tree`
+  and `git cat-file`, never the working directory), with the file rules of `golang.org/x/mod/zip` (vendored
+  packages, nested modules, symlinks, file path and case rules, 500 MiB, go.mod 1 MiB) and the root `LICENSE`
+  rule of the go command. It checks the module path, the version (tags only, no pseudo-versions) and the major
+  version rule, computes the zip h1 and the go.mod h1, and sends `X-Prego-Go-H1` and `X-Prego-Go-Origin`. Up
+  to 95 MiB in one `PUT`, else in a chunked session. It fails if the registry's h1 differs. Options
+  `--namespace`, `--dir`, `--tag`, `--dry-run` (file list and h1, nothing sent) and `--json`.
+- `prego go-auth`: the GOAUTH helper for Go 1.24 and later (`GOAUTH='prego go-auth'`). It gives one registry
+  token for the Prego entries of `GOPROXY`, gets a new one after a `401`, and makes no STS call after other
+  statuses. The token cache is a 0600 file in a checked 0700 directory under `$XDG_RUNTIME_DIR` or `$TMPDIR`.
+- `prego setup go [--prefix <path>]... [--namespace <ns>] [--write]`: the `go env -w` lines for `GOPROXY`,
+  `GONOSUMDB` (from `--prefix`, `go_prefixes`, or the admin API with `admin:read`) and `GOAUTH` (added to an
+  existing value).
+- `prego exec -- <command>`: runs the command with `NETRC` set to a temporary 0600 file with a registry token,
+  deleted at the end. For Go before 1.24.
+- Tests: h1 and go.mod h1 of fixture modules (root, subdirectory, `/v2`) equal the `Sum` and `GoModSum` of
+  Go 1.26.8; a mock Go host checks the uploaded zips; `PREGO_TEST_GO` runs the same check against real Go.
+
+### Changed
+
+- `docs/go-quickstart.md`: a note that after a `SIGKILL` of `prego exec`, the 0600 netrc file can stay in the
+  private 0700 cache directory until it is deleted; its token expires after 15 minutes.
+- README: the 95 MiB rule for `docker push`, with a `prego oci push` example.
+- Version 0.4.0. All crates in this workspace have the same version.
+
+## [0.3.0] - 2026-11-04
+
+### Added
+
+- `prego oci push <input> <image>`: pushes an image from an OCI image layout directory or a `docker save` tar
+  file (the old format and the OCI format). Each blob that the repository does not have is sent in parts with
+  `Content-Range` (default 64 MiB, `--chunk-size <MiB>`, at least `OCI-Chunk-Min-Length`, at most 95 MiB), so
+  layers above the 95 MiB limit of `docker push` work. It resumes from the upload status after a network
+  error, a `5xx` or a `416`. It pushes child manifests by digest, then the top manifest by tag. `--from <repo>`
+  mounts blobs from another repository of the tenant. Blob digests are checked before any upload. One registry
+  token is used for the whole push, and the identity goes only to the Prego token realm.
+
+### Changed
+
+- Version 0.3.0. All crates in this workspace have the same version.
+
+## [0.2.0] - 2026-11-03
+
+### Added
+
+- First version, 0.2.0, with these commands:
+  - `prego token`: prints a registry token from the STS. With `--scope` (one or more), gets it from the OCI
+    token realm.
+  - `prego whoami`: shows the tenant, the identity source, the principal (`sub`, `tid`, read from the token
+    without a signature check and marked "not verified"), the time the token is valid, and the Cargo and OCI
+    URLs. It never shows a token.
+  - `prego setup cargo [--namespace <ns>] [--registry <name>]`: prints the Cargo snippet.
+  - `prego setup docker [--write]`: prints the `credHelpers` snippet. With `--write`, changes
+    `$DOCKER_CONFIG/config.json` or `~/.docker/config.json`: backup copy first, other keys and their order
+    kept, atomic replace, no change if the file is not a JSON object.
+- Options `--tenant`, `--sts-url`, `--audience`, `--source`, with the `PREGO_*` and settings-file fallbacks.
+- Prebuilt binaries in the `prego-clients-v0.2.0` GitHub release for `x86_64-unknown-linux-musl`,
+  `aarch64-unknown-linux-musl` and `aarch64-apple-darwin`, with SHA-256 sums and `install.sh`.
+

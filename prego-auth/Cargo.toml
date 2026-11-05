@@ -1,0 +1,30 @@
+[package]
+name = "prego-auth"
+version = "0.5.0"
+description = "Identity sources and the STS token exchange for Prego by Katskill clients."
+readme = "README.md"
+keywords = ["prego", "spiffe", "oidc", "token-exchange", "registry"]
+categories = ["authentication"]
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[features]
+default = ["spiffe"]
+# SPIFFE Workload API source. Adds tokio and tonic.
+spiffe = ["dep:spiffe", "dep:tokio"]
+# Small HTTP mock server for tests in this workspace. Not a public API.
+test-support = []
+
+[dependencies]
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = { version = "0.9", default-features = false, features = ["std", "parse", "serde"] }
+webpki-root-certs = "1"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+spiffe = { version = "0.19", default-features = false, features = ["workload-api-jwt"], optional = true }
+tokio = { version = "1", default-features = false, features = ["rt", "time"], optional = true }

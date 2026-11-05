@@ -1,0 +1,12 @@
+# .cargo/config.toml for tenant `acme`, namespace `default`.
+# Put it in the repository (CI) or in ~/.cargo/config.toml (laptop).
+# It holds no secret: the credential provider finds the identity at run time.
+
+[registries.acme]
+index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
+credential-provider = ["cargo-credential-prego", "--tenant", "acme"]
+
+# Optional: use a crate from this registry in Cargo.toml:
+#
+#   [dependencies]
+#   acme-core = { version = "1", registry = "acme" }

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>Prego clients</title>
+    <meta
+      name="description"
+      content="Open source clients for Prego by Katskill: a Cargo credential provider, a Docker credential helper and the prego CLI. They exchange a machine identity for a short-lived registry token, for crates and OCI images."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="style.css" />
+    <script src="theme.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="#top" aria-label="Prego clients home">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="none" stroke="currentColor" stroke-width="2" />
+            <path
+              d="M12.5 24V8h5.5a4.75 4.75 0 0 1 0 9.5h-5.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="brand-name">Prego</span>
+          <span class="brand-by">clients</span>
+        </a>
+        <nav class="site-nav" aria-label="Sections">
+          <a href="#install">Install</a>
+          <a href="#configure">Cargo</a>
+          <a href="#oci">Images</a>
+          <a href="#sources">Identity sources</a>
+          <a href="#safety">Safety</a>
+          <a href="#guides">Guides</a>
+          <a href="#security">Security</a>
+        </nav>
+        <button class="icon-btn" id="theme-toggle" type="button" aria-pressed="false" aria-labelledby="theme-toggle-label">
+          <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
+          </svg>
+          <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+            />
+          </svg>
+          <span class="visually-hidden" id="theme-toggle-label">Dark theme</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="wrap hero-grid">
+          <div>
+            <p class="eyebrow">Open source · Apache-2.0 · Version 0.4.0</p>
+            <h1 class="display">Prego clients</h1>
+            <p class="lede">
+              Client tools for Prego registries, for crates and OCI images. They find the machine identity of your
+              build, exchange it at the Prego STS, and give Cargo, Docker and other tools a registry token that is
+              valid for 15 minutes by default. No long-lived secret goes into your config.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="#install">Install</a>
+              <a class="btn btn-ghost" href="https://github.com/group-katskill/prego-clients">Source on GitHub</a>
+            </div>
+            <p class="hero-note">Cargo 1.74 or later. Linux and Apple silicon macOS binaries on every release.</p>
+          </div>
+          <div class="terminal" aria-label="Example">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>cargo install cargo-credential-prego docker-credential-prego prego
+<span class="c"># CI: GitLab id_tokens, GitHub OIDC, SPIFFE or an API key</span>
+<span class="p">$ </span>cargo build --locked
+<span class="c">  Downloaded acme-core v1.4.2 (registry `acme`)</span>
+<span class="p">$ </span>prego setup docker --write
+<span class="p">$ </span>docker push oci.prego.k8skill.com/acme/default/api:1.4.0</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="tools" aria-labelledby="tools-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="tools-title">The tools</h2>
+          <ul class="cards">
+            <li class="card">
+              <span class="card-tag">binary</span>
+              <h3><a href="https://crates.io/crates/cargo-credential-prego">cargo-credential-prego</a></h3>
+              <p>Cargo credential provider. Cargo runs it to get a token for a Prego crate registry.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">binary</span>
+              <h3><a href="https://crates.io/crates/docker-credential-prego">docker-credential-prego</a></h3>
+              <p>Docker credential helper. Docker, Podman, BuildKit, crane, ORAS and Helm run it to sign in to the Prego OCI registry.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">binary</span>
+              <h3><a href="https://crates.io/crates/prego">prego</a></h3>
+              <p>CLI: <code>prego whoami</code>, <code>prego token</code>, <code>prego setup cargo|docker|go</code>, <code>prego oci push</code> for layers above 95 MiB, and from 0.4.0 <code>prego go publish</code> and the GOAUTH helper <code>prego go-auth</code>.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">library</span>
+              <h3><a href="https://crates.io/crates/prego-auth">prego-auth</a></h3>
+              <p>Identity sources, the settings file, the STS exchange and the OCI token realm. All tools use it.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section-band" aria-labelledby="how-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="how-title">How it works</h2>
+          <ol class="steps">
+            <li class="step">
+              <span class="step-num">01</span>
+              <h3>A tool asks</h3>
+              <p>Cargo or Docker starts the Prego tool when it needs a token for your Prego registry.</p>
+            </li>
+            <li class="step">
+              <span class="step-num">02</span>
+              <h3>Find an identity</h3>
+              <p>The tool finds a subject token: a JWT-SVID, a CI OIDC token, a token file or an API key.</p>
+            </li>
+            <li class="step">
+              <span class="step-num">03</span>
+              <h3>Exchange at the STS</h3>
+              <p>It sends the subject token to the Prego STS (RFC 8693). Your tenant's trust config decides.</p>
+            </li>
+            <li class="step">
+              <span class="step-num">04</span>
+              <h3>Short-lived token</h3>
+              <p>The registry token is valid for 15 minutes by default (5 to 30 minutes per grant, 1 to 30 on Publisher). The tools get a new one before it expires. For images, the identity goes only to the Prego token realm.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" id="install" aria-labelledby="install-title">
+        <div class="wrap two-col">
+          <div>
+            <h2 class="section-title display" id="install-title">Install</h2>
+            <p>The install script puts all three tools in <code>~/.local/bin</code>. It checks the SHA-256 sums and never uses <code>sudo</code>:</p>
+            <div class="terminal">
+              <pre><code><span class="p">$ </span>curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+<span class="p">$ </span>sh install.sh --version 0.4.0</code></pre>
+            </div>
+            <p>Or from crates.io (all four crates are at 0.3.0):</p>
+            <div class="terminal">
+              <pre><code><span class="p">$ </span>cargo install cargo-credential-prego docker-credential-prego prego</code></pre>
+            </div>
+            <p>
+              Each <a href="https://github.com/group-katskill/prego-clients/releases">release</a> has <code>prego-clients-&lt;target&gt;.tar.gz</code> with all three
+              tools, one archive per tool, and a <code>.sha256</code> file for each archive.
+            </p>
+          </div>
+          <div>
+            <h3 class="visually-hidden">Targets</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th scope="col">Target</th><th scope="col">Notes</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><code>x86_64-unknown-linux-musl</code></td><td>Static. No OpenSSL.</td></tr>
+                  <tr><td><code>aarch64-unknown-linux-musl</code></td><td>Static. No OpenSSL.</td></tr>
+                  <tr><td><code>aarch64-apple-darwin</code></td><td>Apple silicon. Not code-signed or notarized by Apple. No Intel macOS build.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>TLS uses rustls with the Mozilla root set. <code>--version</code> prints the version and the git commit.</p>
+            <h3 id="verify">Verify a release</h3>
+            <p>
+              From 0.3.0, <code>SHA256SUMS</code> is signed with cosign (keyless, the GitHub Actions identity of the
+              release workflow). Check the signature, then the sums:
+            </p>
+            <div class="terminal">
+              <pre><code><span class="p">$ </span>cosign verify-blob SHA256SUMS \
+    --bundle SHA256SUMS.sigstore.json \
+    --certificate-identity https://github.com/group-katskill/prego-clients/.github/workflows/release.yml@refs/tags/prego-clients-v0.4.0 \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+<span class="p">$ </span>sha256sum --ignore-missing -c SHA256SUMS</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-band" id="configure" aria-labelledby="configure-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="configure-title">Configure Cargo</h2>
+          <p class="section-lede">Replace <code>acme</code> with your tenant slug, and <code>default</code> with your namespace.</p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>.cargo/config.toml</b></div>
+            <pre><code>[registries.acme]
+index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
+credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Argument</th><th scope="col">Environment</th><th scope="col">Default</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>--tenant &lt;slug&gt;</code></td><td><code>PREGO_TENANT</code></td><td>required</td></tr>
+                <tr>
+                  <td><code>--sts-url &lt;url&gt;</code></td>
+                  <td><code>PREGO_STS_URL</code></td>
+                  <td><code>https://sts.prego.k8skill.com/v1/sts/token</code></td>
+                </tr>
+                <tr><td><code>--audience &lt;aud&gt;</code></td><td><code>PREGO_AUDIENCE</code></td><td><code>prego.k8skill.com</code></td></tr>
+                <tr><td><code>--source &lt;name&gt;</code></td><td><code>PREGO_SOURCE</code></td><td><code>auto</code></td></tr>
+                <tr><td>none</td><td><code>PREGO_CA_FILE</code></td><td>none (extra PEM CA bundle)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="oci" aria-labelledby="oci-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="oci-title">Push and pull images</h2>
+          <p class="section-lede">
+            The Prego OCI registry is <code>oci.prego.k8skill.com</code>. Image names are
+            <code>&lt;tenant&gt;/&lt;namespace&gt;/&lt;repo&gt;:&lt;tag&gt;</code>. Set the tenant in
+            <code>~/.config/prego/config.toml</code>, then add the helper:
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego setup docker --write   <span class="c"># adds credHelpers to ~/.docker/config.json</span>
+<span class="p">$ </span>docker push oci.prego.k8skill.com/acme/default/api:1.4.0
+<span class="c"># a layer above 95 MiB: push it in parts</span>
+<span class="p">$ </span>docker save acme-api:1.4.0 -o api.tar
+<span class="p">$ </span>prego oci push api.tar acme/default/api:1.4.0</code></pre>
+          </div>
+          <ul class="rules">
+            <li>Docker, Podman, BuildKit, crane, ORAS, Helm (<code>oci://</code>) and cosign (referrers API) work through the helper.</li>
+            <li>Multi-platform indexes, Helm charts, SBOMs and signatures are stored as plain OCI manifests.</li>
+            <li>Stock <code>docker push</code> sends each layer in one request, and Prego accepts at most 95 MiB in one request. <code>prego oci push</code> sends bigger layers in parts.</li>
+            <li>Kubernetes pulls with an <code>imagePullSecret</code> that holds a read-only API key (username = tenant). The console Connect page writes the YAML.</li>
+            <li>Grants use <code>ecosystem = oci</code> with <code>read</code>, <code>publish</code> and <code>delete</code>. One <code>any</code> grant covers images and crates.</li>
+          </ul>
+          <p>
+            Not in 1.0.0: public or anonymous images, <code>/v2/_catalog</code>, a pull-through cache, scanning or a
+            signature policy (signatures are stored, not checked), webhooks, replication, and a kubelet credential
+            provider. See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section section-band" id="sources" aria-labelledby="sources-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="sources-title">Identity sources</h2>
+          <p class="section-lede">
+            In <code>auto</code> mode each tool uses the first source that is present, in this order. If that
+            source fails, it stops. It never falls through to an identity you did not expect.
+          </p>
+          <ul class="cards">
+            <li class="card">
+              <span class="card-tag">1</span>
+              <h3>SPIFFE Workload API</h3>
+              <p>When <code>SPIFFE_ENDPOINT_SOCKET</code> is set. Fetches a JWT-SVID for the audience.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">2</span>
+              <h3>SVID file</h3>
+              <p>When <code>PREGO_SVID_FILE</code> is set. Reads a JWT-SVID, for spiffe-helper setups.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">3</span>
+              <h3>GitLab CI</h3>
+              <p>When <code>PREGO_ID_TOKEN</code> is set from <code>id_tokens</code> with <code>aud: prego.k8skill.com</code>.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">4</span>
+              <h3>GitHub Actions</h3>
+              <p>When the Actions OIDC variables are set. The workflow needs <code>permissions: id-token: write</code>.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">5</span>
+              <h3>Token file</h3>
+              <p>When <code>PREGO_TOKEN_FILE</code> is set. Kubernetes projected tokens, AWS or GCP workload identity.</p>
+            </li>
+            <li class="card">
+              <span class="card-tag">6</span>
+              <h3>API key</h3>
+              <p>When <code>PREGO_API_KEY</code> is set (<code>prk_…</code>). The STS takes the tenant from the key.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="safety" aria-labelledby="safety-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="safety-title">Safety rules</h2>
+          <ul class="rules">
+            <li>Never prints, logs or writes a token to disk (except <code>prego token</code>, which prints one on purpose).</li>
+            <li>Sends subject tokens only over <code>https</code>. Plain <code>http</code> only to localhost, for tests.</li>
+            <li>Never follows an HTTP redirect, so a subject token cannot go to another host.</li>
+            <li>TLS checks are always on. For an on-prem TLS proxy, add its CA with <code>PREGO_CA_FILE</code>.</li>
+            <li>
+              The full STS contract is public in
+              <a href="https://github.com/group-katskill/prego-clients/blob/main/PROTOCOL.md">PROTOCOL.md</a>, so you
+              can review it or write your own client.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section-band" id="guides" aria-labelledby="guides-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="guides-title">Guides</h2>
+          <ul class="cards">
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Consumer quickstart</a></h3>
+              <p>Use Prego crates on your laptop with an API key, in about five minutes.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a></h3>
+              <p>Docker, Podman, crane, ORAS, Helm and cosign; multi-platform images; big layers; Kubernetes pull secrets; errors.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a></h3>
+              <p>From 0.4.0: private Go modules with <code>GOAUTH='prego go-auth'</code>, and <code>prego go publish</code> from the git tree of a tag. A module zip can be at most 300 MiB.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a></h3>
+              <p>GitLab <code>id_tokens</code>, GitHub Actions OIDC, SPIFFE and cloud workloads, image builds, and how to manage Prego from CI with an admin token. No stored secret.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/tree/main/examples">Examples</a></h3>
+              <p>GitHub Actions and GitLab CI for crates and images, a Kubernetes pull secret, Cargo config, OpenTofu and Ansible, plus admin examples that manage grants from CI.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/openapi.yaml">API reference</a></h3>
+              <p>The public API as OpenAPI 3.1: STS, Cargo registry and the tenant admin API.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="security" aria-labelledby="security-title">
+        <div class="wrap two-col">
+          <div>
+            <h2 class="section-title display" id="security-title">Security</h2>
+            <p>
+              Report a vulnerability by email to <a href="mailto:security@k8skill.com">security@k8skill.com</a>. Do not
+              open a public issue, and do not send real tokens. See
+              <a href="https://github.com/group-katskill/prego-clients/blob/main/SECURITY.md">SECURITY.md</a>.
+            </p>
+          </div>
+          <div>
+            <h2 class="section-title display" id="license-title">License</h2>
+            <p>
+              <a href="https://github.com/group-katskill/prego-clients/blob/main/LICENSE">Apache-2.0</a>. See
+              <a href="https://github.com/group-katskill/prego-clients/blob/main/NOTICE">NOTICE</a>. Copyright Katskill
+              LLC. Version 0.1.0 was released under MIT or Apache-2.0. The "Prego" name and logo are not licensed for reuse. Fonts on this
+              page use the SIL Open Font License 1.1.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <nav class="footer-nav" aria-label="Links">
+          <a href="https://github.com/group-katskill/prego-clients">GitHub</a>
+          <a href="https://github.com/group-katskill/prego-clients/releases">Releases</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/PROTOCOL.md">Protocol</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a>
+          <a href="https://crates.io/crates/prego">crates.io</a>
+          <a href="https://github.com/group-katskill/prego-clients/tree/main/site/fonts">Font licenses</a>
+        </nav>
+        <p>Prego by Katskill. © 2026 Katskill LLC.</p>
+      </div>
+    </footer>
+  </body>
+</html>

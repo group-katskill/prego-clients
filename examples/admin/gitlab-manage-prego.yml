@@ -1,0 +1,48 @@
+# GitLab CI: manage Prego objects of tenant `acme` from a pipeline, with no stored secret.
+# Include this file from .gitlab-ci.yml, or copy the jobs.
+#
+# One-time setup by a human admin in the Prego console:
+#   - trust config: kind oidc, issuer https://gitlab.com
+#   - principal: kind oidc, claims_match {"project_path": "acme/prego-config", "ref_protected": "true"}
+#     A write scope needs the protected-ref pin (ref_protected or environment).
+#   - admin scopes on that principal: admin:read grants:write
+#
+# The job runs only on protected refs. GitLab gives it a short-lived ID token, and
+# examples/admin/prego-admin-token.sh exchanges it for a 15-minute admin token.
+
+stages: [plan, apply]
+
+.prego-admin:
+  image: alpine:3.22
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  variables:
+    PREGO_TENANT: acme
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
+  before_script:
+    - apk add --no-cache curl jq ansible-core
+    - PREGO_ADMIN_TOKEN="$(sh examples/admin/prego-admin-token.sh)"
+    - export PREGO_ADMIN_TOKEN
+
+# Read-only check: shows which wanted grants are missing. Needs admin:read only.
+prego-plan:
+  extends: .prego-admin
+  stage: plan
+  variables:
+    PREGO_ADMIN_SCOPE: "admin:read"
+  script:
+    - ansible-playbook -i localhost, -c local examples/admin/ansible/grants.yml --check --diff
+
+# Apply: creates the missing grants. Runs on the default branch only, after a person presses the button.
+prego-apply:
+  extends: .prego-admin
+  stage: apply
+  variables:
+    PREGO_ADMIN_SCOPE: "admin:read grants:write"
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  script:
+    - ansible-playbook -i localhost, -c local examples/admin/ansible/grants.yml

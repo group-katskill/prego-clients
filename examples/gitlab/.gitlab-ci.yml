@@ -1,0 +1,34 @@
+# .gitlab-ci.yml: build with crates from the Prego registry of tenant `acme`.
+#
+# Console setup (once, by a tenant admin):
+#   - trust config: kind oidc, issuer https://gitlab.com (or your self-managed GitLab URL)
+#   - principal: kind oidc, claims_match {"project_path": "acme/core", "ref_protected": "true"}
+#   - grant: read on the crates this job needs
+#
+# The job stores no secret. GitLab gives it a short-lived ID token in PREGO_ID_TOKEN, and
+# cargo-credential-prego exchanges that token at the Prego STS.
+
+variables:
+  PREGO_VERSION: "0.3.0"
+  PREGO_TARGET: x86_64-unknown-linux-musl
+
+build:
+  image: rust:1
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  before_script:
+    # Install the prebuilt binary and check its SHA-256 sum.
+    # `cargo install --locked cargo-credential-prego` also works, but takes longer.
+    - base="https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v${PREGO_VERSION}"
+    - file="cargo-credential-prego-${PREGO_TARGET}.tar.gz"
+    - curl -fsSLO "${base}/${file}"
+    - curl -fsSLO "${base}/${file}.sha256"
+    - sha256sum -c "${file}.sha256"
+    - tar -xzf "${file}" cargo-credential-prego
+    - install -m 0755 cargo-credential-prego /usr/local/cargo/bin/
+    - cargo-credential-prego --version
+  script:
+    # .cargo/config.toml is in the repository (see examples/cargo/config.toml).
+    - cargo build --locked
+    - cargo test --locked

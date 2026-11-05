@@ -1,0 +1,28 @@
+[workspace]
+resolver = "3"
+members = ["prego-auth", "cargo-credential-prego", "docker-credential-prego", "prego"]
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Katskill LLC"]
+# cargo-credential 0.4.10 needs Rust 1.91.
+rust-version = "1.91"
+repository = "https://github.com/group-katskill/prego-clients"
+homepage = "https://clients.prego.k8skill.com"
+
+# Fast SHA-256 in debug builds and tests (`prego oci push` hashes large layers).
+[profile.dev.package.sha2]
+opt-level = 3
+
+# The Go zip tests deflate and hash about 100 MiB.
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[profile.dev.package.crc32fast]
+opt-level = 3
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,131 @@
+# Changelog
+
+Repository-level changes (docs, licenses, CI). Each crate has its own `CHANGELOG.md`.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Changed
+
+- The Unreleased items in every CHANGELOG move under `## [0.5.0] - 2026-11-04`.
+
+## [0.5.0] - 2026-11-04
+
+### Changed
+
+- Token lifetime per grant (registry 1.2.0): PROTOCOL.md 1.5.0 (the `resource` field, section 2.1 Token
+  lifetime with the plan ranges, section 2.2 Rate limits, the client rules for expiry, cache margin, `429`
+  and `invalid_target`), README section "Token lifetime", and the lifetime text in the Go, OCI, consumer and
+  CI guides, the crate READMEs and the site.
+- `docs/openapi.yaml` 1.3.0: STS `resource`, `expires_in` 60 to 1800, `429` with `Retry-After` and the
+  per-tenant budget; grant fields `ecosystem`, `token_ttl_minutes`, `effective_token_ttl_minutes`,
+  `ineffective_actions`, `broad` and `created_by_principal`; action `delete`; the `effective` route;
+  tenant `PATCH` with `separate_publish_delete`; principal `admin_namespace_id`; error codes
+  `token_ttl_out_of_range`, `action_not_supported`, `broad_grant_needs_confirm`, `grant_ceiling`,
+  `separation_of_duties`, `admin_namespace` and `admin_namespace_required`. New fields are marked
+  "registry 1.2.0".
+- Go zip cap 300 MiB in `docs/go-quickstart.md` (limits and a new error row), README, the site and
+  PROTOCOL.md 1.4.1 (section 9.3, limits).
+- Install and verify examples use the 0.4.0 release (README, site, `docs/consumer-quickstart.md`). The
+  crates.io lines stay at 0.3.0.
+
+## [0.4.0] - 2026-11-04
+
+### Added
+
+- `docs/go-quickstart.md` (from 0.4.0): connect Go with `prego setup go`, the GOAUTH helper, publish with
+  `prego go publish`, CI, old Go with `prego exec`, the privacy note on module paths, and the errors. README
+  section "Go modules", site card, and settings keys `go_hosts` and `go_prefixes`.
+
+### Changed
+
+- PROTOCOL.md 1.4.0: section 9 (Go modules: the GOAUTH helper, `.netrc`, and publish) and the Go keys in
+  section 8.
+- Docs for OCI and 0.3.0: new `docs/oci-quickstart.md` (Docker, Podman, crane, ORAS, Helm, cosign,
+  multi-platform images, big layers, Kubernetes `imagePullSecret`, errors); image jobs in `docs/ci.md`; README
+  sections "Push and pull images" and "Not in 1.0.0", crates.io and the 0.3.0 install line; examples pinned to
+  0.3.0, with new GitLab and GitHub Actions image jobs and a Kubernetes pull secret; the site shows 0.3.0, all
+  three tools, OCI and the cosign check.
+- Changelogs: the 0.3.0 items of each crate and of this file are under `[0.3.0] - 2026-11-04`. The older
+  items of this file are under "Up to 0.2.0".
+
+## [0.3.0] - 2026-11-04
+
+### Added
+
+- Signed releases: the release workflow signs `SHA256SUMS` with cosign (keyless, with the GitHub OIDC identity of
+  `release.yml` at the tag) and attaches the bundle `SHA256SUMS.sigstore.json`. The README section "Verify a
+  release" and the notes in `install.sh` give the `cosign verify-blob` command.
+
+### Changed
+
+- PROTOCOL.md 1.3.0: OCI clients keep one registry token per scope set and send at most 60 realm requests
+  per minute.
+- PROTOCOL.md section 7: chunked uploads. README: `prego oci push` replaces the 0.3.0 note in the layer limit
+  paragraph.
+
+## Up to 0.2.0
+
+Repository changes up to release 0.2.0 (this file had no version headings before 0.3.0).
+
+### Changed
+
+- Product name: Prego by Katskill (README, crate READMEs, API spec, site). Release 0.1.2 of both crates.
+- License is Apache-2.0 only from 0.1.1 (license change): `LICENSE-APACHE` renamed to `LICENSE`, `LICENSE-MIT`
+  removed, `NOTICE` added. README, site and release archives updated. Version 0.1.0 stays available under
+  `MIT OR Apache-2.0`.
+- Changelogs and code comments no longer cite internal design record numbers.
+- Release 0.1.1 of `prego-auth` and `cargo-credential-prego`.
+
+### Added
+
+- Release 0.2.0 of all crates with one tag, `prego-clients-vX.Y.Z` (was `cargo-credential-prego-vX.Y.Z`).
+  `release.yml` builds `cargo-credential-prego`, `docker-credential-prego` and `prego` for Linux x86_64 and
+  aarch64 (musl) and macOS arm64. Each release has one archive with all three binaries per target, one archive
+  per binary, a `.sha256` file for each archive, `SHA256SUMS` and `install.sh`. The Intel Mac build is
+  removed. No crates.io publish step.
+- `install.sh`: downloads the archive for the machine, checks its SHA-256 sum, and copies the three binaries
+  to `~/.local/bin` (or `--dir`). No `sudo`.
+- CI runs `shellcheck` on `install.sh`.
+- `README.md`: install with `install.sh`, the new tag and archive names, and the 95 MiB layer limit of
+  `docker push` until `prego oci push` in 0.3.0. Quickstart, examples and site use release 0.2.0 and the new
+  tag.
+- `prego` 0.2.0: CLI with `token`, `whoami`, `setup cargo` and `setup docker`. README section "The prego CLI".
+  `NOTICE` names `prego`.
+- `docker-credential-prego` 0.2.0: Docker credential helper for the Prego OCI registry.
+- `PROTOCOL.md` 1.2.0: section 7 (the OCI token realm and the Docker credential helper) and section 8 (the
+  settings file `prego/config.toml`).
+- `README.md`: "Configure Docker" and "Settings file" sections. `NOTICE` names `docker-credential-prego`.
+- Site: the guide and example cards mention managing Prego from CI with an admin token.
+- `examples/admin/`: `prego-admin-token.sh` (admin token exchange with curl, token on stdin), a GitLab plan and
+  apply job, an Ansible playbook that creates missing grants, and an OpenTofu read-only grant drift check.
+- Admin token docs: `PROTOCOL.md` 1.1.0 section 4 (the `prego-admin` audience, admin scopes, errors `invalid_target`
+  and `invalid_scope`), `docs/openapi.yaml` 1.2.0 (admin token security scheme, scope per admin operation,
+  human-only operations, `admin_scopes` on principals, audit `actor_kind`), and a "Manage Prego from CI" section
+  in `docs/ci.md`. Removed the statement that admin access is not supported from CI.
+- `README.md`: a pre-release notice and badges (crates.io, docs.rs, CI, license, MSRV).
+- User docs: `docs/openapi.yaml` (OpenAPI 3.1 of the public API), `docs/consumer-quickstart.md`, `docs/ci.md`,
+  and `examples/` for GitHub Actions, GitLab CI, Cargo config, OpenTofu and Ansible (consumer side only).
+  Linked from the README and the site.
+- Site: a Guides section and footer links to the quickstart, the CI guide, the examples and the API reference.
+- `README.md`, `PROTOCOL.md` (public STS contract and identity sources), `SECURITY.md`.
+- Dual license files `LICENSE-MIT` and `LICENSE-APACHE` (Katskill LLC).
+- Cargo workspace with the crates `prego-auth` and `cargo-credential-prego`. Resolver 3 keeps dependencies
+  on Rust 1.91.
+- `SECURITY.md`: the contact address `security@k8skill.com` is final.
+- `README.md` and `PROTOCOL.md`: client safety rules (no cache, https and no redirects, TLS
+  checks always on, `PREGO_CA_FILE`, auto mode fails closed).
+- `.gitlab-ci.yml`: lint, test (with and without feature `spiffe`), release builds for four targets with
+  cargo-zigbuild, and on tag `cargo-credential-prego-vX.Y.Z`: tag check, release with SHA-256 sums, and
+  crates.io publish (needs `CARGO_REGISTRY_TOKEN`).
+- GitHub Actions: `ci.yml` (fmt, clippy and tests with and without default features), `release.yml` (tag
+  check, four release binaries with cargo-zigbuild, GitHub release with SHA-256 sums; no crates.io publish yet)
+  and `pages.yml`. All actions are pinned to full commit SHAs.
+- `site/`: the website for clients.prego.k8skill.com (GitHub Pages) in the Prego look, light and dark
+  themes, self-hosted OFL fonts with their licenses, a strict self-only CSP, no external requests.
+- `README.md`: links to the website and the GitHub release page; the release and CI steps for GitHub.
+
+### Removed
+
+- `.gitlab-ci.yml`. The public repository is on GitHub.

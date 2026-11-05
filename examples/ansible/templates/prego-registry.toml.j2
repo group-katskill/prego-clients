@@ -1,0 +1,3 @@
+[registries.{{ prego_tenant }}]
+index = "sparse+https://cargo.prego.k8skill.com/t/{{ prego_tenant }}/{{ prego_namespace }}/index/"
+credential-provider = ["cargo-credential-prego", "--tenant", "{{ prego_tenant }}"]
