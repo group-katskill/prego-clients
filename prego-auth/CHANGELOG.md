@@ -12,6 +12,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `npm.prego.k8skill.com`), `registry_url` and `TOKEN_VAR`.
 - Settings file key `npm_host`.
 
+## [0.5.1] - 2026-11-05
+
+### Changed
+
+- Rebuild of 0.5.0 in the new public repository `group-katskill/prego-clients` (fresh history, signed commits).
+  No code change.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added
