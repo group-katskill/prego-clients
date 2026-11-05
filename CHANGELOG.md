@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Site: deploy again. The Pages deploys of af480df and ef3b8dd timed out on the GitHub side, and a
+  re-run of the same commit is cancelled. The site content does not change.
+
 ## [0.6.0-rc.1] - 2026-11-05
 
 ### Changed
