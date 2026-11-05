@@ -1,11 +1,9 @@
 name: Pages
 
 on:
+  # Every push to main deploys, so the footer always shows the commit on main.
   push:
     branches: [main]
-    paths:
-      - "site/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -22,6 +20,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Stamp the version and the commit
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' prego/Cargo.toml | head -n 1)"
+          test -n "$version"
+          sed -i -e "s/__PREGO_VERSION__/$version/g" \
+            -e "s/__PREGO_COMMIT_SHORT__/${SHA:0:7}/g" \
+            -e "s/__PREGO_COMMIT__/$SHA/g" site/index.html
+          if grep -n '__PREGO_' site/index.html; then exit 1; fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site

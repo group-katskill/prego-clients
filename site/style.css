@@ -644,6 +644,25 @@ th {
 .footer-nav a:hover {
   text-decoration: underline;
 }
+/* Copyright on the left, version and commit on the right of the same line. */
+.footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 24px;
+}
+.footer-meta p {
+  margin: 0;
+}
+.footer-meta .build {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+.footer-meta .build a {
+  color: inherit;
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {

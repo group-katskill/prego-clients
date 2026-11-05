@@ -69,7 +69,7 @@
       <section class="hero" id="top">
         <div class="wrap hero-grid">
           <div>
-            <p class="eyebrow">Open source · Apache-2.0 · Version 0.5.0</p>
+            <p class="eyebrow">Open source · Apache-2.0 · Version __PREGO_VERSION__</p>
             <h1 class="display">Prego clients</h1>
             <p class="lede">
               Client tools for Prego registries: crates, OCI images and Go modules, and soon npm packages. They find the machine identity of your
@@ -449,7 +449,11 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
           <a href="https://crates.io/crates/prego">crates.io</a>
           <a href="https://github.com/group-katskill/prego-clients/tree/main/site/fonts">Font licenses</a>
         </nav>
-        <p>Prego by Katskill. © 2026 Katskill LLC.</p>
+        <div class="footer-meta">
+          <p>Prego by Katskill. © 2026 Katskill LLC.</p>
+          <!-- The Pages workflow fills in the version and the commit at deploy time. -->
+          <p class="build">v__PREGO_VERSION__ · <a href="https://github.com/group-katskill/prego-clients/commit/__PREGO_COMMIT__" title="Commit of this deploy">__PREGO_COMMIT_SHORT__</a></p>
+        </div>
       </div>
     </footer>
   </body>
