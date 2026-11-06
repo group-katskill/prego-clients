@@ -54,7 +54,7 @@ jobs:
           # Built on macOS: the keychain code of `prego login` links the Security framework, which needs the
           # macOS SDK. TODO: the binaries are not code-signed yet (the keychain asks "allow" on first use).
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

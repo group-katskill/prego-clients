@@ -15,7 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   storage) and the Docker helper with a session, SECURITY.md (storage per OS, no plain file, the marker file,
   a lost laptop), OpenAPI 1.4.0 (the device routes and the refresh at the edge code token URL), and the website
   ("Log in on a laptop", "Lost laptop?", the login session source).
-- The release workflow builds the macOS binaries on a macOS runner (the keychain code needs the macOS SDK),
+- The release workflow builds the macOS binaries on a macOS 15 runner (the keychain code needs the macOS SDK),
   and CI has a macOS build and test job.
 
 ## [0.6.0] - 2026-11-06
