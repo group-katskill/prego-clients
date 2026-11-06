@@ -34,10 +34,20 @@ variable "namespace" {
   }
 }
 
+variable "edge_code" {
+  description = "Edge code of the tenant (4 characters, not a secret). The Prego console shows it. Needed from 0.6.0."
+  type        = string
+  default     = "k7mq"
+  validation {
+    condition     = can(regex("^[a-hjkmnop-z2-9]{4}$", var.edge_code))
+    error_message = "The edge code has 4 characters from a-z and 2-9, without i, l, 0 and 1."
+  }
+}
+
 variable "provider_version" {
   description = "cargo-credential-prego release to install."
   type        = string
-  default     = "0.3.0"
+  default     = "0.6.0"
 }
 
 variable "target" {
@@ -101,7 +111,7 @@ resource "local_file" "cargo_config" {
   content         = <<-EOT
     [registries.${var.tenant}]
     index = "sparse+https://cargo.prego.k8skill.com/t/${var.tenant}/${var.namespace}/index/"
-    credential-provider = ["cargo-credential-prego", "--tenant", "${var.tenant}"]
+    credential-provider = ["cargo-credential-prego", "--tenant", "${var.tenant}", "--edge-code", "${var.edge_code}"]
   EOT
 }
 
