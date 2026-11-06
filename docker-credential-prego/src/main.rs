@@ -32,7 +32,8 @@ Usage: docker-credential-prego [options] <get|store|erase|list>
 Options (environment fallback, then config.toml):
   --tenant <slug>    (PREGO_TENANT)    tenant slug
   --audience <aud>   (PREGO_AUDIENCE)  default prego.k8skill.com
-  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key
+  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key,
+                                       device (the prego login session; auto uses it last)
 
 Environment only:
   PREGO_OCI_HOSTS    more OCI hosts, comma-separated (also oci_hosts in config.toml)

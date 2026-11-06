@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.7.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.8.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -17,6 +17,12 @@ client. A change that breaks this contract is a MAJOR version change for the reg
   `9`, without `i`, `l`, `0` and `1`, lower case only. It is not a secret and it does not name the caller (the
   subject token does). The console shows it. Registry token URLs carry it (sections 1 and 7).
 - **Audience**: who a token is for. Subject tokens for Prego use `prego.k8skill.com`.
+- **Device login**: `prego login`. A person approves a short code in the console with their own sign-in, and
+  the client gets a device session (section 11). From registry 1.5.0.
+- **Device session**: what a device login gives. It has a **refresh token** (opaque, kept only in secure
+  storage, a new one on every use) that the client trades for registry tokens. It ends after 7 days without
+  use, after 30 days in all, or when it is revoked.
+- **User code**: the code that the person confirms in the console, 8 characters in two groups (`ABCD-EFGH`).
 
 ## 1. STS request
 
@@ -223,6 +229,7 @@ and uses the first one that is present. `--source <name>` (or `PREGO_SOURCE`) se
 | 4 | `github` | `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` are set | `GET $ACTIONS_ID_TOKEN_REQUEST_URL&audience=prego.k8skill.com` with header `Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN`. Read `.value` from the JSON body. The workflow needs `permissions: id-token: write`. | `jwt` |
 | 5 | `token-file` | `PREGO_TOKEN_FILE` is set | Read an OIDC JWT from the file (Kubernetes projected service account tokens, AWS/GCP workload identity files). | `jwt` |
 | 6 | `api-key` | `PREGO_API_KEY` is set | Use the value. It starts with `prk_`. | `api-key` |
+| 7 | `device` | No source above is present, and secure storage holds a device session for the tenant and STS | A session refresh (section 11.3). It is not a subject token: the client gets the registry token directly. | none |
 
 `jwt` means `urn:ietf:params:oauth:token-type:jwt`. `api-key` means `urn:k8skill:prego:token-type:api-key`.
 
@@ -252,7 +259,8 @@ The audience is `prego.k8skill.com` unless the user sets another one (`--audienc
 - On `429`, wait for `Retry-After` (at most 60 s) plus a small random time, and try again at most two times.
   Then fail with a message about the tenant's budget.
 - Get a new token when the registry answers `401`, then send the request again one time.
-- Keep no token cache in the client, except the private file cache of `prego go-auth` (section 9.1). Cargo
+- Keep no token cache in the client, except the private file cache of `prego go-auth` (section 9.1) and the
+  registry tokens of a device session in secure storage (section 11.3). Cargo
   caches the token with the expiry hint below.
 - On `invalid_grant`, tell the user: "Prego refused this identity for tenant <slug>. Check the trust config
   and principal in the console."
@@ -299,12 +307,16 @@ A Docker credential helper (`docker-credential-prego`) gives Docker the subject 
 STS itself:
 
 - `get` reads a server URL on stdin. If its host is a Prego OCI host, it answers
-  `{"ServerURL": "<as given>", "Username": "<tenant>", "Secret": "<subject token>"}`. The Prego OCI hosts are
+  `{"ServerURL": "<as given>", "Username": "<tenant>", "Secret": "<subject token>"}`. With a device session
+  (section 11), the Secret is a registry token from the session; the realm accepts it as the Basic password.
+  The session refresh token never goes to Docker, and the Username is never `<token>` (Docker would then send
+  the Secret as an OAuth refresh token). The Prego OCI hosts are
   `oci.prego.k8skill.com`, plus the hosts in `oci_hosts` (section 8) and in `PREGO_OCI_HOSTS`
   (comma-separated). A host compares equal after the scheme, the path and port 443 are removed, without case.
 - For any other host, `get` reads no identity source. It writes `credentials not found in native keychain`
   on stdout and exits 1, so Docker uses its other credentials.
-- `store` and `erase` do nothing and exit 0. The helper keeps no secret.
+- `store` and `erase` do nothing and exit 0. The helper keeps no secret of its own (a device session is kept
+  by `prego login`, section 11.4).
 - `list` answers `{"https://<host>": "<tenant>"}` for each Prego OCI host, or `{}` if no tenant is set.
 - An error is one line on stdout, with exit code 1. It never holds a token.
 
@@ -455,3 +467,95 @@ unique across Prego.
 npm 11.5.1 and later exchange a CI ID token on the npm host itself, with audience `npm:<npm host>`, and get a
 normal registry token. The STS rules, rate limits and audit apply. On any failure npm uses the `.npmrc`
 token. The Prego client has no part in this exchange.
+
+## 11. Device login (`prego login`)
+
+From registry 1.5.0. A person on a laptop logs in with the console sign-in. CI never uses it: CI uses a workload
+identity or an API key (section 5). All paths carry the edge code, which picks the tenant.
+
+### 11.1 Start
+
+```
+POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/start
+Content-Type: application/json
+
+{"client": "prego-cli/0.7.0", "access": [{"ecosystem": "any", "actions": ["read"]}]}
+```
+
+- Do not send `tenant`: a body with `tenant` gets `400 invalid_request`.
+- `access` items: `ecosystem` (`any`, `cargo`, `oci`, `go`, `npm`), `namespace` (optional, default `default`)
+  and `actions` (`read`, `publish`, `delete`; `delete` means yank and delete). `prego login` asks for read;
+  `prego login --publish` asks for read and publish. The person can approve only access within their role.
+  Publish and delete need a passkey check in the console.
+- Answer `200`: `{"device_code", "user_code", "verification_uri", "verification_uri_complete", "expires_in":
+  300, "interval": 5}`. Show `verification_uri` and `user_code`. Never show `device_code`.
+- Too many pending requests (10 per IP address and per tenant): `429 {"error": "rate_limited"}` with
+  `Retry-After`.
+
+### 11.2 Poll
+
+```
+POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=<device code>
+```
+
+As RFC 8628: wait `interval` seconds between polls. `400` with `error`:
+
+| `error` | Client action |
+| --- | --- |
+| `authorization_pending` | Poll again after `interval`. |
+| `slow_down` | Add 5 s to `interval`, then poll again. |
+| `expired_token` | Stop: the request expired. Tell the person to run `prego login` again. |
+| `access_denied` | Stop: the person denied the request in the console. |
+
+Answer `200`: the fields of section 2, plus `refresh_token` and `session`: `{"id": "dvs_...", "name",
+"access": [{"ecosystem", "namespace", "actions"}], "idle_expires_at", "expires_at"}` (Unix seconds). Store
+the refresh token and the session (section 11.4) before you use the registry token.
+
+### 11.3 Refresh
+
+```
+POST https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&refresh_token=<refresh token>&resource=<registry base URL>
+```
+
+- `resource` is optional, as in section 1. `tenant` is not needed; if it is sent, it must be the session's
+  tenant.
+- Answer `200`: the fields of section 2, plus a new `refresh_token` and `session` (`id`, `idle_expires_at`,
+  `expires_at`). The old refresh token stops working. Store the new one before you use the registry token.
+- A refresh token that was used in the last 10 s gets the same answer as its first use (parallel processes).
+  A use after that ends the whole session (a theft signal).
+- An ended session (revoked, expired or reused): `400 {"error": "invalid_grant", "error_description": "the
+  login session ended; run prego login again"}`. Delete the local session and show that text.
+- A rate limit or a full stop of the tenant stays `429 rate_limited`, as in section 2.2.
+
+Client behavior:
+
+- Take an exclusive lock around a refresh (a lock file that holds no secret), so that parallel processes of
+  one user do not use the same refresh token. Keep the registry tokens with the session in secure storage, and
+  use a stored one while it is fresh (section 6, cache margin).
+- Never write a registry token from a session to a plain file: no `.netrc` file (`prego exec`), and no
+  `prego go-auth` file cache.
+
+### 11.4 Storage
+
+The client keeps the session only in secure storage: the macOS Keychain, the Windows Credential Manager, the
+Secret Service on a Linux desktop, else the kernel keyring of the Linux user session (lost at logout or
+reboot). There is no plain file fallback. Without secure storage, `prego login` stops and tells the person to
+use `PREGO_API_KEY` or a workload identity.
+
+### 11.5 Logout
+
+```
+POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/revoke
+Content-Type: application/x-www-form-urlencoded
+
+refresh_token=<refresh token>
+```
+
+Always `200 {}`, also for an unknown or revoked token. It ends the whole session. The client deletes the local
+session also when the call fails, and says so.

@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- `--help` lists the `device` source.
 - Uses the `prego login` session when no workload identity and no `PREGO_API_KEY` is set.
 
 ## [0.6.0] - 2026-11-06

@@ -18,7 +18,7 @@ modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; comin
 | --- | --- | --- |
 | [`cargo-credential-prego`](cargo-credential-prego/) | binary | Cargo credential provider. Cargo runs it to get a registry token for a Prego registry. |
 | [`docker-credential-prego`](docker-credential-prego/) | binary | Docker credential helper. Docker, Podman, BuildKit, crane and ORAS run it to sign in to the Prego OCI registry. |
-| [`prego`](prego/) | binary | CLI: `prego token`, `prego whoami`, `prego setup cargo\|docker\|go`, `prego oci push`, and from 0.4.0 `prego go publish`, `prego go-auth` (GOAUTH) and `prego exec`, and from 0.6.0 `prego setup npm` and `prego npm-env`. |
+| [`prego`](prego/) | binary | CLI: `prego token`, `prego whoami`, `prego setup cargo\|docker\|go`, `prego oci push`, and from 0.4.0 `prego go publish`, `prego go-auth` (GOAUTH) and `prego exec`, from 0.6.0 `prego setup npm` and `prego npm-env`, and from 0.7.0 `prego login`, `prego logout` and `prego status`. |
 | [`prego-auth`](prego-auth/) | library | Identity sources, the settings file and the STS exchange. All binaries use it. |
 
 Website: <https://clients.prego.k8skill.com>. Releases: <https://github.com/group-katskill/prego-clients/releases>.
@@ -34,13 +34,34 @@ License: `Apache-2.0`. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Version 0.1.
 `MIT OR Apache-2.0`; from 0.1.1 on, the license is Apache-2.0 only.
 The code is open. The "Prego" name and logo are not licensed for reuse.
 
+## Quick start on a laptop
+
+From prego 0.7.0. Log in with your own console account. No key is stored in a file.
+
+```sh
+curl -fsSL https://clients.prego.k8skill.com/install.sh | sh   # or see Install below
+export PREGO_TENANT=acme PREGO_EDGE_CODE=k7mq                  # your tenant and its edge code (console)
+prego login                  # open the page, confirm the code; --publish to publish too
+prego setup cargo            # then: prego setup docker --write, prego setup go, prego setup npm
+prego status                 # tenant, access and end time of the session (never a token)
+```
+
+- The session is kept in your OS keychain (on Linux without a desktop, in the kernel keyring, which is lost at
+  reboot), never in a plain file. It ends after 7 days without use, after 30 days in all, or with
+  `prego logout`. See [SECURITY.md](SECURITY.md).
+- Cargo, Docker, Go, npm and the `prego` commands use the session when no workload identity and no
+  `PREGO_API_KEY` is set.
+- **CI never uses `prego login`.** CI uses its job identity or an API key: see the [CI guide](docs/ci.md).
+- Lost laptop? Revoke its session in the console: Settings, Your sessions.
+
 ## How the token exchange works
 
 Prego registries accept only a short-lived **registry token** (15 minutes by default; see
 [Token lifetime](#token-lifetime)). The credential provider gets one for each Cargo session:
 
 1. It finds a **subject token** on the machine: a SPIFFE JWT-SVID, a CI OIDC ID token, a token file, or an
-   API key (`prk_...`).
+   API key (`prk_...`). With none of them, it uses the `prego login` session, which gets the registry token
+   directly with a session refresh.
 2. It sends the subject token to the Prego **STS** (`POST /v1/sts/token/e/<edge code>`, RFC 8693 token exchange).
 3. The STS checks the subject token against the trust config and principals of your tenant. It returns a
    registry token.
@@ -271,6 +292,9 @@ Prego registry 1.0.0 does not have these:
 ## The prego CLI
 
 ```sh
+prego login [--publish]          # log in on a laptop with your console account (0.7.0)
+prego status                     # the login session: tenant, access, end time (0.7.0)
+prego logout                     # end the session and delete it from this computer (0.7.0)
 prego whoami                     # tenant, identity source, principal, token lifetime, registry URLs (no token)
 prego token                      # a registry token on stdout (15 minutes by default)
 prego setup cargo                # the .cargo/config.toml snippet
@@ -340,6 +364,7 @@ In `auto` mode the provider uses the first source that is present, in this order
 | 4 | `github` | `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` are set | GitHub Actions OIDC token |
 | 5 | `token-file` | `PREGO_TOKEN_FILE` is set | OIDC JWT read from that file |
 | 6 | `api-key` | `PREGO_API_KEY` is set | Prego API key `prk_...` |
+| 7 | `device` | none of the above, and you ran `prego login` (0.7.0) | none: a session refresh gives the registry token |
 
 If no source is present, the error lists the sources that the provider checked.
 
@@ -384,7 +409,8 @@ The STS takes the tenant from the API key. Registry endpoints never accept an AP
 
 ## Login and logout
 
-`cargo login` and `cargo logout` are not supported. Manage trust configs, principals and API keys in the
+On a laptop, use `prego login` and `prego logout` ([Quick start](#quick-start-on-a-laptop)). `cargo login`,
+`cargo logout`, `docker login` and `npm login` are not supported. Manage trust configs, principals and API keys in the
 Prego console at <https://app.prego.k8skill.com>, or from CI with an admin token
 (see [Manage Prego from CI](docs/ci.md#manage-prego-from-ci) and [`examples/admin/`](examples/admin/)).
 

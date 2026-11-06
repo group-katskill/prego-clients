@@ -10,6 +10,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `prego login`, `prego logout` and `prego status`: a device login for people on a laptop. No action is
   needed: API keys and workload identity keep working and come first.
+- Docs for `prego login`: README "Quick start on a laptop", the four quickstarts start with `prego login` on a
+  laptop, the CI guide says CI never uses it, PROTOCOL.md 1.8.0 section 11 (device login, refresh, revoke,
+  storage) and the Docker helper with a session, SECURITY.md (storage per OS, no plain file, the marker file,
+  a lost laptop), OpenAPI 1.4.0 (the device routes and the refresh at the edge code token URL), and the website
+  ("Log in on a laptop", "Lost laptop?", the login session source).
 - The release workflow builds the macOS binaries on a macOS runner (the keychain code needs the macOS SDK),
   and CI has a macOS build and test job.
 

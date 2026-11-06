@@ -101,9 +101,25 @@ pub fn fnv1a(text: &str) -> u64 {
 pub const KERNEL_KEYRING: &str = "kernel keyring (lost at reboot)";
 
 /// The file that records which store holds each entry: `prego/session-stores.json` in the settings
-/// directory. It holds only key hashes and store names, no secret.
+/// directory, mode 0600. It holds only store names and FNV-1a hashes of the storage key NAMES
+/// (`session:<tenant>@<STS URL>` and `token:<tenant>@<STS URL>#<hash of the registry base URL>`). No value
+/// in it is derived from a token or another secret.
 pub fn marker_path(env: &dyn Env) -> Option<PathBuf> {
     crate::FileConfig::path(env).and_then(|p| p.parent().map(|d| d.join("session-stores.json")))
+}
+
+/// Writes a new file with mode 0600 (owner only) on Unix.
+fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let _ = std::fs::remove_file(path);
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    opts.open(path)?.write_all(bytes)
 }
 
 /// Several stores in order (Linux: Secret Service, then the kernel keyring). A value is written to the first
@@ -146,7 +162,7 @@ impl Chain {
         }
         let tmp = path.with_extension("json.tmp");
         if let Ok(text) = serde_json::to_string(&marks) {
-            if std::fs::write(&tmp, text).is_ok() {
+            if write_private(&tmp, text.as_bytes()).is_ok() {
                 let _ = std::fs::rename(&tmp, path);
             }
         }
@@ -465,6 +481,19 @@ mod tests {
         let (c, ss, kernel, locked) = chain("refused");
         c.save("k", "rt-1").unwrap();
         assert_eq!(c.name(), "secret service");
+        // The marker holds the store name and a hash of the key name, never the value.
+        let marker = c.marker.clone().unwrap();
+        let text = std::fs::read_to_string(&marker).unwrap();
+        assert_eq!(
+            text,
+            format!(r#"{{"{:016x}":"secret service"}}"#, fnv1a("k"))
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&marker).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
         assert_eq!(ss.load("k").unwrap().as_deref(), Some("rt-1"));
 
         // The Secret Service is locked now: reads work, writes do not. The new value goes to the kernel

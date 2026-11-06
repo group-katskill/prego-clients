@@ -20,7 +20,8 @@ oci.prego.k8skill.com/acme/default/tools/build-x:latest
 
 ## What you need
 
-- A Prego identity: an API key (`prk_...`) on a laptop, or the CI identity in a job ([ci.md](ci.md)).
+- A Prego identity: on a laptop, `prego login` (from prego 0.7.0) or an API key (`prk_...`); in a job, the CI
+  identity ([ci.md](ci.md)). `prego login` is not for CI.
 - A grant on the repository, with `ecosystem = oci` (or `any`, which also covers crates):
 
 | Action | Allows |
@@ -61,10 +62,12 @@ tenant = "acme"
 ```
 
 ```sh
-export PREGO_API_KEY=prk_...   # from the Prego console; do not write it to a file in your project
+prego login --publish          # from 0.7.0: approve the code in the console; read only without --publish
+# or: export PREGO_API_KEY=prk_...   # from the Prego console; do not write it to a file in your project
 ```
 
-The helper gives the tenant as the username and the identity as the password. Docker sends them only to the
+The helper gives the tenant as the username and the identity as the password. With a `prego login` session,
+the password is a short registry token from the session; the session itself never goes to Docker. Docker sends them only to the
 Prego token realm (`https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's `401`
 answer). The realm gives Docker a registry token (15
 minutes by default, or the lifetime of your grant), and Docker gets a new one when the registry answers `401`. No password goes into `config.json`.
