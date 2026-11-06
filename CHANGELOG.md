@@ -6,12 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-05
+## [0.6.0] - 2026-11-06
 
 ### Changed
 
-- Release 0.6.0: npm packages and the edge code token URLs. Website: the "Coming soon" marks and their CSS
-  are removed, and the Cargo section and the options table show the edge code.
+- Release 0.6.0, for the registry 1.4.0 production cut-over: npm packages and the edge code token URLs.
+  Website: the "Coming soon" marks and their CSS are removed, and the Cargo section and the options table
+  show the edge code. The site shows 0.6.0 as the newest version.
+- Merge of `main` with the 0.6.0-rc.1 changes (release workflow pre-release flags, Pages version stamp).
+
+## [0.6.0-rc.1] - 2026-11-05
+
+### Changed
+
+- Release 0.6.0-rc.1, a GitHub pre-release for tests on staging: npm packages and the edge code token URLs.
+  The release workflow makes a tag with `-` a pre-release that is not Latest, so `releases/latest` and the
+  install script without `--version` still give the newest X.Y.Z release. `install.sh --version` also
+  takes `X.Y.Z-rc.N`.
+- The Pages workflow shows the newest X.Y.Z release tag on the site when `prego/Cargo.toml` has a
+  pre-release version, so the site never shows an rc. It fails if it finds no such tag.
 - PROTOCOL.md 1.7.0: the edge code. Registry tokens at `POST /v1/sts/token/e/<edge code>`, the OCI realm at
   `/v1/oci/token/e/<edge code>`, the refusals for the URL without the code, and the settings key `edge_code`.
   README, quickstarts and CI examples set `PREGO_EDGE_CODE`.

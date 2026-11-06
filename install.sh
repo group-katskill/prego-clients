@@ -2,7 +2,7 @@
 # Installs the Prego client tools: cargo-credential-prego, docker-credential-prego and prego.
 #
 #   curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
-#   sh install.sh [--version X.Y.Z] [--dir DIR]
+#   sh install.sh [--version X.Y.Z or X.Y.Z-rc.N] [--dir DIR]
 #
 # It downloads the release archive for this machine from GitHub, checks its SHA-256 sum, and copies the
 # three binaries to DIR (default: $PREGO_INSTALL_DIR, else ~/.local/bin). It needs curl, tar, and
@@ -45,7 +45,7 @@ if [ -z "$dir" ] || [ "$dir" = "/.local/bin" ]; then
 fi
 case "$version" in
   "" | [0-9]*.[0-9]*.[0-9]*) ;;
-  *) fail "bad version: $version (use X.Y.Z)" ;;
+  *) fail "bad version: $version (use X.Y.Z or X.Y.Z-rc.N)" ;;
 esac
 
 os="$(uname -s)"

@@ -154,7 +154,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           ls -l dist
+          # A version with "-" (for example the tag prego-clients-v0.6.0-rc.1) is a pre-release and never Latest, so
+          # releases/latest/download/install.sh keeps giving the newest X.Y.Z release.
+          # Look only at the version: the tag prefix prego-clients-v has "-" too.
+          version="${GITHUB_REF_NAME#prego-clients-v}"
+          extra=()
+          case "$version" in
+            *-*) extra=(--prerelease --latest=false) ;;
+          esac
           gh release create "$GITHUB_REF_NAME" dist/* \
+            "${extra[@]}" \
             --verify-tag \
             --title "$GITHUB_REF_NAME" \
             --notes "cargo-credential-prego, docker-credential-prego and prego. See the CHANGELOG.md of each crate. Install: download install.sh and run it, or check each archive with its .sha256 file. SHA256SUMS is signed with cosign (keyless, GitHub OIDC): see Verify a release in the README."

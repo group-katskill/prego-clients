@@ -6,7 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-05
+## [0.6.0] - 2026-11-06
+
+### Changed
+
+- Release 0.6.0 (GitHub Latest) for the registry 1.4.0 production cut-over: the code of 0.6.0-rc.1. The
+  prego-auth realm refusal has a new hint.
+
+## [0.6.0-rc.1] - 2026-11-05
 
 ### Added
 
@@ -26,6 +33,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Changed
 
+- Pre-release 0.6.0-rc.1 (GitHub pre-release, not Latest; not on crates.io) with the edge code token URLs:
+  registry tokens at `/v1/sts/token/e/<edge code>` and the OCI realm at `/v1/oci/token/e/<edge code>`.
 - The tenant's edge code is required for registry tokens: `--edge-code`, `PREGO_EDGE_CODE` or `edge_code` in
   the settings file (or the console's token URL as `--sts-url`). `prego push` takes the realm from the
   `401` challenge of the repository (`GET /v2/<name>/tags/list`), because the `/v2/` challenge names no

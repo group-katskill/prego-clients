@@ -6,10 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-05
+## [0.6.0] - 2026-11-06
 
 ### Changed
 
+- Release 0.6.0 (GitHub Latest) for the registry 1.4.0 production cut-over: the code of 0.6.0-rc.1. The
+  prego-auth realm refusal has a new hint.
+
+## [0.6.0-rc.1] - 2026-11-05
+
+### Changed
+
+- Pre-release 0.6.0-rc.1 (GitHub pre-release, not Latest; not on crates.io) with the edge code token URLs:
+  registry tokens at `/v1/sts/token/e/<edge code>` and the OCI realm at `/v1/oci/token/e/<edge code>`.
 - No code change. Docker takes the token realm, now `/v1/oci/token/e/<edge code>`, from the registry's `401`
   answer. The helper still sends the tenant and the subject token only for Prego hosts.
 
