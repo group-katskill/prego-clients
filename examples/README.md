@@ -14,8 +14,9 @@ Copy-and-paste examples for tenant `acme`, namespace `default`. Replace both wit
 | [`ansible/`](ansible/playbook.yml) | Ansible: the same for a CI runner or developer machine. |
 | [`admin/`](admin/) | Manage grants and other tenant objects from CI with an admin token. No stored secret. |
 
-The examples pin prego-clients 0.3.0. The CI examples download the release binary and check its SHA-256 sum. `cargo install --locked
-cargo-credential-prego` also works.
+The examples pin prego-clients 0.6.0. From 0.6.0 the tools that request a token need the edge code of your
+tenant (`k7mq` in the examples; the console shows yours). The CI examples download the release binary and check
+its SHA-256 sum. `cargo install --locked cargo-credential-prego` also works.
 
 ## Build machines and tenant objects
 
