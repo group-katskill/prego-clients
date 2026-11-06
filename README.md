@@ -27,8 +27,9 @@ Guides: [consumer quickstart](docs/consumer-quickstart.md) (crates on a laptop, 
 [OCI quickstart](docs/oci-quickstart.md) (images, Helm charts, signatures, Kubernetes),
 [Go quickstart](docs/go-quickstart.md) (Go modules, from 0.4.0),
 [npm quickstart](docs/npm-quickstart.md) (scoped npm packages, pnpm, Yarn, Bun, from 0.6.0), [CI guide](docs/ci.md)
-(GitLab, GitHub Actions, SPIFFE, cloud workloads), [examples](examples/), and the public API as
-[OpenAPI](docs/openapi.yaml).
+(GitLab, GitHub Actions, SPIFFE, cloud workloads), [frontline guide](docs/frontline-ci-publish.md) (publish
+from your own CI to Prego next to JFrog or Cloudsmith, and serve the fleet from Prego), [examples](examples/),
+and the public API as [OpenAPI](docs/openapi.yaml).
 
 License: `Apache-2.0`. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Version 0.1.0 was released under
 `MIT OR Apache-2.0`; from 0.1.1 on, the license is Apache-2.0 only.

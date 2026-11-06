@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/frontline-ci-publish.md`: publish crates, images, npm packages and Go modules to Prego from GitHub
+  Actions or GitLab CI next to a registry of record, with the 0.6.0 install lines and the edge code. README links
+  to it.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed
