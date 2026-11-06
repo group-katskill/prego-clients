@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- With a `prego login` session, `get` returns Username = the tenant and Secret = a registry token from the
+  session. The session refresh token never goes to Docker.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed

@@ -186,6 +186,18 @@ pub fn exec(globals: &[&str], command: &[String], env: &dyn Env) -> Result<i32, 
     let token = auth::exchange(&config, env, resource.as_deref())?;
     eprintln!("{}", lifetime_note(token.lifetime));
 
+    if prego_auth::sources::env_source(&config, env).is_none() {
+        // A login session: its registry tokens are never written to a file, so there is no NETRC file.
+        eprintln!("prego exec: login session: no NETRC file. Go 1.24 and later use GOAUTH (prego setup go).");
+        let status = Command::new(program)
+            .args(rest)
+            .env(prego_auth::npm::TOKEN_VAR, token.token.expose())
+            .env("PREGO_TOKEN", token.token.expose())
+            .status()
+            .map_err(|e| format!("prego: cannot run `{program}`: {e}"))?;
+        return Ok(status.code().unwrap_or(1));
+    }
+
     let dir = private_tmp(env).unwrap_or_else(std::env::temp_dir);
     let mut netrc = publish::TempFile::create(&dir, ".prego-netrc")?;
     netrc

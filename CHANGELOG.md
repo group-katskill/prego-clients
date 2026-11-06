@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `prego login`, `prego logout` and `prego status`: a device login for people on a laptop. No action is
+  needed: API keys and workload identity keep working and come first.
+- The release workflow builds the macOS binaries on a macOS runner (the keychain code needs the macOS SDK),
+  and CI has a macOS build and test job.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed

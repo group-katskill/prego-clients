@@ -13,9 +13,11 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["spiffe"]
+default = ["spiffe", "session"]
 # SPIFFE Workload API source.
 spiffe = ["prego-auth/spiffe"]
+# Device session of `prego login`, in the OS keychain or the kernel keyring.
+session = ["prego-auth/session"]
 
 [dependencies]
 prego-auth = { version = "0.6.0", path = "../prego-auth", default-features = false }

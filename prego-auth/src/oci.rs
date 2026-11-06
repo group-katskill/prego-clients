@@ -157,8 +157,24 @@ pub fn realm_token_at(
     now: i64,
     sleep: &dyn Fn(Duration),
 ) -> Result<RegistryToken, Error> {
-    let basic =
-        Secret::new(STANDARD.encode(format!("{}:{}", config.tenant, subject.value.expose())));
+    // A device session: the Basic password is a registry token from the session. The realm accepts it for
+    // device principals.
+    let from_session = match &subject.device {
+        Some(device) => Some(crate::session::registry_token(
+            http,
+            config,
+            device,
+            None,
+            &|| now,
+            sleep,
+        )?),
+        None => None,
+    };
+    let password = match &from_session {
+        Some(t) => t.token.expose(),
+        None => subject.value.expose(),
+    };
+    let basic = Secret::new(STANDARD.encode(format!("{}:{password}", config.tenant)));
     let mut query: Vec<(&str, &str)> = vec![("service", service)];
     query.extend(scopes.iter().map(|s| ("scope", s.as_str())));
     let res = send_with_retry(|| http.get_with_basic(url, &query, &basic), sleep)?;
@@ -468,6 +484,7 @@ mod tests {
             kind: SourceKind::ApiKey,
             token_type: TokenType::ApiKey,
             value: Secret::new("prk_x"),
+            device: None,
         };
         let t = realm_token(
             &Http::new("test"),
@@ -555,6 +572,7 @@ mod tests {
             kind: SourceKind::ApiKey,
             token_type: TokenType::ApiKey,
             value: Secret::new("prk_x"),
+            device: None,
         }
     }
 

@@ -27,10 +27,12 @@ pub enum SourceKind {
     TokenFile,
     /// Prego API key (`PREGO_API_KEY`).
     ApiKey,
+    /// The device session of `prego login`, from secure storage. Used only when no other source is present.
+    Device,
 }
 
 impl SourceKind {
-    /// The order that `auto` mode uses.
+    /// The order that `auto` mode uses. [`SourceKind::Device`] comes after all of them.
     pub const AUTO_ORDER: [SourceKind; 6] = [
         SourceKind::Spiffe,
         SourceKind::SvidFile,
@@ -49,12 +51,16 @@ impl SourceKind {
             SourceKind::Github => "github",
             SourceKind::TokenFile => "token-file",
             SourceKind::ApiKey => "api-key",
+            SourceKind::Device => "device",
         }
     }
 
     /// Parses a `--source` name.
     pub fn parse(name: &str) -> Option<SourceKind> {
-        Self::AUTO_ORDER.into_iter().find(|k| k.name() == name)
+        Self::AUTO_ORDER
+            .into_iter()
+            .chain([SourceKind::Device])
+            .find(|k| k.name() == name)
     }
 
     /// The environment variables that make this source present.
@@ -66,6 +72,7 @@ impl SourceKind {
             SourceKind::Github => "ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN",
             SourceKind::TokenFile => "PREGO_TOKEN_FILE",
             SourceKind::ApiKey => "PREGO_API_KEY",
+            SourceKind::Device => "prego login",
         }
     }
 
@@ -73,6 +80,7 @@ impl SourceKind {
     pub fn token_type(self) -> TokenType {
         match self {
             SourceKind::ApiKey => TokenType::ApiKey,
+            SourceKind::Device => TokenType::Session,
             _ => TokenType::Jwt,
         }
     }
@@ -84,6 +92,8 @@ impl SourceKind {
                 env.var("ACTIONS_ID_TOKEN_REQUEST_URL").is_some()
                     && env.var("ACTIONS_ID_TOKEN_REQUEST_TOKEN").is_some()
             }
+            // The session is in secure storage, not in the environment. See `find_subject_token`.
+            SourceKind::Device => false,
             other => env.var(other.trigger()).is_some(),
         }
     }
@@ -103,6 +113,8 @@ impl SourceKind {
             ),
             SourceKind::TokenFile => file::read_token(&var("PREGO_TOKEN_FILE")),
             SourceKind::ApiKey => api_key::read(&var("PREGO_API_KEY")),
+            // The caller gets the registry token from the session (`session::registry_token`).
+            SourceKind::Device => Ok(Secret::new("")),
         }
     }
 }
@@ -114,6 +126,8 @@ pub enum TokenType {
     Jwt,
     /// A Prego API key.
     ApiKey,
+    /// A device session. It is never sent as a subject token: see [`crate::session::registry_token`].
+    Session,
 }
 
 impl TokenType {
@@ -122,6 +136,7 @@ impl TokenType {
         match self {
             TokenType::Jwt => "urn:ietf:params:oauth:token-type:jwt",
             TokenType::ApiKey => "urn:k8skill:prego:token-type:api-key",
+            TokenType::Session => "urn:k8skill:prego:token-type:device-session",
         }
     }
 }
@@ -133,8 +148,10 @@ pub struct SubjectToken {
     pub kind: SourceKind,
     /// The `subject_token_type`.
     pub token_type: TokenType,
-    /// The token value.
+    /// The token value. Empty for [`SourceKind::Device`].
     pub value: Secret,
+    /// The device session storage, for [`SourceKind::Device`] only.
+    pub device: Option<crate::session::DeviceHandle>,
 }
 
 /// Finds the subject token that `config` selects.
@@ -147,6 +164,9 @@ pub fn find_subject_token(
     http: &Http,
 ) -> Result<SubjectToken, Error> {
     let kind = match config.source {
+        SourceChoice::Only(SourceKind::Device) => {
+            return device_subject(config, env, false);
+        }
         SourceChoice::Only(kind) => {
             if !kind.is_present(env) {
                 return Err(Error::Source {
@@ -156,12 +176,13 @@ pub fn find_subject_token(
             }
             kind
         }
-        SourceChoice::Auto => SourceKind::AUTO_ORDER
+        SourceChoice::Auto => match SourceKind::AUTO_ORDER
             .into_iter()
             .find(|k| k.is_present(env))
-            .ok_or_else(|| Error::NoSource {
-                checked: SourceKind::AUTO_ORDER.to_vec(),
-            })?,
+        {
+            Some(kind) => kind,
+            None => return device_subject(config, env, true),
+        },
     };
 
     let value = kind
@@ -175,6 +196,51 @@ pub fn find_subject_token(
         kind,
         token_type,
         value,
+        device: None,
+    })
+}
+
+/// The identity source from the environment that `config` selects, if any. `None` means that the device
+/// session (`prego login`) is used.
+pub fn env_source(config: &Config, env: &dyn Env) -> Option<SourceKind> {
+    match config.source {
+        SourceChoice::Only(SourceKind::Device) => None,
+        SourceChoice::Only(kind) => Some(kind),
+        SourceChoice::Auto => SourceKind::AUTO_ORDER
+            .into_iter()
+            .find(|k| k.is_present(env)),
+    }
+}
+
+/// The device session as a source: present if secure storage holds a session for `config`. In `auto` mode,
+/// a missing session gives [`Error::NoSource`].
+fn device_subject(config: &Config, env: &dyn Env, auto: bool) -> Result<SubjectToken, Error> {
+    let not_found = || {
+        if auto {
+            Error::NoSource {
+                checked: SourceKind::AUTO_ORDER
+                    .into_iter()
+                    .chain([SourceKind::Device])
+                    .collect(),
+            }
+        } else {
+            crate::session::not_logged_in()
+        }
+    };
+    let device = match crate::session::DeviceHandle::open(env) {
+        Ok(d) => d,
+        // No secure storage: in `auto` mode that is the same as no session.
+        Err(_) if auto => return Err(not_found()),
+        Err(e) => return Err(e),
+    };
+    if !crate::session::has_session(config, device.store.as_ref())? {
+        return Err(not_found());
+    }
+    Ok(SubjectToken {
+        kind: SourceKind::Device,
+        token_type: TokenType::Session,
+        value: Secret::new(""),
+        device: Some(device),
     })
 }
 
@@ -205,18 +271,17 @@ mod tests {
         for k in SourceKind::AUTO_ORDER {
             assert_eq!(SourceKind::parse(k.name()), Some(k));
         }
+        assert_eq!(SourceKind::parse("device"), Some(SourceKind::Device));
         assert_eq!(SourceKind::parse("auto"), None);
     }
 
     #[test]
     fn auto_with_nothing_lists_all_sources() {
+        // No secure storage in a MapEnv test, or no session in it: the device source is listed last.
         let e = find_subject_token(&cfg(SourceChoice::Auto), &MapEnv::new(), &http()).unwrap_err();
-        assert_eq!(
-            e,
-            Error::NoSource {
-                checked: SourceKind::AUTO_ORDER.to_vec()
-            }
-        );
+        let mut checked = SourceKind::AUTO_ORDER.to_vec();
+        checked.push(SourceKind::Device);
+        assert_eq!(e, Error::NoSource { checked });
     }
 
     #[test]

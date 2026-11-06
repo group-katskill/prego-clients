@@ -13,11 +13,13 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["spiffe"]
+default = ["spiffe", "session"]
 # SPIFFE Workload API source. Adds tokio and tonic.
 spiffe = ["dep:spiffe", "dep:tokio"]
 # Small HTTP mock server for tests in this workspace. Not a public API.
 test-support = []
+# Device session storage for `prego login`: OS keychain and the Linux kernel keyring.
+session = ["dep:keyring"]
 
 [dependencies]
 base64 = "0.22"
@@ -28,3 +30,12 @@ webpki-root-certs = "1"
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 spiffe = { version = "0.19", default-features = false, features = ["workload-api-jwt"], optional = true }
 tokio = { version = "1", default-features = false, features = ["rt", "time"], optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["linux-native", "async-secret-service", "tokio", "crypto-rust"], optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"], optional = true }

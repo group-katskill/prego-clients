@@ -319,3 +319,69 @@ fn version_and_unknown_action() {
     assert_eq!(r.code, 1);
     assert!(r.stdout.contains("unknown action"));
 }
+
+/// Logs in through the library against a mock STS, into a test session store.
+fn log_in(server: &MockServer, store_dir: &str) -> prego_auth::Config {
+    use prego_auth::session;
+    let env = prego_auth::MapEnv::new().with("PREGO_TEST_SESSION_DIR", store_dir);
+    let store = session::open_store(&env).unwrap();
+    let config = prego_auth::Config {
+        tenant: "acme".into(),
+        sts_url: format!("{}/v1/sts/token", server.base_url()),
+        edge_code: Some("k7mq".into()),
+        audience: prego_auth::DEFAULT_AUDIENCE.into(),
+        source: prego_auth::SourceChoice::Auto,
+        ca_file: None,
+    };
+    let http = prego_auth::http::Http::new("test");
+    let no_sleep = |_| {};
+    let code = session::start(
+        &http,
+        &config,
+        "test",
+        &session::Access::request(false),
+        &no_sleep,
+    )
+    .unwrap();
+    session::wait_for_approval(&http, &config, store.as_ref(), &code, &|| 1, &no_sleep).unwrap();
+    config
+}
+
+#[test]
+fn get_with_a_login_session_gives_a_registry_token_never_the_refresh_token() {
+    let server = MockServer::start(vec![
+        MockResponse::json(
+            200,
+            r#"{"device_code":"d","user_code":"ABCD-EFGH","verification_uri":"https://c.example.test/device","expires_in":300,"interval":1}"#,
+        ),
+        MockResponse::json(
+            200,
+            r#"{"access_token":"reg-from-session","expires_in":900,"refresh_token":"rt-secret","session":{"id":"dvs_1","idle_expires_at":9,"expires_at":9}}"#,
+        ),
+        MockResponse::json(
+            200,
+            r#"{"access_token":"reg-new","expires_in":900,"refresh_token":"rt-2","session":{"id":"dvs_1","idle_expires_at":9,"expires_at":9}}"#,
+        ),
+    ]);
+    let store = temp_dir("session-store");
+    let runtime = temp_dir("session-run");
+    let config = log_in(&server, &store.to_string_lossy());
+    let vars = [
+        ("PREGO_TENANT", "acme"),
+        ("PREGO_EDGE_CODE", "k7mq"),
+        ("PREGO_STS_URL", config.sts_url.as_str()),
+        ("PREGO_TEST_SESSION_DIR", &*store.to_string_lossy()),
+        ("XDG_RUNTIME_DIR", &*runtime.to_string_lossy()),
+    ];
+    // The token from the login was received at time 1, so it is not fresh now: one refresh.
+    let r = run(&["get"], HOST, &vars);
+    assert_get(&r, HOST, "reg-new");
+    assert!(!r.stdout.contains("rt-"), "{}", r.stdout);
+    let reqs = server.requests();
+    assert_eq!(reqs.len(), 3);
+    assert_eq!(reqs[2].form()["grant_type"], "refresh_token");
+    // The next call uses the stored token: no request.
+    let r = run(&["get"], HOST, &vars);
+    assert_get(&r, HOST, "reg-new");
+    assert_eq!(server.requests().len(), 3);
+}

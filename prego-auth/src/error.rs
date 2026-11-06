@@ -46,6 +46,12 @@ pub enum Error {
     Network(String),
     /// The STS answered `200` with a body that is not a valid token response.
     BadResponse(String),
+    /// `prego login` or the device session: a message for the person.
+    Login(String),
+    /// The STS ended the device session (revoked, expired or reused). The local session is deleted.
+    SessionEnded(String),
+    /// Secure storage for the device session failed or does not exist.
+    Storage(String),
 }
 
 impl fmt::Display for Error {
@@ -110,6 +116,9 @@ impl fmt::Display for Error {
             }
             Error::Network(m) => write!(f, "prego: cannot reach the STS: {m}"),
             Error::BadResponse(m) => write!(f, "prego: bad STS response: {m}"),
+            Error::Login(m) => write!(f, "prego: {m}."),
+            Error::SessionEnded(m) => write!(f, "prego: {m}."),
+            Error::Storage(m) => write!(f, "prego: {m}."),
         }
     }
 }

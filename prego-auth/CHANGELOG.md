@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `session` module (feature `session`, on by default): the device login of `prego login` (RFC 8628) at
+  `<sts>/v1/sts/device/e/<edge code>/start` and `.../token`, the session refresh (`grant_type=refresh_token` at
+  the edge code token URL, a new refresh token on every use) and `.../revoke`. The new refresh token is stored
+  before the registry token is used. A refresh runs under an exclusive lock (the lock file holds no secret),
+  and the registry tokens are kept with the session, so parallel helper processes do not use the same refresh
+  token.
+- Secure storage only, never a plain file: macOS Keychain, Windows Credential Manager, Secret Service on a
+  Linux desktop, else the kernel keyring of the user session (lost at reboot). On Linux, a write that the
+  Secret Service refuses (a locked collection) goes to the kernel keyring. The file
+  `prego/session-stores.json` in the settings directory records which store holds each entry (key hashes and
+  store names only, no secret); reads use only that store, so an old value is never read. Without secure storage,
+  `prego login` stops and points to `PREGO_API_KEY` or a workload identity.
+- `SourceKind::Device` (`--source device`): the login session, used in `auto` mode only when no workload
+  identity and no `PREGO_API_KEY` is set. `sts::exchange` and the OCI realm call use it; the realm gets a
+  registry token from the session as the Basic password. `sources::env_source`.
+- `Http::post_json`.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed
