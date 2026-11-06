@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-06
+
+### Changed
+
+- Release 0.6.0 (GitHub Latest) for the registry 1.4.0 production cut-over: the code of 0.6.0-rc.1 and one
+  message change.
+- The refusal of a challenge realm without the edge code also says "Check the repository name, or try again
+  later" (the registry sends that realm for an unknown tenant or a rate limit).
+
 ## [0.6.0-rc.1] - 2026-11-05
 
 ### Changed

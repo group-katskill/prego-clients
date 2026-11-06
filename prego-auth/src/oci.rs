@@ -99,7 +99,8 @@ pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, Str
     let refuse = || {
         format!(
             "prego: the registry asks for credentials at `{realm}`, not at the Prego realm \
-             `{origin}{REALM_PATH}/e/<edge code>`. The identity was not sent."
+             `{origin}{REALM_PATH}/e/<edge code>`. The identity was not sent. Check the repository name, or \
+             try again later."
         )
     };
     let code = realm

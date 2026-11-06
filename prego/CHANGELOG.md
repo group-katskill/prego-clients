@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-06
+
+### Changed
+
+- Release 0.6.0 (GitHub Latest) for the registry 1.4.0 production cut-over: the code of 0.6.0-rc.1. The
+  prego-auth realm refusal has a new hint.
+
 ## [0.6.0-rc.1] - 2026-11-05
 
 ### Added

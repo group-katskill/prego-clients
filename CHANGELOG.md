@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-06
+
+### Changed
+
+- Release 0.6.0, for the registry 1.4.0 production cut-over: npm packages and the edge code token URLs.
+  Website: the "Coming soon" marks and their CSS are removed, and the Cargo section and the options table
+  show the edge code. The site shows 0.6.0 as the newest version.
+- Merge of `main` with the 0.6.0-rc.1 changes (release workflow pre-release flags, Pages version stamp).
+
 ## [0.6.0-rc.1] - 2026-11-05
 
 ### Changed
