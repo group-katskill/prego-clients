@@ -1,10 +1,12 @@
 # .cargo/config.toml for tenant `acme`, namespace `default`.
 # Put it in the repository (CI) or in ~/.cargo/config.toml (laptop).
 # It holds no secret: the credential provider finds the identity at run time.
+# `k7mq` is the edge code of the tenant (4 characters, not a secret). The Prego console shows it. prego-clients
+# 0.6.0 and later need it for the token request. The index URL keeps the tenant slug.
 
 [registries.acme]
 index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
-credential-provider = ["cargo-credential-prego", "--tenant", "acme"]
+credential-provider = ["cargo-credential-prego", "--tenant", "acme", "--edge-code", "k7mq"]
 
 # Optional: use a crate from this registry in Cargo.toml:
 #

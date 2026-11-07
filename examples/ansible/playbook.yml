@@ -12,7 +12,8 @@
   vars:
     prego_tenant: acme
     prego_namespace: default
-    prego_version: "0.3.0"
+    prego_edge_code: k7mq # the tenant's edge code from the console (prego-clients 0.6.0 and later)
+    prego_version: "0.6.0"
     prego_target: x86_64-unknown-linux-musl
     prego_user: builder
     prego_base_url: "https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v{{ prego_version }}"
@@ -25,6 +26,7 @@
         that:
           - prego_tenant is match('^[a-z][a-z0-9-]{1,38}[a-z0-9]$')
           - prego_namespace is match('^[a-z][a-z0-9-]{1,38}[a-z0-9]$')
+          - prego_edge_code is match('^[a-hjkmnop-z2-9]{4}$')
 
     - name: Make a temporary folder
       ansible.builtin.tempfile:
