@@ -17,6 +17,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ("Log in on a laptop", "Lost laptop?", the login session source).
 - The release workflow builds the macOS binaries on a macOS 15 runner (the keychain code needs the macOS SDK),
   and CI has a macOS build and test job.
+- `docs/frontline-ci-publish.md`: publish crates, images, npm packages and Go modules to Prego from GitHub
+  Actions or GitLab CI next to a registry of record, with the 0.6.0 install lines and the edge code. README links
+  to it.
 
 ## [0.6.0] - 2026-11-06
 
