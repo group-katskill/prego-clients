@@ -192,7 +192,7 @@
             <div class="terminal">
               <pre><code><span class="p">$ </span>cosign verify-blob SHA256SUMS \
     --bundle SHA256SUMS.sigstore.json \
-    --certificate-identity https://github.com/group-katskill/prego-clients/.github/workflows/release.yml@refs/tags/prego-clients-v0.4.0 \
+    --certificate-identity https://github.com/group-katskill/prego-clients/.github/workflows/release.yml@refs/tags/prego-clients-v0.7.0 \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 <span class="p">$ </span>sha256sum --ignore-missing -c SHA256SUMS</code></pre>
             </div>
@@ -203,7 +203,7 @@
           <p>From 0.7.0, log in with your own console account. No key is stored in a file:</p>
           <div class="terminal">
             <pre><code><span class="p">$ </span>export PREGO_TENANT=acme PREGO_EDGE_CODE=k7mq
-<span class="p">$ </span>prego login            <span class="c"># open the page, confirm the code. --publish to publish too</span>
+<span class="p">$ </span>prego login            <span class="c"># confirm the code at app.prego.k8skill.com/device. --publish to publish too</span>
 <span class="p">$ </span>prego status           <span class="c"># tenant, access and end time. Never a token</span></code></pre>
           </div>
           <p>
@@ -212,6 +212,11 @@
             the kernel keyring, lost at reboot), never in a plain file. It ends after 7 days without use, after 30
             days in all, or with <code>prego logout</code>. CI never uses <code>prego login</code>: see the
             <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a>.
+          </p>
+          <p>
+            <code>prego login</code> prints a code. Confirm it at
+            <a href="https://app.prego.k8skill.com/device">app.prego.k8skill.com/device</a> while you are signed in to the
+            console. A login with <code>--publish</code> asks for your passkey there.
           </p>
           <p><strong>Lost laptop?</strong> Revoke its session in the console: Settings, Your sessions.</p>
         </div>

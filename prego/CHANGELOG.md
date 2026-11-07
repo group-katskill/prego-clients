@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: `prego login`, `prego logout` and `prego status`. A session is named
+  `prego-cli/0.7.0 on <address>`.
+
 ### Added
 
 - `prego login [--publish] [--no-browser]`: log in with the console sign-in (open the page, confirm the

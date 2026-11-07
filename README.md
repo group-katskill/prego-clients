@@ -12,7 +12,7 @@
 
 Open source client tools for **Prego by Katskill**, a private package registry with federated machine identity.
 They serve four package types: Rust **crates** (Cargo), **OCI images** (Docker, Podman, Helm and others), **Go
-modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; coming soon, when the npm host is live).
+modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; from 0.6.0).
 
 | Crate | Kind | What it does |
 | --- | --- | --- |
@@ -40,9 +40,10 @@ The code is open. The "Prego" name and logo are not licensed for reuse.
 From prego 0.7.0. Log in with your own console account. No key is stored in a file.
 
 ```sh
-curl -fsSL https://clients.prego.k8skill.com/install.sh | sh   # or see Install below
+curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+sh install.sh                                                  # or see Install below
 export PREGO_TENANT=acme PREGO_EDGE_CODE=k7mq                  # your tenant and its edge code (console)
-prego login                  # open the page, confirm the code; --publish to publish too
+prego login                  # open https://app.prego.k8skill.com/device, confirm the code; --publish to publish too
 prego setup cargo            # then: prego setup docker --write, prego setup go, prego setup npm
 prego status                 # tenant, access and end time of the session (never a token)
 ```
@@ -134,7 +135,7 @@ and the signature is in the public Sigstore transparency log. `SHA256SUMS.sigsto
 Check the signature, then the sums (cosign 3.0 or later):
 
 ```sh
-V=0.4.0
+V=0.7.0
 base=https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v$V
 curl -fsSLO "$base/SHA256SUMS" -O "$base/SHA256SUMS.sigstore.json" \
   -O "$base/prego-clients-x86_64-unknown-linux-musl.tar.gz"
@@ -410,7 +411,9 @@ The STS takes the tenant from the API key. Registry endpoints never accept an AP
 
 ## Login and logout
 
-On a laptop, use `prego login` and `prego logout` ([Quick start](#quick-start-on-a-laptop)). `cargo login`,
+On a laptop, use `prego login` and `prego logout` ([Quick start](#quick-start-on-a-laptop)). `prego login`
+prints a code; confirm it at <https://app.prego.k8skill.com/device> while you are signed in to the console. A
+login with `--publish` asks for your passkey there. `cargo login`,
 `cargo logout`, `docker login` and `npm login` are not supported. Manage trust configs, principals and API keys in the
 Prego console at <https://app.prego.k8skill.com>, or from CI with an admin token
 (see [Manage Prego from CI](docs/ci.md#manage-prego-from-ci) and [`examples/admin/`](examples/admin/)).

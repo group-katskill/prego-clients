@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: the `device` source (a `prego login` session) after the other sources.
+
 ### Added
 
 - `--help` lists the `device` source.

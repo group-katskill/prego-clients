@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: `prego login` for registry 1.5.2 and console 0.14.2 in production. The website and the README
+  show the console page `app.prego.k8skill.com/device`, the quick start downloads `install.sh` from the release
+  (the site does not serve it), npm is no longer "coming soon", and the verify examples use 0.7.0.
+
 ### Added
 
 - `prego login`, `prego logout` and `prego status`: a device login for people on a laptop. No action is

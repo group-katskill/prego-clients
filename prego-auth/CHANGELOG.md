@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: the device session of `prego login`, for registry 1.5.2.
+
 ### Added
 
 - `session::registry_token_for_docker`: a session registry token with at least half of its lifetime left, for
