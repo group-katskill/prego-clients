@@ -13,7 +13,7 @@
     prego_tenant: acme
     prego_namespace: default
     prego_edge_code: k7mq # the tenant's edge code from the console (prego-clients 0.6.0 and later)
-    prego_version: "0.6.0"
+    prego_version: "0.7.0"
     prego_target: x86_64-unknown-linux-musl
     prego_user: builder
     prego_base_url: "https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v{{ prego_version }}"
