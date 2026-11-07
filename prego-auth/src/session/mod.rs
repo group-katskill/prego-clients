@@ -410,6 +410,32 @@ pub fn registry_token(
     now: &dyn Fn() -> i64,
     sleep: &dyn Fn(Duration),
 ) -> Result<RegistryToken, Error> {
+    registry_token_inner(http, config, device, resource, false, now, sleep)
+}
+
+/// Like [`registry_token`], for the Docker credential helper. The token realm caps the token that it issues
+/// at the expiry of this token, and Docker keeps the helper's secret for the whole command. So a stored token
+/// is used only while at least half of its lifetime is left; else the session is refreshed. The token always
+/// comes from the session (a poll or a refresh), never from the realm: the realm refuses its own tokens.
+pub fn registry_token_for_docker(
+    http: &Http,
+    config: &Config,
+    device: &DeviceHandle,
+    now: &dyn Fn() -> i64,
+    sleep: &dyn Fn(Duration),
+) -> Result<RegistryToken, Error> {
+    registry_token_inner(http, config, device, None, true, now, sleep)
+}
+
+fn registry_token_inner(
+    http: &Http,
+    config: &Config,
+    device: &DeviceHandle,
+    resource: Option<&str>,
+    half_left: bool,
+    now: &dyn Fn() -> i64,
+    sleep: &dyn Fn(Duration),
+) -> Result<RegistryToken, Error> {
     let store = device.store.as_ref();
     let _lock = store::refresh_lock(device.lock_dir.as_deref(), &session_key(config));
     let record = load_record(config, store)?.ok_or_else(not_logged_in)?;
@@ -422,7 +448,9 @@ pub fn registry_token(
                 expires_at: t.expires_at,
                 lifetime: t.lifetime,
             };
-            if t.is_fresh(now()) {
+            let t_now = now();
+            let enough_left = !half_left || t.expires_at - t_now >= t.lifetime / 2;
+            if t.is_fresh(t_now) && enough_left {
                 return Ok(t);
             }
         }
@@ -450,7 +478,9 @@ pub fn registry_token(
         return save_answer(config, store, &res, resource, sent_at, Some(record)).map(|(_, t)| t);
     }
     let (code, description) = failure(&res);
-    if code.as_deref() == Some("invalid_grant") {
+    // Only a 400 ends the session. A 401 invalid_grant is the ended trial of the tenant: the session stays,
+    // and the person sees the text of the STS.
+    if res.status == 400 && code.as_deref() == Some("invalid_grant") {
         let _ = delete_all(config, store, Some(&record));
         return Err(Error::SessionEnded(
             description.unwrap_or_else(|| SESSION_ENDED.to_string()),

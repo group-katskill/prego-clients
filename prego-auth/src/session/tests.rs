@@ -271,6 +271,56 @@ fn an_ended_session_is_deleted() {
 }
 
 #[test]
+fn an_ended_trial_keeps_the_session() {
+    let trial =
+        "trial ended for tenant acme; an owner can choose a plan at https://app.prego.k8skill.com";
+    let server = MockServer::start(vec![
+        start_answer(),
+        token_answer("reg-1", "rt-1", true),
+        MockResponse::json(
+            401,
+            &format!(r#"{{"error":"invalid_grant","error_description":"{trial}"}}"#),
+        ),
+    ]);
+    let store = Arc::new(MemStore::default());
+    let cfg = logged_in(&server, &store);
+    let device = handle(&store);
+    let e =
+        registry_token(&http(), &cfg, &device, Some("r"), &|| 1_000_000, &no_sleep).unwrap_err();
+    assert!(e.to_string().contains(trial), "{e}");
+    // Only a 400 ends the session.
+    assert_eq!(refresh_token_in(&store, &cfg), "rt-1");
+    assert!(status(&cfg, store.as_ref()).unwrap().is_some());
+}
+
+#[test]
+fn docker_gets_a_session_token_with_half_its_lifetime_left() {
+    let server = MockServer::start(vec![
+        start_answer(),
+        token_answer("reg-1", "rt-1", true),
+        token_answer("reg-2", "rt-2", false),
+    ]);
+    let store = Arc::new(MemStore::default());
+    let cfg = logged_in(&server, &store);
+    let device = handle(&store);
+    // reg-1: 900 s from 1_000_000. 500 s left is more than half: no request.
+    let t = registry_token_for_docker(&http(), &cfg, &device, &|| 1_000_400, &no_sleep).unwrap();
+    assert_eq!(t.token.expose(), "reg-1");
+    assert_eq!(server.requests().len(), 2);
+    // 400 s left: still fresh for the other tools, but Docker gets a new token from a session refresh.
+    let t = registry_token(&http(), &cfg, &device, None, &|| 1_000_500, &no_sleep).unwrap();
+    assert_eq!(t.token.expose(), "reg-1");
+    let t = registry_token_for_docker(&http(), &cfg, &device, &|| 1_000_500, &no_sleep).unwrap();
+    assert_eq!(t.token.expose(), "reg-2");
+    let reqs = server.requests();
+    assert_eq!(reqs.len(), 3);
+    assert_eq!(reqs[2].target, "/v1/sts/token/e/k7mq");
+    assert_eq!(reqs[2].form()["grant_type"], "refresh_token");
+    assert_eq!(reqs[2].form()["refresh_token"], "rt-1");
+    assert!(!reqs[2].form().contains_key("resource"));
+}
+
+#[test]
 fn logout_revokes_and_deletes() {
     let server = MockServer::start(vec![
         start_answer(),

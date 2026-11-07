@@ -11,6 +11,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `--help` lists the `device` source.
 - With a `prego login` session, `get` returns Username = the tenant and Secret = a registry token from the
   session. The session refresh token never goes to Docker.
+- With a session, `get` gives a registry token with at least half of its lifetime left, so a long push does
+  not outlive the realm token.
 
 ## [0.6.0] - 2026-11-06
 

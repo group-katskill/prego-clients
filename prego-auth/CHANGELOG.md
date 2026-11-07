@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- `session::registry_token_for_docker`: a session registry token with at least half of its lifetime left, for
+  the Docker helper (the token realm caps its token at the expiry of the helper's secret). A `401
+  invalid_grant` on a session refresh (an ended trial) keeps the session; only a `400 invalid_grant` deletes it.
 - `session` module (feature `session`, on by default): the device login of `prego login` (RFC 8628) at
   `<sts>/v1/sts/device/e/<edge code>/start` and `.../token`, the session refresh (`grant_type=refresh_token` at
   the edge code token URL, a new refresh token on every use) and `.../revoke`. The new refresh token is stored

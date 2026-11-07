@@ -309,6 +309,10 @@ STS itself:
 - `get` reads a server URL on stdin. If its host is a Prego OCI host, it answers
   `{"ServerURL": "<as given>", "Username": "<tenant>", "Secret": "<subject token>"}`. With a device session
   (section 11), the Secret is a registry token from the session; the realm accepts it as the Basic password.
+  It always comes from the session (the poll or a refresh), never from the realm: the realm marks its own
+  tokens and never accepts them as a password again. The realm token ends no later than the Secret, and Docker
+  keeps the Secret for the whole command, so the helper gives a stored token only while at least half of its
+  lifetime is left; else it refreshes the session.
   The session refresh token never goes to Docker, and the Username is never `<token>` (Docker would then send
   the Secret as an OAuth refresh token). The Prego OCI hosts are
   `oci.prego.k8skill.com`, plus the hosts in `oci_hosts` (section 8) and in `PREGO_OCI_HOSTS`
@@ -531,6 +535,8 @@ grant_type=refresh_token&refresh_token=<refresh token>&resource=<registry base U
   A use after that ends the whole session (a theft signal).
 - An ended session (revoked, expired or reused): `400 {"error": "invalid_grant", "error_description": "the
   login session ended; run prego login again"}`. Delete the local session and show that text.
+- An ended trial of the tenant: `401 invalid_grant` with the trial text of section 2. The session stays: keep
+  it, and show the text. Delete the local session only on a `400 invalid_grant`.
 - A rate limit or a full stop of the tenant stays `429 rate_limited`, as in section 2.2.
 
 Client behavior:
