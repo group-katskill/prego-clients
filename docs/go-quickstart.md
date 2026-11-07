@@ -146,9 +146,31 @@ If `prego` itself is killed (for example with `SIGKILL`), the netrc file (mode 0
 private cache directory (mode 0700, or the temporary directory if no private one is safe to use) until you
 delete it. The token in it expires after its lifetime (at most 30 minutes).
 
-A static `.netrc` with a **read-only** API key also works (`machine go.prego.k8skill.com login acme password
-prk_...`), for example as a Docker build secret. Use it only when nothing else works: it is a long-lived
-secret. Prego refuses a key that can publish or delete.
+## Last resort: an API key in `.netrc`
+
+Use `prego go-auth` (GOAUTH) first, then `prego exec`. Use a static `.netrc` with an API key only when neither
+works, for example a Docker build secret for an old tool. The key is a long-lived secret in a file.
+
+```
+machine go.prego.k8skill.com login acme password prk_...
+```
+
+From registry 1.6.0, the Go host accepts the key only when all of these are true:
+
+- The key's principal has a Go grant (`ecosystem = go`) with the actions `read` only. A grant with
+  `ecosystem = any` cannot have the switch.
+- An admin turned on **Allow this API key in .netrc (older Go tools)** for that grant: in the console, Grants,
+  the Go grant. In the admin API it is `allow_netrc_api_key: true` on the grant. Prego refuses it on any grant
+  that is not Go with `read` only. It is off by default.
+- The module is one that such a grant matches.
+
+Otherwise the Go host answers `401` with `prego: use a read-only API key or "prego go-auth"`. A key that can
+publish or delete is never accepted. When registry 1.6.0 was deployed, Prego turned the switch on for the Go
+read grants of keys that used `.netrc` in the 30 days before, and for the Go read grants that other tenants gave
+to those keys' tenants. Until that step ran (within an hour of the deploy), the old rule applied. Any other key
+needs an admin to turn it on.
+
+This changes nothing for `prego go-auth`, for `prego exec`, or for a registry token in `.netrc`.
 
 ## Privacy of module paths
 
@@ -168,6 +190,7 @@ Do not put `proxy.golang.org` first: then every private path name goes to it fir
 | Message | Cause and fix |
 | --- | --- |
 | `401` with `prego: run "prego setup go"` | No token, or the wrong kind of token. Check `GOAUTH='prego go-auth'` (no word `command`), your identity, and `PREGO_TENANT`. Run `go env GOAUTH` and `prego whoami`. |
+| `401` with `prego: use a read-only API key or "prego go-auth"` | An API key in `.netrc` that Prego does not accept for this module: the grant is not Go `read` only, its switch "Allow this API key in .netrc" is off, or no such grant matches the module. Use GOAUTH, or ask an admin to turn on the switch ([Last resort](#last-resort-an-api-key-in-netrc)). |
 | `404` for your own module | No `read` grant on it in this namespace, or the version does not exist. Prego shows a missing grant as "not found". |
 | `400 module path ... is not under a registered Go module path prefix` | Register the prefix in the console Settings. |
 | `400 go.mod declares module X, not Y` | The `module` line must equal the published path, with the `/vN` suffix for v2 and later. |
