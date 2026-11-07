@@ -20,6 +20,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PROTOCOL.md section 11: the Docker helper takes its secret from the session refresh with at least half of its
   lifetime left (registry 1.5.0 refuses a realm token as a password), and a `401 invalid_grant` (ended trial)
   on a refresh keeps the session.
+- PROTOCOL.md section 11.3: a stop of the tenant (usage limit) during the login or a refresh is shown with "try
+  again after the reset or ask the owner".
 - `docs/frontline-ci-publish.md`: publish crates, images, npm packages and Go modules to Prego from GitHub
   Actions or GitLab CI next to a registry of record, with the 0.6.0 install lines and the edge code. README links
   to it.

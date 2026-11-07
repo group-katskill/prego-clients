@@ -191,6 +191,28 @@ fn start_rate_limit_is_a_429_error() {
 }
 
 #[test]
+fn a_usage_limit_stop_during_the_poll_ends_the_login_with_its_own_text() {
+    let stop = || {
+        MockResponse::json(
+            429,
+            r#"{"error":"rate_limited","error_description":"tenant acme has reached its usage limit for this month; it resets on 2026-12-01"}"#,
+        )
+        .with_header("Retry-After", "3600")
+    };
+    let server = MockServer::start(vec![start_answer(), stop(), stop(), stop()]);
+    let cfg = config(&server);
+    let store = MemStore::default();
+    let code = start(&http(), &cfg, "c", &Access::request(false), &no_sleep).unwrap();
+    let e = wait_for_approval(&http(), &cfg, &store, &code, &|| 1_000_000, &no_sleep).unwrap_err();
+    assert_eq!(
+        e.to_string(),
+        "prego: usage limit reached: tenant acme has reached its usage limit for this month; it resets on \
+         2026-12-01. Try again after the reset or ask the owner."
+    );
+    assert!(store.0.lock().unwrap().is_empty());
+}
+
+#[test]
 fn refresh_rotates_and_keeps_fresh_tokens() {
     let server = MockServer::start(vec![
         start_answer(),

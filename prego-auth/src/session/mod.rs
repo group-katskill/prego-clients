@@ -235,6 +235,16 @@ pub fn start(
 fn sts_error(res: &Response, tenant: &str) -> Error {
     let (code, description) = failure(res);
     if res.status == 429 {
+        // A stop of the tenant (its usage limit, or the reads of a trial) has its own text: the retries do not
+        // help, the person must wait for the reset or ask the owner.
+        if let Some(d) = description
+            .as_deref()
+            .filter(|d| d.contains("usage limit") || d.contains("reads of its trial"))
+        {
+            return Error::Login(format!(
+                "usage limit reached: {d}. Try again after the reset or ask the owner"
+            ));
+        }
         return Error::RateLimited {
             tenant: tenant.to_string(),
             retry_after: res.retry_after,

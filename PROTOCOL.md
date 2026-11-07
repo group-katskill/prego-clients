@@ -537,7 +537,9 @@ grant_type=refresh_token&refresh_token=<refresh token>&resource=<registry base U
   login session ended; run prego login again"}`. Delete the local session and show that text.
 - An ended trial of the tenant: `401 invalid_grant` with the trial text of section 2. The session stays: keep
   it, and show the text. Delete the local session only on a `400 invalid_grant`.
-- A rate limit or a full stop of the tenant stays `429 rate_limited`, as in section 2.2.
+- A rate limit or a full stop of the tenant stays `429 rate_limited`, as in section 2.2. A stop of the tenant
+  (its usage limit) is not retried for long: show the text, and tell the person to try again after the reset
+  or to ask the owner. The same applies to a stop during the poll (11.2).
 
 Client behavior:
 
