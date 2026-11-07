@@ -157,7 +157,8 @@ machine go.prego.k8skill.com login acme password prk_...
 
 From registry 1.6.0, the Go host accepts the key only when all of these are true:
 
-- The key's principal has a Go grant with the actions `read` only.
+- The key's principal has a Go grant (`ecosystem = go`) with the actions `read` only. A grant with
+  `ecosystem = any` cannot have the switch.
 - An admin turned on **Allow this API key in .netrc (older Go tools)** for that grant: in the console, Grants,
   the Go grant. In the admin API it is `allow_netrc_api_key: true` on the grant. Prego refuses it on any grant
   that is not Go with `read` only. It is off by default.
@@ -165,7 +166,9 @@ From registry 1.6.0, the Go host accepts the key only when all of these are true
 
 Otherwise the Go host answers `401` with `prego: use a read-only API key or "prego go-auth"`. A key that can
 publish or delete is never accepted. When registry 1.6.0 was deployed, Prego turned the switch on for the Go
-read grants of keys that used `.netrc` in the 30 days before. Any other key needs an admin to turn it on.
+read grants of keys that used `.netrc` in the 30 days before, and for the Go read grants that other tenants gave
+to those keys' tenants. Until that step ran (within an hour of the deploy), the old rule applied. Any other key
+needs an admin to turn it on.
 
 This changes nothing for `prego go-auth`, for `prego exec`, or for a registry token in `.netrc`.
 
