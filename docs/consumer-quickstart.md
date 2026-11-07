@@ -1,14 +1,18 @@
 # Quickstart: use Prego crates on your laptop
 
-This guide connects Cargo on your laptop to the Prego registry of tenant `acme`, with an API key. It takes
-about five minutes. For CI, use [ci.md](ci.md): CI jobs should use their own identity, not an API key.
+This guide connects Cargo on your laptop to the Prego registry of tenant `acme`. From prego 0.7.0 you log in
+with your own console account (`prego login`), and no key is stored in a file. An API key also works. It takes
+about five minutes. For CI, use [ci.md](ci.md): CI jobs use their own identity or an API key, never
+`prego login`.
 
 Replace `acme` with your tenant slug. Replace `default` with your namespace if you use another one.
 
 ## What you need
 
 - Cargo 1.74 or later.
-- A Prego API key (`prk_...`). An admin of your tenant makes one in the Prego console
+- For `prego login` (from 0.7.0): membership of the tenant in the Prego console, with a role that can read
+  the crates. To publish, a passkey in the console (Settings, Passkeys).
+- Or a Prego API key (`prk_...`). An admin of your tenant makes one in the Prego console
   (<https://app.prego.k8skill.com>, **Principals**, kind **API key**). The key needs a grant with `read` on the
   crates you use. The console shows the key one time only. An API key lives for at most 90 days.
 
@@ -57,9 +61,20 @@ From 0.6.0 the provider also needs your tenant's [edge code](../README.md#edge-c
 it. Set it one time for all Prego tools: `edge_code = "k7mq"` in `~/.config/prego/config.toml`, or
 `PREGO_EDGE_CODE=k7mq`. Replace `k7mq` with your code.
 
-## 3. Give the provider your API key
+## 3. Log in
 
-Put the key in your shell environment. Do not write it into `config.toml` or a file in your project.
+**On a laptop (from 0.7.0):** install the `prego` tool too (the install script above has it), then:
+
+```sh
+prego login             # read access. prego login --publish: read and publish
+```
+
+`prego login` shows a page and a code. Open the page, sign in, check the code, and approve. The session is
+kept in your OS keychain (on Linux without a desktop, in the kernel keyring, lost at reboot), never in a file.
+`prego status` shows it; `prego logout` ends it. The provider uses the session when no workload identity and
+no `PREGO_API_KEY` is set. Lost laptop? Revoke the session in the console: Settings, Your sessions.
+
+**Or with an API key.** Put the key in your shell environment. Do not write it into `config.toml` or a file in your project.
 
 ```sh
 export PREGO_API_KEY=prk_...
@@ -86,7 +101,8 @@ Then:
 cargo build
 ```
 
-Cargo starts `cargo-credential-prego`. The provider sends your API key to the Prego STS
+Cargo starts `cargo-credential-prego`. With a login session, the provider trades the session for a registry
+token. With an API key, the provider sends the key to the Prego STS
 (`https://sts.prego.k8skill.com/v1/sts/token/e/k7mq`) and gets a registry token (15 minutes by default; the grant of
 the tenant that shares the crates can set a shorter or longer one). Cargo uses that token for the registry
 and asks for a new one shortly before it expires. The API key itself never goes to the
@@ -96,14 +112,17 @@ registry.
 
 | Message | What to do |
 | --- | --- |
-| `no identity source found. Checked: ...` | `PREGO_API_KEY` is not set in this shell. |
+| `no identity source found. Checked: ...` | Run `prego login`, or set `PREGO_API_KEY` in this shell. |
+| `the login session ended; run prego login again` | The session expired (7 days without use, 30 days in all) or was revoked. Run `prego login`. |
+| `this computer has no secure storage for a login session` | No keychain and no kernel keyring (some containers). Use an API key here. |
 | `PREGO_API_KEY must start with prk_` | The value is not a Prego API key. Copy it again from the console. |
 | `Prego refused this identity for tenant acme` | The key is wrong, expired, disabled or revoked, or it belongs to another tenant. Make a new key in the console. |
 | `no matching package named ... found` | The key has no `read` grant on that crate or namespace. Ask a tenant admin. Prego shows a missing grant as "not found". |
 | `tenant is not set` | Add `"--tenant", "acme"` to `credential-provider`, or set `PREGO_TENANT`. |
 | TLS errors behind a company proxy | Set `PREGO_CA_FILE` to a PEM file with the proxy's CA certificate. |
 
-`cargo login` and `cargo logout` are not supported. Manage keys in the console.
+`cargo login` and `cargo logout` are not supported. Use `prego login` and `prego logout`, or manage keys in
+the console.
 
 ## Next steps
 

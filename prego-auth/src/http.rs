@@ -131,6 +131,28 @@ impl Http {
         read(res)
     }
 
+    /// Sends a `POST` with a JSON body. An `Err` is a network or protocol error.
+    pub fn post_json(&self, url: &str, body: &serde_json::Value) -> Result<Response, String> {
+        let bytes = body.to_string();
+        let res = self.send(
+            "POST",
+            url,
+            &[
+                ("Accept", "application/json"),
+                ("Content-Type", "application/json"),
+            ],
+            Body::Bytes(bytes.as_bytes()),
+        )?;
+        let retry_after = res
+            .header("retry-after")
+            .and_then(|v| v.trim().parse().ok());
+        Ok(Response {
+            status: res.status,
+            body: res.body,
+            retry_after,
+        })
+    }
+
     /// Sends a `GET` with one query parameter and a bearer token.
     pub fn get_with_bearer(
         &self,

@@ -46,8 +46,10 @@ The prefixes come from `--prefix` (one or more times), from `go_prefixes = ["go.
 `~/.config/prego/config.toml`, or from the admin API when your identity can read it. The console Settings
 page shows the line for your tenant.
 
-Set your identity as for the other Prego tools, for example `PREGO_API_KEY` on a laptop. See the
-[identity sources](../README.md#identity-sources).
+Set your identity as for the other Prego tools. On a laptop, from prego 0.7.0, run `prego login` (add
+`--publish` to publish modules) and approve the code in the console; or set `PREGO_API_KEY`. CI never uses
+`prego login`. See the [identity sources](../README.md#identity-sources). With a login session,
+`prego go-auth` keeps no token file cache and `prego exec` writes no `.netrc` file: use GOAUTH (Go 1.24).
 
 ## 2. Use a module
 

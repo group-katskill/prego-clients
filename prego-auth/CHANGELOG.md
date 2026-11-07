@@ -6,6 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: the device session of `prego login`, for registry 1.5.2.
+
+### Added
+
+- `session::registry_token_for_docker`: a session registry token with at least half of its lifetime left, for
+  the Docker helper (the token realm caps its token at the expiry of the helper's secret). A `401
+  invalid_grant` on a session refresh (an ended trial) keeps the session; only a `400 invalid_grant` deletes it.
+- A `429` stop of the tenant (usage limit, or the reads of a trial) during `prego login` or a session refresh
+  gives "usage limit reached: <STS text>. Try again after the reset or ask the owner".
+- `session` module (feature `session`, on by default): the device login of `prego login` (RFC 8628) at
+  `<sts>/v1/sts/device/e/<edge code>/start` and `.../token`, the session refresh (`grant_type=refresh_token` at
+  the edge code token URL, a new refresh token on every use) and `.../revoke`. The new refresh token is stored
+  before the registry token is used. A refresh runs under an exclusive lock (the lock file holds no secret),
+  and the registry tokens are kept with the session, so parallel helper processes do not use the same refresh
+  token.
+- Secure storage only, never a plain file: macOS Keychain, Windows Credential Manager, Secret Service on a
+  Linux desktop, else the kernel keyring of the user session (lost at reboot). On Linux, a write that the
+  Secret Service refuses (a locked collection) goes to the kernel keyring. The file
+  `prego/session-stores.json` in the settings directory records which store holds each entry (key hashes and
+  store names only, no secret); reads use only that store, so an old value is never read. Without secure storage,
+  `prego login` stops and points to `PREGO_API_KEY` or a workload identity.
+- `SourceKind::Device` (`--source device`): the login session, used in `auto` mode only when no workload
+  identity and no `PREGO_API_KEY` is set. `sts::exchange` and the OCI realm call use it; the realm gets a
+  registry token from the session as the Basic password. `sources::env_source`.
+- `Http::post_json`.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed

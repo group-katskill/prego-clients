@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.3.0
+  version: 1.4.0
   summary: STS token exchange, Cargo registry endpoints and the tenant admin API of Prego by Katskill.
   description: |
     The public, tenant-facing API of Prego by Katskill.
@@ -140,6 +140,147 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/StsError" }
+
+  /v1/sts/token/e/{edge_code}:
+    parameters:
+      - $ref: "#/components/parameters/EdgeCode"
+    post:
+      tags: [sts]
+      operationId: exchangeTokenAtEdge
+      summary: Get a registry token at the tenant's token URL (token exchange, or a device session refresh).
+      description: |
+        The token URL of the tenant (`PROTOCOL.md` sections 1 and 11.3). It takes the fields of `exchangeToken`
+        for a token exchange. From registry 1.5.0 it also takes `grant_type=refresh_token` with the refresh
+        token of a device session (`prego login`); `tenant` is then not needed. The answer then also has a new
+        `refresh_token` and `session`. The old refresh token stops working, except that a second use within
+        10 s gets the same answer. An ended session gives `400 invalid_grant` with the description "the login
+        session ended; run prego login again".
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/StsTokenRequest" }
+                - { $ref: "#/components/schemas/SessionRefreshRequest" }
+      responses:
+        "200":
+          description: A registry token. For a refresh, with the new refresh token and the session times.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceTokenResponse" }
+        "400":
+          $ref: "#/components/responses/StsError"
+        "429":
+          description: Rate limited. Wait for `Retry-After` and try again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StsError" }
+
+  /v1/sts/device/e/{edge_code}/start:
+    parameters:
+      - $ref: "#/components/parameters/EdgeCode"
+    post:
+      tags: [sts]
+      operationId: startDeviceLogin
+      summary: Start a device login (`prego login`, RFC 8628). Registry 1.5.0.
+      description: |
+        The edge code picks the tenant. A body with `tenant` gets `400 invalid_request`. At most 10 pending
+        requests per IP address and per tenant; more get `429`. The person approves the request in the console
+        with their sign-in (and a passkey for `publish` or `delete`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client, access]
+              additionalProperties: false
+              properties:
+                client: { type: string, examples: ["prego-cli/0.7.0"] }
+                access:
+                  type: array
+                  items: { $ref: "#/components/schemas/DeviceAccess" }
+      responses:
+        "200":
+          description: The device request.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [device_code, user_code, verification_uri, expires_in, interval]
+                properties:
+                  device_code: { type: string, description: For the polls only. Never show it. }
+                  user_code: { type: string, examples: ["ABCD-EFGH"] }
+                  verification_uri: { type: string, format: uri, examples: ["https://app.prego.k8skill.com/device"] }
+                  verification_uri_complete: { type: string, format: uri }
+                  expires_in: { type: integer, examples: [300] }
+                  interval: { type: integer, examples: [5] }
+        "400":
+          $ref: "#/components/responses/StsError"
+        "429":
+          description: Too many pending requests. Wait for `Retry-After`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StsError" }
+
+  /v1/sts/device/e/{edge_code}/token:
+    parameters:
+      - $ref: "#/components/parameters/EdgeCode"
+    post:
+      tags: [sts]
+      operationId: pollDeviceLogin
+      summary: Poll a device login (RFC 8628). Registry 1.5.0.
+      description: |
+        Poll every `interval` seconds. `400` errors: `authorization_pending` (poll again), `slow_down` (add 5 s
+        to the interval), `expired_token` and `access_denied` (stop). On approval the answer has the first
+        registry token, the session refresh token and the session.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type, device_code]
+              properties:
+                grant_type: { type: string, const: "urn:ietf:params:oauth:grant-type:device_code" }
+                device_code: { type: string }
+      responses:
+        "200":
+          description: Approved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceTokenResponse" }
+        "400":
+          $ref: "#/components/responses/StsError"
+
+  /v1/sts/device/e/{edge_code}/revoke:
+    parameters:
+      - $ref: "#/components/parameters/EdgeCode"
+    post:
+      tags: [sts]
+      operationId: revokeDeviceSession
+      summary: End a device session (`prego logout`, RFC 7009 shape). Registry 1.5.0.
+      description: Always `200 {}`, also for an unknown or ended session. It ends the whole session.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema: { type: object }
 
   # ---------------- Admin API ----------------
 
@@ -1093,6 +1234,13 @@ components:
         token). Registry endpoints refuse API keys, JWT-SVIDs, OIDC ID tokens and admin tokens.
 
   parameters:
+    EdgeCode:
+      name: edge_code
+      in: path
+      required: true
+      description: The tenant's edge code (4 characters, not a secret). The console shows it.
+      schema: { type: string, pattern: "^[a-hjkmnop-z2-9]{4}$" }
+      example: k7mq
     Tenant:
       name: tenant
       in: path
@@ -1181,6 +1329,42 @@ components:
           schema: { type: string }
 
   schemas:
+    SessionRefreshRequest:
+      type: object
+      required: [grant_type, refresh_token]
+      properties:
+        grant_type: { type: string, const: refresh_token }
+        refresh_token: { type: string }
+        resource: { type: string, format: uri, description: The registry base URL, as for a token exchange. }
+    DeviceAccess:
+      type: object
+      required: [ecosystem, actions]
+      properties:
+        ecosystem: { type: string, enum: [any, cargo, oci, go, npm] }
+        namespace: { type: string, default: default }
+        actions:
+          type: array
+          items: { type: string, enum: [read, publish, delete] }
+    DeviceTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string, description: The registry token. }
+        issued_token_type: { type: string }
+        token_type: { type: string, const: Bearer }
+        expires_in: { type: integer }
+        refresh_token: { type: string, description: The new session refresh token. Keep it in secure storage only. }
+        session:
+          type: object
+          required: [id, idle_expires_at, expires_at]
+          properties:
+            id: { type: string, examples: ["dvs_01JB0000000000000000000000"] }
+            name: { type: string }
+            access:
+              type: array
+              items: { $ref: "#/components/schemas/DeviceAccess" }
+            idle_expires_at: { type: integer, description: Unix seconds. }
+            expires_at: { type: integer, description: Unix seconds. }
     Slug:
       type: string
       pattern: "^[a-z][a-z0-9-]{1,38}[a-z0-9]$"

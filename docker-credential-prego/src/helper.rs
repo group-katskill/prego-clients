@@ -93,11 +93,27 @@ fn get(flags: &[&str], input: &str, env: &dyn Env) -> Outcome {
         Err(e) => return Outcome::fail(e),
     };
     // Docker sends Username and Secret to the token realm as HTTP Basic auth. The realm takes the tenant
-    // from the username and exchanges the secret at the STS.
+    // from the username and exchanges the secret at the STS. For a login session the secret is a registry
+    // token from the session: the session refresh token never goes to Docker. Docker calls the helper for
+    // each command; the helper gives a token with at least half of its lifetime left. The username is never `<token>`, which would
+    // make Docker send the secret as a refresh token.
+    let secret = match &subject.device {
+        Some(device) => match prego_auth::session::registry_token_for_docker(
+            &http,
+            &config,
+            device,
+            &prego_auth::now_unix,
+            &std::thread::sleep,
+        ) {
+            Ok(t) => t.token,
+            Err(e) => return Outcome::fail(e),
+        },
+        None => subject.value,
+    };
     Outcome::ok(json!({
         "ServerURL": server_url,
         "Username": config.tenant,
-        "Secret": subject.value.expose(),
+        "Secret": secret.expose(),
     }))
 }
 

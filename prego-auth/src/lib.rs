@@ -18,6 +18,7 @@ pub mod jwt;
 pub mod npm;
 pub mod oci;
 mod secret;
+pub mod session;
 pub mod sources;
 pub mod sts;
 #[cfg(any(test, feature = "test-support"))]

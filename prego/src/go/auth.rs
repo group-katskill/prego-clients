@@ -155,7 +155,11 @@ pub fn go_auth(globals: &[&str], args: &[String], env: &dyn Env) -> Result<(), S
     };
     let for_prego = url.is_some_and(|u| prefixes.iter().any(|p| u.starts_with(&p.url)));
 
-    let cache = Cache::open(env, &cache_key(&config, resource.as_deref(), env));
+    // The login session keeps its registry tokens in secure storage, never in this file cache.
+    let cache = match prego_auth::sources::env_source(&config, env) {
+        Some(_) => Cache::open(env, &cache_key(&config, resource.as_deref(), env)),
+        None => None,
+    };
     let now = prego_auth::now_unix();
     let cached = cache.as_ref().and_then(|c| c.get(now));
     let token = match (url, status) {

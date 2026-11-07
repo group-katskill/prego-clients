@@ -136,7 +136,7 @@ impl Config {
             Some(s) if s == "auto" => SourceChoice::Auto,
             Some(s) => SourceChoice::Only(SourceKind::parse(&s).ok_or_else(|| {
                 Error::Config(format!(
-                    "unknown source `{s}`. Use auto, spiffe, svid-file, gitlab, github, token-file or api-key."
+                    "unknown source `{s}`. Use auto, spiffe, svid-file, gitlab, github, token-file, api-key or device."
                 ))
             })?),
         };

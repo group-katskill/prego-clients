@@ -41,6 +41,7 @@
         </a>
         <nav class="site-nav" aria-label="Sections">
           <a href="#install">Install</a>
+          <a href="#login">Log in</a>
           <a href="#configure">Cargo</a>
           <a href="#oci">Images</a>
           <a href="#go">Go</a>
@@ -191,11 +192,33 @@
             <div class="terminal">
               <pre><code><span class="p">$ </span>cosign verify-blob SHA256SUMS \
     --bundle SHA256SUMS.sigstore.json \
-    --certificate-identity https://github.com/group-katskill/prego-clients/.github/workflows/release.yml@refs/tags/prego-clients-v0.4.0 \
+    --certificate-identity https://github.com/group-katskill/prego-clients/.github/workflows/release.yml@refs/tags/prego-clients-v0.7.0 \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 <span class="p">$ </span>sha256sum --ignore-missing -c SHA256SUMS</code></pre>
             </div>
           </div>
+        </div>
+        <div class="wrap" id="login">
+          <h3>Log in on a laptop</h3>
+          <p>From 0.7.0, log in with your own console account. No key is stored in a file:</p>
+          <div class="terminal">
+            <pre><code><span class="p">$ </span>export PREGO_TENANT=acme PREGO_EDGE_CODE=k7mq
+<span class="p">$ </span>prego login            <span class="c"># confirm the code at app.prego.k8skill.com/device. --publish to publish too</span>
+<span class="p">$ </span>prego status           <span class="c"># tenant, access and end time. Never a token</span></code></pre>
+          </div>
+          <p>
+            Then set up each tool as below. Cargo, Docker, Go and npm use the session when no workload identity and no
+            <code>PREGO_API_KEY</code> is set. The session is kept in your OS keychain (on Linux without a desktop, in
+            the kernel keyring, lost at reboot), never in a plain file. It ends after 7 days without use, after 30
+            days in all, or with <code>prego logout</code>. CI never uses <code>prego login</code>: see the
+            <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a>.
+          </p>
+          <p>
+            <code>prego login</code> prints a code. Confirm it at
+            <a href="https://app.prego.k8skill.com/device">app.prego.k8skill.com/device</a> while you are signed in to the
+            console. A login with <code>--publish</code> asks for your passkey there.
+          </p>
+          <p><strong>Lost laptop?</strong> Revoke its session in the console: Settings, Your sessions.</p>
         </div>
       </section>
 
@@ -355,6 +378,11 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
               <h3>API key</h3>
               <p>When <code>PREGO_API_KEY</code> is set (<code>prk_…</code>). The STS takes the tenant from the key.</p>
             </li>
+            <li class="card">
+              <span class="card-tag">7</span>
+              <h3>Login session</h3>
+              <p>From 0.7.0, after <code>prego login</code>, when none of the above is set. For laptops, never for CI.</p>
+            </li>
           </ul>
         </div>
       </section>
@@ -366,6 +394,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             <li>Never prints, logs or writes a token to disk (except <code>prego token</code>, which prints one on purpose).</li>
             <li>Sends subject tokens only over <code>https</code>. Plain <code>http</code> only to localhost, for tests.</li>
             <li>Never follows an HTTP redirect, so a subject token cannot go to another host.</li>
+            <li>A <code>prego login</code> session is kept only in the OS keychain or the kernel keyring, never in a plain file. Docker never gets the session itself.</li>
             <li>TLS checks are always on. For an on-prem TLS proxy, add its CA with <code>PREGO_CA_FILE</code>.</li>
             <li>
               The full STS contract is public in

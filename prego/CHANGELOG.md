@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
+### Changed
+
+- Release 0.7.0: `prego login`, `prego logout` and `prego status`. A session is named
+  `prego-cli/0.7.0 on <address>`.
+
+### Added
+
+- `prego login [--publish] [--no-browser]`: log in with the console sign-in (open the page, confirm the
+  code). Read access, or read and publish with `--publish`. It opens a browser on a desktop, not over SSH.
+- `prego logout`: ends the session at the STS and deletes it from this computer, also when the STS call
+  fails (then it says so). `prego status`: tenant, session, access, end times and the storage; never a token.
+- The login session is the last identity source, after workload identity and `PREGO_API_KEY`. `prego exec`
+  writes no NETRC file for a login session, and `prego go-auth` keeps no file cache for it: a registry token
+  from a session is never written to a file.
+
 ## [0.6.0] - 2026-11-06
 
 ### Changed

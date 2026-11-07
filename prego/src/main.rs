@@ -6,6 +6,7 @@ mod admin;
 mod args;
 mod docker_config;
 mod go;
+mod login;
 mod npm;
 mod oci;
 mod setup;
@@ -23,6 +24,14 @@ prego: command-line tool for Prego by Katskill.
 Usage: prego [options] <command>
 
 Commands:
+  login [--publish] [--no-browser]
+                                  log in with your console sign-in: open the page, confirm the code. The
+                                  session is kept in the OS keychain (on Linux without a desktop, in the
+                                  kernel keyring, lost at reboot), never in a file. It gives read access;
+                                  --publish asks for read and publish. The tools use it when no workload
+                                  identity and no PREGO_API_KEY is set. Not for CI
+  logout                          end the login session and delete it from this computer
+  status                          show the login session: tenant, access, end time (never a token)
   token [--scope <scope>]... [--resource <url>]
                                   print a registry token on stdout. Its lifetime comes from the grants (15 min
                                   by default). With --resource (a registry base URL, for example
@@ -66,7 +75,8 @@ Options (environment fallback, then ~/.config/prego/config.toml):
   --sts-url <url>    (PREGO_STS_URL)   default https://sts.prego.k8skill.com/v1/sts/token
   --edge-code <code> (PREGO_EDGE_CODE) your tenant's edge code (the console shows it)
   --audience <aud>   (PREGO_AUDIENCE)  default prego.k8skill.com
-  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key
+  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key,
+                                       device (the prego login session; auto uses it last)
 
 Environment only:
   PREGO_OCI_HOSTS    more OCI hosts, comma-separated (also oci_hosts in config.toml)
@@ -100,6 +110,12 @@ fn main() {
         Parsed::Run { globals, command } => {
             let globals: Vec<&str> = globals.iter().map(String::as_str).collect();
             match command {
+                Command::Login {
+                    publish,
+                    no_browser,
+                } => login::login(&globals, publish, no_browser, &env),
+                Command::Logout => login::logout(&globals, &env),
+                Command::Status => login::status(&globals, &env),
                 Command::Token { scopes, resource } => {
                     token::token(&globals, &scopes, resource.as_deref(), &env)
                 }

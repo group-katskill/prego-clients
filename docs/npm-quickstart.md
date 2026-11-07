@@ -74,8 +74,9 @@ npmScopes:
 `prego` never changes YAML or TOML that is already there. If `.yarnrc.yml` already has `npmScopes`, or
 `bunfig.toml` already has scopes, it prints the lines for you to add by hand.
 
-Set your identity as for the other Prego tools, for example `PREGO_API_KEY`, `PREGO_TENANT` and
-`PREGO_EDGE_CODE` (your tenant's [edge code](../README.md#edge-code)) on a laptop.
+Set `PREGO_TENANT` and `PREGO_EDGE_CODE` (your tenant's [edge code](../README.md#edge-code)), then your
+identity. On a laptop, from prego 0.7.0, run `prego login` (`--publish` to publish) and approve the code in
+the console; or set `PREGO_API_KEY`. CI never uses `prego login`.
 See the [identity sources](../README.md#identity-sources).
 
 ## 2. Install

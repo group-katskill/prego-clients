@@ -24,7 +24,8 @@ Provider arguments (environment fallback, then ~/.config/prego/config.toml):
   --sts-url <url>    (PREGO_STS_URL)   default https://sts.prego.k8skill.com/v1/sts/token
   --edge-code <code> (PREGO_EDGE_CODE) your tenant's edge code (the console shows it)
   --audience <aud>   (PREGO_AUDIENCE)  default prego.k8skill.com
-  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key
+  --source <name>    (PREGO_SOURCE)    auto, spiffe, svid-file, gitlab, github, token-file, api-key,
+                                       device (the prego login session; auto uses it last)
 
 Environment only:
   PREGO_CA_FILE      PEM CA bundle added to the built-in roots (on-prem TLS proxies)

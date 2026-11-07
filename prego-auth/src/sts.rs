@@ -135,6 +135,10 @@ pub fn exchange(
     now: i64,
     sleep: &dyn Fn(Duration),
 ) -> Result<RegistryToken, Error> {
+    if let Some(device) = &subject.device {
+        // A device session: a refresh, not a token exchange.
+        return crate::session::registry_token(http, config, device, resource, &|| now, sleep);
+    }
     let mut fields = vec![
         ("grant_type", GRANT_TYPE),
         ("subject_token", subject.value.expose()),

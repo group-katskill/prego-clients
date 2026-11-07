@@ -41,17 +41,20 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     needs: check-tag
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: true
       matrix:
-        target:
-          - x86_64-unknown-linux-musl
-          - aarch64-unknown-linux-musl
-          # TODO: the macOS binaries link without the macOS SDK and are not code-signed. Check them on a
-          # Mac before the first release, and add signing and notarization if Gatekeeper refuses them.
-          - aarch64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-24.04
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04
+          # Built on macOS: the keychain code of `prego login` links the Security framework, which needs the
+          # macOS SDK. TODO: the binaries are not code-signed yet (the keychain asks "allow" on first use).
+          - target: aarch64-apple-darwin
+            os: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,6 +68,7 @@ jobs:
           rustup default "$RUST_VERSION"
 
       - name: Install zig (checksum verified)
+        if: runner.os == 'Linux'
         run: |
           curl -sSfL -o /tmp/zig.tar.xz \
             "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
@@ -73,6 +77,7 @@ jobs:
           echo "/opt/zig-linux-x86_64-${ZIG_VERSION}" >> "$GITHUB_PATH"
 
       - name: Install cargo-zigbuild
+        if: runner.os == 'Linux'
         run: cargo install --locked cargo-zigbuild --version "$ZIGBUILD_VERSION"
 
       - name: Build
@@ -81,8 +86,10 @@ jobs:
         run: |
           args=()
           for bin in $BINARIES; do args+=(-p "$bin"); done
+          build=zigbuild
+          if [ "$RUNNER_OS" = macOS ]; then build=build; fi
           PREGO_GIT_COMMIT="${GITHUB_SHA::12}" \
-            cargo zigbuild --locked --release "${args[@]}" --target "$TARGET"
+            cargo "$build" --locked --release "${args[@]}" --target "$TARGET"
 
       # One archive with all three binaries (for install.sh), and one archive per binary (for CI jobs
       # that need only one). Each archive has a .sha256 file.
@@ -99,7 +106,10 @@ jobs:
             tar -C "$out" -czf "dist/${bin}-${TARGET}.tar.gz" "$bin" LICENSE NOTICE README.md
           done
           cd dist
-          for f in *.tar.gz; do sha256sum "$f" > "$f.sha256"; done
+          # macOS has shasum, not sha256sum. The output format is the same.
+          for f in *.tar.gz; do
+            if command -v sha256sum > /dev/null; then sha256sum "$f"; else shasum -a 256 "$f"; fi > "$f.sha256"
+          done
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -9,6 +9,10 @@ use prego_auth::{sts, Config, Env};
 pub fn get(config: &Config, env: &dyn Env, path: &str) -> Option<serde_json::Value> {
     let http = Http::with_ca_file(crate::USER_AGENT, config.ca_file.as_deref()).ok()?;
     let subject = find_subject_token(config, env, &http).ok()?;
+    // A login session has no admin scopes.
+    if subject.device.is_some() {
+        return None;
+    }
     let fields = [
         ("grant_type", sts::GRANT_TYPE),
         ("subject_token", subject.value.expose()),

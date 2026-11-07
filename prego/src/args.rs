@@ -63,6 +63,15 @@ pub enum Command {
     Exec {
         command: Vec<String>,
     },
+    /// `prego login`.
+    Login {
+        publish: bool,
+        no_browser: bool,
+    },
+    /// `prego logout`.
+    Logout,
+    /// `prego status`.
+    Status,
 }
 
 const GLOBAL: [&str; 5] = [
@@ -85,7 +94,15 @@ const WITH_VALUE: [&str; 10] = [
     "--client",
 ];
 /// Options without a value.
-const FLAGS: [&str; 5] = ["--write", "--print", "--dry-run", "--json", "--user"];
+const FLAGS: [&str; 7] = [
+    "--write",
+    "--print",
+    "--dry-run",
+    "--json",
+    "--user",
+    "--publish",
+    "--no-browser",
+];
 
 /// Parses the arguments after the program name.
 pub fn parse(args: &[String]) -> Result<Parsed, String> {
@@ -171,6 +188,21 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
     }
 
     let command = match words.as_slice() {
+        ["login"] => {
+            allow(&[], &["--publish", "--no-browser"])?;
+            Command::Login {
+                publish: flag("--publish"),
+                no_browser: flag("--no-browser"),
+            }
+        }
+        ["logout"] => {
+            allow(&[], &[])?;
+            Command::Logout
+        }
+        ["status"] => {
+            allow(&[], &[])?;
+            Command::Status
+        }
         ["token"] => {
             allow(&["--scope", "--resource"], &[])?;
             let scopes = take("--scope");

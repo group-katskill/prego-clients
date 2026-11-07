@@ -3,6 +3,11 @@
 A CI job can prove who it is with a short-lived OIDC token from the CI system. Prego exchanges that token for a
 registry token. You store no API key in CI variables.
 
+**CI never uses `prego login`.** A login session belongs to a person on a laptop, and it is kept in that
+laptop's keychain. A CI job uses its own identity (this guide) or an API key. A runner has no login session, so
+the tools never use one there; to be sure, set `PREGO_SOURCE` to the source of the job (for example
+`gitlab`), and the tools then use only that source.
+
 This guide uses tenant `acme`. Full example files are in [`examples/`](../examples/).
 
 Each setup has two parts:
@@ -253,7 +258,8 @@ operations and their scopes are in [`openapi.yaml`](openapi.yaml).
 ## Choose a source
 
 In `auto` mode the provider uses the first source that is present, in this order: `spiffe`, `svid-file`,
-`gitlab`, `github`, `token-file`, `api-key`. If that source fails, the provider stops with an error. It does
+`gitlab`, `github`, `token-file`, `api-key`, and last the `prego login` session (`device`, from 0.7.0; not for
+CI). If that source fails, the provider stops with an error. It does
 not try the next source. To force one source, add `"--source", "<name>"` to `credential-provider` or set
 `PREGO_SOURCE`.
 
