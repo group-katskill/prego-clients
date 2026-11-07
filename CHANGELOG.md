@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Go `.netrc` with an API key (registry 1.6.0): the Go quickstart has a "Last resort" section with the grant
+  switch "Allow this API key in .netrc" and the new `401` text; PROTOCOL.md 1.9.0 section 9.2 and the website
+  say the same. `prego go-auth` stays first.
+- Go `.netrc` docs: the deploy step also opened the Go read grants that other tenants gave to those keys'
+  tenants, it ran within an hour of the deploy, and an `ecosystem = any` grant cannot have the switch.
 - `examples/` and `docs/frontline-ci-publish.md` pin prego-clients 0.7.0; the guide's install step has the
   SHA-256 of the 0.7.0 archive.
 
