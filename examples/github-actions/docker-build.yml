@@ -23,7 +23,7 @@ jobs:
   image:
     runs-on: ubuntu-24.04
     env:
-      PREGO_VERSION: "0.6.0"
+      PREGO_VERSION: "0.7.0"
       PREGO_TARGET: x86_64-unknown-linux-musl
       PREGO_TENANT: acme
       PREGO_EDGE_CODE: k7mq # the tenant's edge code from the console; prego whoami needs it

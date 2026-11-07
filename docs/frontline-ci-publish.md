@@ -56,18 +56,18 @@ env:
 ```
 
 ```yaml
-      - name: Install prego-clients 0.6.0
+      - name: Install prego-clients 0.7.0
         run: |
-          base=https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v0.6.0
+          base=https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v0.7.0
           file=prego-clients-x86_64-unknown-linux-musl.tar.gz
           curl -fsSLO "$base/$file"
-          echo "3adb257add712af70a2f6c23c6bb08f03ecc4b15f09e6bb29bbe28bf1c3bbcad  $file" | sha256sum -c -
+          echo "4526657f6a4164cfd1f08c17ee62a700bdd62499cb82db954f0acec6f77b0557  $file" | sha256sum -c -
           mkdir -p "$HOME/.local/bin"
           tar -xzf "$file" -C "$HOME/.local/bin" cargo-credential-prego docker-credential-prego prego
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 ```
 
-The step pins the SHA-256 sum of the 0.6.0 archive, so a changed download fails the job. For a runner on ARM, use
+The step pins the SHA-256 sum of the 0.7.0 archive, so a changed download fails the job. For a runner on ARM, use
 `prego-clients-aarch64-unknown-linux-musl.tar.gz` and its line in the release's `SHA256SUMS`. To check who made the
 release, see [Verify a release](../README.md#verify-a-release).
 

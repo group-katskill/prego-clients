@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- `examples/` and `docs/frontline-ci-publish.md` pin prego-clients 0.7.0; the guide's install step has the
+  SHA-256 of the 0.7.0 archive.
+
 ## [0.7.0] - 2026-11-07
 
 ### Changed
