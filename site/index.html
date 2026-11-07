@@ -309,7 +309,9 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             <li>Grants use <code>ecosystem = go</code> with <code>read</code>, <code>publish</code> and <code>delete</code>, on the full module path.</li>
           </ul>
           <p>
-            For Go before 1.24, use <code>prego exec -- go build ./...</code>. See the
+            For Go before 1.24, use <code>prego exec -- go build ./...</code>. An API key in a static
+            <code>.netrc</code> is the last resort: from registry 1.6.0 it works only for a Go grant with
+            <code>read</code> only whose switch "Allow this API key in .netrc" an admin turned on. See the
             <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a>.
           </p>
         </div>

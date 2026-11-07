@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.8.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.9.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -408,8 +408,12 @@ file with mode 0600, sets `NETRC` to its path for the command, and deletes the f
 Go reads the file once, so the token in it cannot be renewed. `prego exec` prints the token lifetime on
 stderr, and a warning when it is less than 10 minutes. From prego 0.6.0, the command also gets the same
 token in `PREGO_NPM_TOKEN` and `PREGO_TOKEN` (section 10).
-Go sends it as HTTP Basic auth. The Go host takes a registry token, or a read-only API key, as the Basic
-password. A key that can publish or delete is refused.
+Go sends it as HTTP Basic auth. The Go host takes a registry token as the Basic password. From registry
+1.6.0 it takes an API key (`prk_`) only for a module that a Go grant of the key's principal matches, when that
+grant has the actions `read` only and the grant setting `allow_netrc_api_key` is on (off by default; an admin
+sets it). Else it answers `401` with `WWW-Authenticate: Bearer realm="prego"` and the text
+`prego: use a read-only API key or "prego go-auth"`. A key that can publish or delete is always refused.
+Clients should use `prego go-auth` (9.1) or `prego exec` first.
 
 ### 9.3 Publish
 
