@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Python packages: `docs/python-quickstart.md`, a README section, PROTOCOL.md 1.11.0 section 13 (URLs,
+  tokens, client settings, upload), and the keyring backend `keyrings.prego` 0.1.0 in `keyrings-prego/` with
+  its own CI job (built and tested, not published).
+
 ### Changed
 
 - `docs/release-variables.md`: FAQ "Are Release Variables a secrets manager?".

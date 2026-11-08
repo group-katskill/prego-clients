@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.10.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.11.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -609,3 +609,51 @@ write.
 (not a string) is its canonical JSON text. Keys match `^[A-Za-z_][A-Za-z0-9_]{0,127}$`, so each one is a valid
 shell variable name. A client checks the key again before it writes a line.
 
+## 13. Python packages (registry 1.9.0, prego 0.9.0)
+
+The Python host is `pypi.prego.k8skill.com` (`PREGO_PYPI_HOST` or `pypi_host` in the settings file for another
+host). Each namespace has one index. Prego serves the simple repository API (PEP 503 HTML and PEP 691 JSON,
+API version 1.1) and the upload API of twine. It does not copy packages from pypi.org.
+
+| URL | Use |
+| --- | --- |
+| `https://<host>/t/<tenant>/<ns>/` | The base URL, and the STS `resource` for a Python token. The `/` at the end is part of it. |
+| `<base>simple/` | The index for uv, pip and Poetry. `Accept: application/vnd.pypi.simple.v1+json` gives JSON. |
+| `<base>legacy/` | The upload URL for twine, `uv publish` and `prego python publish`. |
+
+### 13.1 Tokens
+
+- A client asks the STS for a Python token with `resource` = the base URL of the namespace. A Python token is
+  accepted on the Python host for 30 minutes on every plan. On the other hosts the same token keeps the
+  lifetime of their grants.
+- The Python host takes `Authorization: Basic` with any username (`__token__`, the tenant or empty) and the
+  registry token as the password, or `Authorization: Bearer <registry token>`. A read-only API key also works as
+  the Basic password; publishing never uses an API key.
+- No token, a wrong token or an expired token: `401` with `WWW-Authenticate: Basic realm="prego"`. No access:
+  `404`. There are no anonymous reads.
+- `prego token --python [--url <url>]` prints a Python token. The tenant and namespace come from the URL
+  (`/t/<tenant>/<ns>/`), else from the settings and `--namespace` (default `default`). A URL on another host
+  is refused: a token never goes to another host. With a workload identity or an API key, the token is cached
+  in a private directory (`$XDG_RUNTIME_DIR/prego/`, else `$TMPDIR/prego-<uid>/`, mode 0700; the file has
+  mode 0600) until its expiry minus 60 s. A login session keeps its tokens in secure storage only.
+
+### 13.2 Client settings
+
+- `prego setup python` writes a uv index named `prego` with `explicit = true` and `authenticate = "always"`,
+  and `[tool.uv.sources]` lines `<project> = { index = "prego" }`; or a Poetry source named `prego` with
+  `priority = "explicit"`. It keeps all other lines and never writes a token. Without `--project`, it reads the
+  JSON root index with a Python token and uses `projects[].name`; if that fails, the sources table gets a
+  comment line.
+- `prego exec` in the Python mode sets `UV_INDEX_PREGO_USERNAME` and `UV_INDEX_PREGO_PASSWORD`,
+  `UV_PUBLISH_USERNAME`, `UV_PUBLISH_PASSWORD` and `UV_PUBLISH_URL`, `TWINE_USERNAME`, `TWINE_PASSWORD` and
+  `TWINE_REPOSITORY_URL`, `POETRY_HTTP_BASIC_PREGO_USERNAME` and `POETRY_HTTP_BASIC_PREGO_PASSWORD`,
+  `PREGO_TOKEN`, and with `--pip` `PIP_EXTRA_INDEX_URL` (the index URL with `__token__:<token>@`). The username
+  is `__token__`.
+
+### 13.3 Upload
+
+`POST <base>legacy/` with `multipart/form-data`: the fields `:action` = `file_upload`, `protocol_version` = `1`,
+`name`, `version`, `filetype` (`bdist_wheel` or `sdist`), `pyversion` (the wheel's Python tag, or `source`),
+`sha256_digest`, and the file in `content`. At most 90 MiB per file and 100 files per release. The name and
+version of the filename must be those in the metadata. A filename can be used one time only, also after a
+delete: `400 File already exists.` Every refusal is `400` with one line of text, as on pypi.org.

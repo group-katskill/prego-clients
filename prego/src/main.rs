@@ -10,6 +10,7 @@ mod go;
 mod login;
 mod npm;
 mod oci;
+mod python;
 mod setup;
 mod token;
 
@@ -67,6 +68,18 @@ Commands:
                                   current directory. --user writes ~/.npmrc. --print writes nothing. The
                                   scope defaults to the tenant's only npm scope
   npm-env                         print export PREGO_NPM_TOKEN='<token>', for eval \"$(prego npm-env)\"
+  setup python [--namespace <ns>] [--project <name>]... [--tool uv|poetry|pip] [--print]
+                                  write the prego index to pyproject.toml (never a token). uv (default):
+                                  [[tool.uv.index]] with explicit = true, and [tool.uv.sources] for the
+                                  projects (default: the projects you can read). poetry: [[tool.poetry.source]]
+                                  with priority explicit. pip: print the line and the dependency confusion
+                                  warning. --print writes nothing
+  python publish [--namespace <ns>] <file>...
+                                  upload wheels (.whl) and sdists (.tar.gz). Files over 90 MiB are refused
+                                  before the upload
+  token --python [--url <index url>] [--namespace <ns>]
+                                  print a Python token (30 min) on stdout, for keyrings.prego. It is cached
+                                  (mode 0600, in $XDG_RUNTIME_DIR) until 1 min before it ends
   env pull <ref> [--format env|json|flat] [--expect <hash>] [--out FILE]
                                   get the Release Variables of a release, merged from the tenant,
                                   namespace and version sets (the most specific wins). <ref> is
@@ -93,6 +106,12 @@ Commands:
   exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
                                   PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
                                   (mode 0600, deleted at the end) that holds it (Go before 1.24)
+  exec [--python] [--pip] [--namespace <ns>] -- <command> [args]
+                                  Python mode (with --python or --pip, or for uv, uvx, pip, python, twine,
+                                  poetry, pdm and hatch): one Python token (30 min) in
+                                  UV_INDEX_PREGO_USERNAME/PASSWORD, UV_PUBLISH_*, TWINE_* and
+                                  POETRY_HTTP_BASIC_PREGO_*, with the upload URL of the namespace. --pip
+                                  also sets PIP_EXTRA_INDEX_URL. Nothing is written to a file
 
 Options (environment fallback, then ~/.config/prego/config.toml):
   --tenant <slug>    (PREGO_TENANT)    tenant slug
@@ -107,6 +126,8 @@ Environment only:
   PREGO_GO_HOSTS     Go hosts, comma-separated; the first is used (also go_hosts in config.toml;
                      default go.prego.k8skill.com)
   PREGO_NPM_HOST     the npm host (also npm_host in config.toml; default npm.prego.k8skill.com)
+  PREGO_PYPI_HOST    the Python packages host (also pypi_host in config.toml; default
+                     pypi.prego.k8skill.com)
   PREGO_CA_FILE      PEM CA bundle added to the built-in roots (on-prem TLS proxies)
   DOCKER_CONFIG      directory of the Docker config.json (default ~/.docker)
 
@@ -142,6 +163,13 @@ fn main() {
                 Command::Status => login::status(&globals, &env),
                 Command::Token { scopes, resource } => {
                     token::token(&globals, &scopes, resource.as_deref(), &env)
+                }
+                Command::TokenPython { url, namespace } => {
+                    python::token(&globals, url.as_deref(), &namespace, &env)
+                }
+                Command::SetupPython(opts) => python::setup::setup(&globals, &opts, &env),
+                Command::PythonPublish { files, namespace } => {
+                    python::publish::publish(&globals, &files, &namespace, &env)
                 }
                 Command::Whoami {
                     namespace,
@@ -191,10 +219,20 @@ fn main() {
                 Command::SetupNpm(opts) => npm::setup(&globals, &opts, &env),
                 Command::NpmEnv => npm::npm_env(&globals, &env),
                 Command::Env(c) => env::run(&globals, &c, &env),
-                Command::Exec { command } => match go::exec(&globals, &command, &env) {
-                    Ok(code) => std::process::exit(code),
-                    Err(e) => Err(e),
-                },
+                Command::Exec {
+                    command,
+                    python: py,
+                    pip,
+                } => {
+                    let run = match &py {
+                        Some(ns) => python::exec(&globals, &command, ns, pip, &env),
+                        None => go::exec(&globals, &command, &env),
+                    };
+                    match run {
+                        Ok(code) => std::process::exit(code),
+                        Err(e) => Err(e),
+                    }
+                }
             }
         }
     };

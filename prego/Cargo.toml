@@ -30,6 +30,8 @@ serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 # `prego oci push`: blob digests, and the docker save tar format.
 sha2 = "0.10"
 tar = { version = "0.4", default-features = false }
+# `prego setup python`: edits pyproject.toml and keeps its other lines and comments.
+toml_edit = { version = "0.25", default-features = false, features = ["parse", "display"] }
 
 [dev-dependencies]
 prego-auth = { version = "0.8.0", path = "../prego-auth", default-features = false, features = ["test-support"] }

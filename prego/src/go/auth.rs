@@ -210,7 +210,7 @@ pub fn exchange(
 
 /// The cache key: the STS, tenant, audience and source settings, the `resource`, and a hash of the variables
 /// that pick the identity. Values are hashed; no identity value is written to disk.
-fn cache_key(config: &Config, resource: Option<&str>, env: &dyn Env) -> String {
+pub(crate) fn cache_key(config: &Config, resource: Option<&str>, env: &dyn Env) -> String {
     let mut h = Sha256::new();
     for part in [
         config.sts_url.as_str(),
@@ -250,9 +250,14 @@ pub struct Cache {
 impl Cache {
     /// `$XDG_RUNTIME_DIR/prego/`, else `$TMPDIR/prego-<uid>/`. `None` if the directory is not safe.
     pub fn open(env: &dyn Env, key: &str) -> Option<Cache> {
+        Self::open_named(env, "goauth", key)
+    }
+
+    /// Like [`Cache::open`], with another file name prefix (`python` for `prego token --python`).
+    pub fn open_named(env: &dyn Env, prefix: &str, key: &str) -> Option<Cache> {
         let dir = cache_dir(env)?;
         Some(Cache {
-            path: dir.join(format!("goauth-{key}.json")),
+            path: dir.join(format!("{prefix}-{key}.json")),
             dir,
         })
     }

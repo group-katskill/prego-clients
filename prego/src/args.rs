@@ -18,6 +18,18 @@ pub enum Command {
         scopes: Vec<String>,
         resource: Option<String>,
     },
+    /// `prego token --python [--url URL] [--namespace ns]`.
+    TokenPython {
+        url: Option<String>,
+        namespace: String,
+    },
+    /// `prego setup python`.
+    SetupPython(crate::python::setup::SetupOptions),
+    /// `prego python publish <file>...`.
+    PythonPublish {
+        files: Vec<String>,
+        namespace: String,
+    },
     Whoami {
         namespace: String,
         resource: Option<String>,
@@ -62,6 +74,10 @@ pub enum Command {
     /// `prego exec -- <command>`.
     Exec {
         command: Vec<String>,
+        /// The Python mode: `Some(namespace)` with `--python` or `--pip`, or for a Python program.
+        python: Option<String>,
+        /// `--pip`: also set `PIP_EXTRA_INDEX_URL`.
+        pip: bool,
     },
     /// `prego login`.
     Login {
@@ -83,7 +99,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 22] = [
+const WITH_VALUE: [&str; 25] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -106,9 +122,12 @@ const WITH_VALUE: [&str; 22] = [
     "--level",
     "--to",
     "--reason",
+    "--project",
+    "--tool",
+    "--url",
 ];
 /// Options without a value.
-const FLAGS: [&str; 7] = [
+const FLAGS: [&str; 9] = [
     "--write",
     "--print",
     "--dry-run",
@@ -116,6 +135,8 @@ const FLAGS: [&str; 7] = [
     "--user",
     "--publish",
     "--no-browser",
+    "--python",
+    "--pip",
 ];
 
 /// Parses the arguments after the program name.
@@ -216,6 +237,13 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         ["status"] => {
             allow(&[], &[])?;
             Command::Status
+        }
+        ["token"] if flag("--python") => {
+            allow(&["--url", "--namespace"], &["--python"])?;
+            Command::TokenPython {
+                url: one("--url")?,
+                namespace: one("--namespace")?.unwrap_or_else(|| "default".into()),
+            }
         }
         ["token"] => {
             allow(&["--scope", "--resource"], &[])?;
@@ -326,15 +354,50 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
                 print: flag("--print"),
             })
         }
+        ["setup", "python"] => {
+            allow(&["--namespace", "--project", "--tool"], &["--print"])?;
+            let tool = match one("--tool")? {
+                Some(t) => crate::python::setup::Tool::parse(&t)?,
+                None => crate::python::setup::Tool::Uv,
+            };
+            Command::SetupPython(crate::python::setup::SetupOptions {
+                namespace: one("--namespace")?.unwrap_or_else(|| "default".into()),
+                projects: take("--project"),
+                tool,
+                print: flag("--print"),
+            })
+        }
+        ["python", "publish", files @ ..] if !files.is_empty() => {
+            allow(&["--namespace"], &[])?;
+            Command::PythonPublish {
+                files: files.iter().map(|s| s.to_string()).collect(),
+                namespace: one("--namespace")?.unwrap_or_else(|| "default".into()),
+            }
+        }
+        ["python", "publish"] => {
+            return Err("usage: prego python publish [--namespace <ns>] <file>...".into())
+        }
         ["npm-env"] => {
             allow(&[], &[])?;
             Command::NpmEnv
         }
         ["exec"] => {
-            allow(&[], &[])?;
-            match rest {
-                Some(c) if !c.is_empty() => Command::Exec { command: c },
-                _ => return Err("usage: prego exec -- <command> [args]".into()),
+            allow(&["--namespace"], &["--python", "--pip"])?;
+            let command = match rest {
+                Some(c) if !c.is_empty() => c,
+                _ => return Err("usage: prego exec [--python] [--pip] [--namespace <ns>] -- <command> [args]".into()),
+            };
+            let pip = flag("--pip");
+            let namespace = one("--namespace")?;
+            let python_mode =
+                pip || flag("--python") || crate::python::is_python_program(&command[0]);
+            if namespace.is_some() && !python_mode {
+                return Err("--namespace applies to prego exec in the Python mode only (--python)".into());
+            }
+            Command::Exec {
+                python: python_mode.then(|| namespace.unwrap_or_else(|| "default".into())),
+                pip,
+                command,
             }
         }
         ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
@@ -660,6 +723,91 @@ mod tests {
     }
 
     #[test]
+    fn python_commands() {
+        use crate::python::setup::{SetupOptions, Tool};
+        let run = |args: &[&str]| match p(args).unwrap() {
+            Parsed::Run { command, .. } => command,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            run(&["token", "--python", "--url", "https://x/t/a/b/simple/"]),
+            Command::TokenPython {
+                url: Some("https://x/t/a/b/simple/".into()),
+                namespace: "default".into()
+            }
+        );
+        assert_eq!(
+            run(&[
+                "setup",
+                "python",
+                "--project",
+                "a",
+                "--project",
+                "b",
+                "--tool",
+                "poetry",
+                "--print"
+            ]),
+            Command::SetupPython(SetupOptions {
+                namespace: "default".into(),
+                projects: vec!["a".into(), "b".into()],
+                tool: Tool::Poetry,
+                print: true,
+            })
+        );
+        assert_eq!(
+            run(&[
+                "python",
+                "publish",
+                "--namespace",
+                "rel",
+                "a.whl",
+                "b.tar.gz"
+            ]),
+            Command::PythonPublish {
+                files: vec!["a.whl".into(), "b.tar.gz".into()],
+                namespace: "rel".into()
+            }
+        );
+        // A Python program turns on the Python mode; --python and --pip do too.
+        assert_eq!(
+            run(&["exec", "--", "uv", "sync"]),
+            Command::Exec {
+                command: vec!["uv".into(), "sync".into()],
+                python: Some("default".into()),
+                pip: false
+            }
+        );
+        assert_eq!(
+            run(&["exec", "--pip", "--namespace", "rel", "--", "make"]),
+            Command::Exec {
+                command: vec!["make".into()],
+                python: Some("rel".into()),
+                pip: true
+            }
+        );
+        assert_eq!(
+            run(&["exec", "--", "npm", "ci"]),
+            Command::Exec {
+                command: vec!["npm".into(), "ci".into()],
+                python: None,
+                pip: false
+            }
+        );
+        for bad in [
+            &["exec", "--namespace", "rel", "--", "npm", "ci"][..],
+            &["token", "--python", "--scope", "x"],
+            &["token", "--url", "https://x/"],
+            &["setup", "python", "--tool", "conda"],
+            &["setup", "python", "--write"],
+            &["python", "publish"],
+            &["python", "publish", "a.whl", "--pip"],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
     fn go_commands() {
         let run = |args: &[&str]| match p(args).unwrap() {
             Parsed::Run { command, .. } => command,
@@ -727,7 +875,9 @@ mod tests {
         assert_eq!(
             run(&["--tenant", "acme", "exec", "--", "go", "build", "--json"]),
             Command::Exec {
-                command: vec!["go".into(), "build".into(), "--json".into()]
+                command: vec!["go".into(), "build".into(), "--json".into()],
+                python: None,
+                pip: false,
             }
         );
         for bad in [

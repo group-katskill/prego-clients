@@ -278,6 +278,26 @@ prego exec -- npm publish
 The [npm quickstart](docs/npm-quickstart.md) has the console setup, publishing, CI, trusted publishing, the
 dependency-confusion note and the errors. [PROTOCOL.md](PROTOCOL.md) section 10 has the client contract.
 
+## Python packages
+
+From prego 0.9.0 and registry 1.9.0 (Org and Publisher plans). Prego serves private Python packages on
+`pypi.prego.k8skill.com`, one index for each namespace. Public packages still come from pypi.org.
+
+```sh
+prego setup python                 # pyproject.toml: the prego index (explicit) and [tool.uv.sources]
+prego exec -- uv sync              # a 30-minute Python token for uv, pip, twine and Poetry
+prego python publish dist/*        # upload wheels and sdists (at most 90 MiB each)
+```
+
+- `prego exec` uses the Python mode for `uv`, `pip`, `python`, `twine`, `poetry`, `pdm` and `hatch`, or with
+  `--python`. `--pip` also sets `PIP_EXTRA_INDEX_URL`.
+- `prego token --python` prints a Python token for tools and for the keyring helper `keyrings.prego`
+  (`keyrings-prego/`, not on pypi.org yet).
+- Use uv or Poetry with the explicit index, against dependency confusion.
+
+The [Python guide](docs/python-quickstart.md) has pip, Poetry, publishing, CI and the errors.
+[PROTOCOL.md](PROTOCOL.md) section 13 has the client contract.
+
 ## Release Variables
 
 From prego 0.8.0 and registry 1.8.0. Release Variables are plain settings that go with a release (an API base
@@ -328,6 +348,9 @@ prego setup npm --scope @acme                   # .npmrc lines with ${PREGO_NPM_
 prego exec -- npm install                       # a fresh token in PREGO_NPM_TOKEN (0.6.0)
 prego env pull acme/payments@1.4.0 --out release.env   # Release Variables of a release (0.8.0)
 prego env push acme/payments@1.4.0 --file vars.json    # push a new version of the set (0.8.0)
+prego setup python                              # the uv index in pyproject.toml (0.9.0)
+prego exec -- uv sync                           # a Python token for uv, pip, twine, Poetry (0.9.0)
+prego python publish dist/*                     # upload wheels and sdists (0.9.0)
 ```
 
 `prego oci push <input> <image>`:
@@ -356,7 +379,8 @@ All Prego client tools read `~/.config/prego/config.toml` (or `$XDG_CONFIG_HOME/
 tenant = "acme"
 edge_code = "k7mq"   # from the console (0.6.0)
 # Optional: sts_url, audience, source, oci_hosts = ["..."] for more OCI hosts,
-# go_hosts = ["..."] and go_prefixes = ["go.acme.com"] (0.4.0), npm_host = "..." (0.6.0).
+# go_hosts = ["..."] and go_prefixes = ["go.acme.com"] (0.4.0), npm_host = "..." (0.6.0),
+# pypi_host = "..." (0.9.0).
 ```
 
 ### Edge code

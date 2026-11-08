@@ -425,7 +425,7 @@ fn table(r: &Ref, answer: &Value, hash: &str) -> Result<String, String> {
     Ok(t)
 }
 
-fn write_atomic(path: &str, text: &str) -> Result<(), String> {
+pub(crate) fn write_atomic(path: &str, text: &str) -> Result<(), String> {
     let p = std::path::Path::new(path);
     let tmp = p.with_extension("prego-tmp");
     std::fs::write(&tmp, text).map_err(|e| format!("prego: {}: {e}", tmp.display()))?;

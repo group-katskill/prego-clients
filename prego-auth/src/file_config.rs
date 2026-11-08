@@ -14,6 +14,7 @@
 //! go_hosts = ["go.example.internal"]
 //! go_prefixes = ["go.acme.com", "github.com/acme"]
 //! npm_host = "npm.example.internal"
+//! pypi_host = "pypi.example.internal"
 //! ```
 
 use std::path::PathBuf;
@@ -58,6 +59,8 @@ pub struct FileConfig {
     pub go_prefixes: Vec<String>,
     /// The npm host, in place of `npm.prego.k8skill.com`.
     pub npm_host: Option<String>,
+    /// The Python packages host, in place of `pypi.prego.k8skill.com`.
+    pub pypi_host: Option<String>,
 }
 
 impl FileConfig {
@@ -137,10 +140,11 @@ impl FileConfig {
                 "go_hosts" => list(&mut out.go_hosts)?,
                 "go_prefixes" => list(&mut out.go_prefixes)?,
                 "npm_host" => string(&mut out.npm_host)?,
+                "pypi_host" => string(&mut out.pypi_host)?,
                 other => {
                     return Err(format!(
                         "unknown key `{other}`. Known keys: tenant, sts_url, edge_code, audience, source, oci_hosts, \
-                         go_hosts, go_prefixes, npm_host."
+                         go_hosts, go_prefixes, npm_host, pypi_host."
                     ))
                 }
             }

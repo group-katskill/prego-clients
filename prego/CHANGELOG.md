@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Python packages (registry 1.9.0): `prego setup python [--project NAME]... [--tool uv|poetry|pip] [--print]`
+  writes the prego index (`explicit = true`) and `[tool.uv.sources]` to `pyproject.toml` (never a token; without
+  `--project`, the projects from the JSON root index), or a Poetry source, or prints the pip line with the
+  dependency confusion warning. `prego exec` has a Python mode (`--python`, `--pip`, or automatic for uv, pip,
+  python, twine, poetry, pdm and hatch): one Python token in the uv, twine and Poetry variables, and
+  `PIP_EXTRA_INDEX_URL` with `--pip`; nothing on stderr. `prego token --python [--url URL]` prints a Python
+  token, cached (mode 0600) until 1 minute before it ends, and refuses a URL on another host.
+  `prego python publish <file>...` streams wheels and sdists to the upload API and refuses files over 90 MiB
+  before the upload. `pypi_host` in the settings file and `PREGO_PYPI_HOST`.
+
 ## [0.8.0] - 2026-11-08
 
 ### Added
