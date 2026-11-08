@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-08
+
 ### Added
 
 - `prego env` for Release Variables (registry 1.8.0): `pull`, `push`, `history`, `rollback`, `diff` and `hash`.
@@ -18,6 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Changed
 
+- Release 0.8.0: `prego env` for Release Variables (registry 1.8.0).
 - `serde_json` parses numbers exactly (`float_roundtrip`), so the canonical form of a number is the same as in
   the registry.
 

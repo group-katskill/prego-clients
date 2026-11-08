@@ -1,6 +1,6 @@
 [package]
 name = "prego"
-version = "0.7.0"
+version = "0.8.0"
 description = "Command-line tool for Prego by Katskill: registry tokens, whoami, setup for Cargo, Docker and Go, chunked OCI image push, Go module publish and the GOAUTH helper."
 readme = "README.md"
 keywords = ["prego", "registry", "oci", "cargo", "go"]
@@ -20,7 +20,7 @@ spiffe = ["prego-auth/spiffe"]
 session = ["prego-auth/session"]
 
 [dependencies]
-prego-auth = { version = "0.7.0", path = "../prego-auth", default-features = false }
+prego-auth = { version = "0.8.0", path = "../prego-auth", default-features = false }
 # preserve_order keeps the key order of ~/.docker/config.json when `prego setup docker --write` changes it.
 base64 = "0.22"
 crc32fast = "1"
@@ -32,4 +32,4 @@ sha2 = "0.10"
 tar = { version = "0.4", default-features = false }
 
 [dev-dependencies]
-prego-auth = { version = "0.7.0", path = "../prego-auth", default-features = false, features = ["test-support"] }
+prego-auth = { version = "0.8.0", path = "../prego-auth", default-features = false, features = ["test-support"] }

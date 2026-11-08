@@ -1,6 +1,6 @@
 [package]
 name = "cargo-credential-prego"
-version = "0.7.0"
+version = "0.8.0"
 description = "Cargo credential provider for Prego by Katskill registries. Exchanges a machine identity for a short-lived registry token."
 readme = "README.md"
 keywords = ["cargo", "credential-provider", "prego", "spiffe", "oidc"]
@@ -20,10 +20,10 @@ spiffe = ["prego-auth/spiffe"]
 session = ["prego-auth/session"]
 
 [dependencies]
-prego-auth = { version = "0.7.0", path = "../prego-auth", default-features = false }
+prego-auth = { version = "0.8.0", path = "../prego-auth", default-features = false }
 cargo-credential = "0.4.10"
 time = "0.3"
 
 [dev-dependencies]
-prego-auth = { version = "0.7.0", path = "../prego-auth", default-features = false, features = ["test-support"] }
+prego-auth = { version = "0.8.0", path = "../prego-auth", default-features = false, features = ["test-support"] }
 serde_json = "1"
