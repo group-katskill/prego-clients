@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.4.0
-  summary: STS token exchange, Cargo registry endpoints and the tenant admin API of Prego by Katskill.
+  version: 1.5.0
+  summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by Katskill.
   description: |
     The public, tenant-facing API of Prego by Katskill.
 
@@ -10,6 +10,9 @@ info:
       short-lived registry token. See `PROTOCOL.md`.
     - **Cargo registry** (`cargo.prego.k8skill.com`): the Cargo sparse registry protocol. Every request carries a
       registry token from the STS. Cargo gets it from `cargo-credential-prego`.
+    - **Release Variables** (`sts.prego.k8skill.com/v1/vars`, registry 1.8.0): plain settings that go with a
+      release, on the tenant, a namespace or a package version. Read and pushed with a registry token, and under
+      the admin API for the console. They are not secrets: everyone who can pull the release can read them.
     - **Admin API** (`sts.prego.k8skill.com/v1/admin`): manage tenants, members, namespaces, trust configs,
       principals and grants. Two kinds of callers:
       - **Humans** (the Prego console at `app.prego.k8skill.com`): a Firebase ID token. Access follows the
@@ -25,7 +28,7 @@ info:
     Common rules:
 
     - IDs are prefixed ULIDs (`ten_`, `ns_`, `usr_`, `inv_`, `tc_`, `prn_`, `grt_`, `crt_`, `ver_`, `aud_`,
-      `tok_`). An ID with the wrong prefix returns `404`, the same as an unknown ID.
+      `tok_`, `rvs_`). An ID with the wrong prefix returns `404`, the same as an unknown ID.
     - JSON field names are snake_case. Times are RFC 3339 UTC strings.
     - Every response has an `X-Request-Id` header. Responses also carry `X-Prego-Version`.
     - Tenant and namespace slugs match `^[a-z][a-z0-9-]{1,38}[a-z0-9]$`.
@@ -50,6 +53,11 @@ tags:
     description: Cargo sparse registry. Base path `/t/{tenant}/{ns}`.
   - name: admin
     description: Tenant administration. Used by the Prego console.
+  - name: vars
+    description: |
+      Release Variables (registry 1.8.0). Release Variables are plain text, readable by everyone who can pull
+      the release. Do not store passwords, tokens or keys here. Hashes are `sha256:<64 hex>` of the RFC 8785
+      (JCS) canonical form of the `{key: value}` map. No access gives `404`, never `403`.
 
 paths:
   /v1/version:
@@ -1206,6 +1214,469 @@ paths:
         "200": { $ref: "#/components/responses/OwnersStub" }
         "401": { $ref: "#/components/responses/CargoUnauthorized" }
 
+  /v1/vars/resolve:
+    get:
+      tags: [vars]
+      operationId: resolveVars
+      security:
+        - registryToken: []
+      summary: The merged Release Variables of a release. Read access (registry 1.8.0).
+      description: |
+        Merge per key, most specific wins: `version` over `namespace` over `tenant`. A JSON value at a higher
+        level replaces the whole value below it. A level with no set, or a set the caller may not see, is left
+        out of `levels`. A client computes `resolved_hash` again from `variables` and refuses a mismatch.
+      parameters:
+        - name: ref
+          in: query
+          required: true
+          description: "`<tenant>/<package>@<version>` (namespace `default`) or `<tenant>/<namespace>/<package...>@<version>`."
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string, enum: [json, env, flat], default: json }
+          description: |
+            `env` (`text/plain`): `# ref`, `# resolved_hash` and `# <level> <set_id> <version> <hash>` lines,
+            then `KEY='value'` lines sorted by key, every value in single quotes (`'` becomes `'\''`), a JSON
+            value as its canonical JSON text. `flat`: `{key: value}` only.
+      responses:
+        "200":
+          description: The merged view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsResolve" }
+            text/plain:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "401": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "429": { $ref: "#/components/responses/AdminError" }
+
+  /v1/vars/sets:
+    get:
+      tags: [vars]
+      operationId: getVarSet
+      security:
+        - registryToken: []
+      summary: One set, with its current version or version `version_number`. Read access (registry 1.8.0).
+      parameters:
+        - name: tenant
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/Slug" }
+        - $ref: "#/components/parameters/VarsLevel"
+        - name: namespace
+          in: query
+          required: false
+          description: Default `default`. Not on a `tenant` set.
+          schema: { $ref: "#/components/schemas/Slug" }
+        - name: package
+          in: query
+          required: false
+          description: "`version` sets only."
+          schema: { $ref: "#/components/schemas/VarsPackage" }
+        - name: version
+          in: query
+          required: false
+          description: "`version` sets only. The package version string."
+          schema: { $ref: "#/components/schemas/VarsVersionString" }
+        - name: version_number
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSetWithContent" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "401": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    put:
+      tags: [vars]
+      operationId: pushVarSet
+      security:
+        - registryToken: []
+      summary: Push a new version of a set. `publish` access (registry 1.8.0).
+      description: |
+        `variables` is the whole new map, not a patch. The set is made on the first push. A value that looks like
+        a credential is refused with `422 looks_like_secret`; machines cannot override it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VarsPushRequest" }
+      responses:
+        "200":
+          description: The content hash is the current hash. Nothing was written (`created` is false).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsPushResponse" }
+        "201":
+          description: A new version was made.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsPushResponse" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "401": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+        "413": { $ref: "#/components/responses/AdminError" }
+        "422": { $ref: "#/components/responses/AdminError" }
+
+  /v1/vars/sets/{rvs_id}/versions:
+    parameters:
+      - $ref: "#/components/parameters/VarSetId"
+    get:
+      tags: [vars]
+      operationId: listVarVersions
+      security:
+        - registryToken: []
+      summary: The versions of a set, newest first. Read access (registry 1.8.0).
+      responses:
+        "200":
+          description: Versions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarVersionList" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/vars/sets/{rvs_id}/current:
+    parameters:
+      - $ref: "#/components/parameters/VarSetId"
+    post:
+      tags: [vars]
+      operationId: moveVarSetCurrent
+      security:
+        - registryToken: []
+      summary: Roll back or forward. Moves the `current` pointer and makes no version. `publish` access (registry 1.8.0).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VarsMoveCurrent" }
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSet" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [vars, admin]
+      operationId: adminListVarSets
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List sets. Role reader or higher (registry 1.8.0).
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/VarsLevel" }
+        - name: namespace
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Slug" }
+        - name: package
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/VarsPackage" }
+        - name: state
+          in: query
+          required: false
+          schema: { type: string, enum: [pending_deletion] }
+      responses:
+        "200":
+          description: Sets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/VarSet" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    put:
+      tags: [vars, admin]
+      operationId: adminPushVarSet
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["vars:write"]
+      summary: Push a new version. Role publisher or higher. Same as `PUT /v1/vars/sets` without `tenant` (registry 1.8.0).
+      description: A person may send `allow_secret_like` (audited). An admin token cannot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VarsPushRequest" }
+      responses:
+        "200":
+          description: No change.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsPushResponse" }
+        "201":
+          description: A new version was made.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsPushResponse" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+        "413": { $ref: "#/components/responses/AdminError" }
+        "422": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    get:
+      tags: [vars, admin]
+      operationId: adminGetVarSet
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: A set with its current version. Role reader or higher (registry 1.8.0).
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSetWithContent" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    patch:
+      tags: [vars, admin]
+      operationId: adminUpdateVarSet
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["vars:write"]
+      summary: Turn cross-tenant reads of a `version` set on or off. Role publisher or higher (registry 1.8.0).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cross_tenant]
+              properties:
+                cross_tenant: { type: boolean }
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSet" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+    delete:
+      tags: [vars, admin]
+      operationId: adminDeleteVarSet
+      x-human-only: true
+      security:
+        - firebaseIdToken: []
+      summary: Delete a set (pending deletion, can be restored). Role admin or higher (registry 1.8.0).
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/versions:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    get:
+      tags: [vars, admin]
+      operationId: adminListVarVersions
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: The versions of a set, newest first. Role reader or higher (registry 1.8.0).
+      responses:
+        "200":
+          description: Versions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarVersionList" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/versions/{n}:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+      - name: n
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [vars, admin]
+      operationId: adminGetVarVersion
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: One version with its variables. Role reader or higher (registry 1.8.0).
+      responses:
+        "200":
+          description: The version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [number, hash, size_bytes, key_count, variables]
+                properties:
+                  number: { type: integer }
+                  hash: { $ref: "#/components/schemas/VarsHash" }
+                  size_bytes: { type: integer }
+                  key_count: { type: integer }
+                  variables: { $ref: "#/components/schemas/VarsVariables" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/diff:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    get:
+      tags: [vars, admin]
+      operationId: adminDiffVarVersions
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: Keys added, removed and changed between two versions, sorted by key. Role reader or higher (registry 1.8.0).
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: to, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: The diff.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, added, removed, changed]
+                properties:
+                  from: { type: integer }
+                  to: { type: integer }
+                  added:
+                    type: array
+                    items: { type: object, required: [key, value], properties: { key: { type: string }, value: {} } }
+                  removed:
+                    type: array
+                    items: { type: object, required: [key, value], properties: { key: { type: string }, value: {} } }
+                  changed:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, from, to]
+                      properties: { key: { type: string }, from: {}, to: {} }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/current:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    post:
+      tags: [vars, admin]
+      operationId: adminMoveVarSetCurrent
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["vars:write"]
+      summary: Roll back or forward. Role publisher or higher (registry 1.8.0).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VarsMoveCurrent" }
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSet" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    post:
+      tags: [vars, admin]
+      operationId: adminRestoreVarSet
+      x-human-only: true
+      security:
+        - firebaseIdToken: []
+      summary: Restore a pending set. Role admin or higher (registry 1.8.0).
+      responses:
+        "200":
+          description: The set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarSet" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/sets/{rvs_id}/purge:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/VarSetId"
+    post:
+      tags: [vars, admin]
+      operationId: adminPurgeVarSet
+      x-human-only: true
+      security:
+        - firebaseIdToken: []
+      summary: Purge a pending set now. Role admin or higher (registry 1.8.0).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm: { type: string, description: The `rvs_` ID of the set. }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/vars/resolve:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [vars, admin]
+      operationId: adminResolveVars
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: The merged view with every level of the tenant. Role reader or higher (registry 1.8.0).
+      description: Give `ref`, or `namespace`, `package` and `version`, not both (`400 invalid_field`). The tenant in `ref` must be `{tenant}`, else `404`.
+      parameters:
+        - { name: ref, in: query, required: false, schema: { type: string } }
+        - { name: namespace, in: query, required: false, schema: { $ref: "#/components/schemas/Slug" } }
+        - { name: package, in: query, required: false, schema: { $ref: "#/components/schemas/VarsPackage" } }
+        - { name: version, in: query, required: false, schema: { $ref: "#/components/schemas/VarsVersionString" } }
+        - { name: format, in: query, required: false, schema: { type: string, enum: [json, env, flat], default: json } }
+      responses:
+        "200":
+          description: The merged view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VarsResolve" }
+            text/plain:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
 security:
   - firebaseIdToken: []
 
@@ -1224,7 +1695,7 @@ components:
         An admin token from `POST /v1/sts/token` with `audience=prego-admin` (machines). The JWT has
         `aud` = `prego-admin` and a `scope` claim. The names in a security requirement are the admin scope
         that the operation needs: `admin:read`, `namespaces:write`, `trust_configs:write`, `principals:write`
-        or `grants:write`.
+        , `grants:write` or `vars:write` (registry 1.8.0).
     registryToken:
       type: apiKey
       in: header
@@ -1234,6 +1705,16 @@ components:
         token). Registry endpoints refuse API keys, JWT-SVIDs, OIDC ID tokens and admin tokens.
 
   parameters:
+    VarSetId:
+      name: rvs_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^rvs_" }
+    VarsLevel:
+      name: level
+      in: query
+      required: true
+      schema: { $ref: "#/components/schemas/VarsLevel" }
     EdgeCode:
       name: edge_code
       in: path
@@ -1376,7 +1857,7 @@ components:
       enum: [owner, admin, publisher, reader]
     AdminScope:
       type: string
-      enum: [admin:read, namespaces:write, trust_configs:write, principals:write, grants:write]
+      enum: [admin:read, namespaces:write, trust_configs:write, principals:write, grants:write, vars:write]
     AdminScopes:
       type: [array, "null"]
       uniqueItems: true
@@ -1471,10 +1952,23 @@ components:
               enum:
                 [bad_request, unauthorized, forbidden, not_found, conflict, payload_too_large, plan_limit, rate_limited, internal,
                  token_ttl_out_of_range, action_not_supported, broad_grant_needs_confirm, grant_ceiling,
-                 separation_of_duties, admin_namespace, admin_namespace_required]
-              description: The last seven codes are new in registry 1.2.0.
+                 separation_of_duties, admin_namespace, admin_namespace_required,
+                 invalid_key, invalid_value, invalid_field, value_too_large, set_too_large, looks_like_secret]
+              description: |
+                `token_ttl_out_of_range` to `admin_namespace_required` are new in registry 1.2.0. The last six
+                codes are Release Variables (registry 1.8.0).
             message: { type: string }
             request_id: { type: string }
+            keys:
+              type: array
+              items: { type: string }
+              description: Release Variables. The keys that `invalid_key`, `value_too_large` or `looks_like_secret` refers to. Never the values.
+            field:
+              type: string
+              description: Release Variables. The field that `invalid_field` refers to.
+            current_hash:
+              type: [string, "null"]
+              description: Release Variables. On a `conflict` from `if_current`, the current hash (null if the set has no version).
     CargoError:
       type: object
       required: [errors]
@@ -1771,3 +2265,145 @@ components:
         actor_id: { type: [string, "null"] }
         created_at: { type: string, format: date-time }
       additionalProperties: true
+
+    VarsLevel:
+      type: string
+      enum: [tenant, namespace, version]
+    VarsHash:
+      type: string
+      pattern: "^sha256:[0-9a-f]{64}$"
+      description: SHA-256 of the RFC 8785 (JCS) canonical form, UTF-8.
+    VarsKey:
+      type: string
+      pattern: "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+    VarsPackage:
+      type: string
+      minLength: 1
+      maxLength: 214
+      pattern: "^[a-z0-9@_][a-z0-9._~@/-]*$"
+      description: Lowercase, no `//`, no `/` at the end. Lookup uses the Cargo normal form (`_` and `-` are equal).
+    VarsVersionString:
+      type: string
+      pattern: "^[A-Za-z0-9._+-]{1,128}$"
+      description: Compared exactly (`v1.4.0` and `1.4.0` are different).
+    VarsVariables:
+      type: object
+      propertyNames: { $ref: "#/components/schemas/VarsKey" }
+      additionalProperties:
+        type: object
+        required: [value, type]
+        properties:
+          value: { description: Any JSON value. }
+          type: { type: string, enum: [string, json] }
+          from: { $ref: "#/components/schemas/VarsLevel" }
+      description: Each key with its value and type. `from` is on a resolve only.
+    VarSet:
+      type: object
+      required: [id, level, current_version, current_hash]
+      properties:
+        id: { type: string, pattern: "^rvs_" }
+        level: { $ref: "#/components/schemas/VarsLevel" }
+        namespace: { type: [string, "null"] }
+        package: { type: [string, "null"] }
+        version: { type: [string, "null"] }
+        cross_tenant: { type: boolean, description: "`version` sets only." }
+        current_version: { type: integer }
+        current_hash: { $ref: "#/components/schemas/VarsHash" }
+        key_count: { type: integer }
+        size_bytes: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        updated_by: { type: string, description: "`usr_` or `prn_`." }
+        published:
+          type: object
+          description: "`version` sets only. Information only."
+          additionalProperties: { type: boolean }
+        deleted_at: { type: string, format: date-time }
+        deleted_by: { type: string }
+        purge_after: { type: string, format: date-time }
+    VarSetWithContent:
+      allOf:
+        - $ref: "#/components/schemas/VarSet"
+        - type: object
+          required: [number, hash, variables]
+          properties:
+            number: { type: integer }
+            hash: { $ref: "#/components/schemas/VarsHash" }
+            variables: { $ref: "#/components/schemas/VarsVariables" }
+    VarVersion:
+      type: object
+      required: [number, hash, size_bytes, key_count, created_at, current]
+      properties:
+        number: { type: integer }
+        hash: { $ref: "#/components/schemas/VarsHash" }
+        size_bytes: { type: integer }
+        key_count: { type: integer }
+        pushed_by: { type: string }
+        message: { type: [string, "null"], maxLength: 200 }
+        secret_override: { type: boolean }
+        created_at: { type: string, format: date-time }
+        current: { type: boolean }
+    VarVersionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/VarVersion" }
+    VarsPushRequest:
+      type: object
+      required: [level, variables]
+      properties:
+        tenant: { $ref: "#/components/schemas/Slug", description: Machine route only. }
+        level: { $ref: "#/components/schemas/VarsLevel" }
+        namespace: { $ref: "#/components/schemas/Slug" }
+        package: { $ref: "#/components/schemas/VarsPackage" }
+        version: { $ref: "#/components/schemas/VarsVersionString" }
+        variables:
+          type: object
+          propertyNames: { $ref: "#/components/schemas/VarsKey" }
+          description: The whole new map of key to any JSON value. At most 1000 keys, 64 KiB per value, 256 KiB per set.
+        message: { type: string, maxLength: 200 }
+        if_current: { $ref: "#/components/schemas/VarsHash" }
+        allow_secret_like: { type: boolean, description: Admin route, people only. Audited. }
+    VarsPushResponse:
+      type: object
+      required: [set, version, created, warnings]
+      properties:
+        set: { $ref: "#/components/schemas/VarSet" }
+        version: { $ref: "#/components/schemas/VarVersion" }
+        created: { type: boolean }
+        warnings:
+          type: array
+          items:
+            type: object
+            required: [key, code]
+            properties:
+              key: { type: string }
+              code: { type: string, enum: [secret_like_key] }
+    VarsMoveCurrent:
+      type: object
+      required: [version, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 1, maxLength: 200 }
+    VarsResolve:
+      type: object
+      required: [ref, resolved_hash, levels, variables]
+      properties:
+        ref: { type: string, description: Always the long form. }
+        resolved_hash: { $ref: "#/components/schemas/VarsHash" }
+        published:
+          type: object
+          additionalProperties: { type: boolean }
+        levels:
+          type: array
+          items:
+            type: object
+            required: [level, set_id, version, hash]
+            properties:
+              level: { $ref: "#/components/schemas/VarsLevel" }
+              set_id: { type: string }
+              version: { type: integer }
+              hash: { $ref: "#/components/schemas/VarsHash" }
+        variables: { $ref: "#/components/schemas/VarsVariables" }
