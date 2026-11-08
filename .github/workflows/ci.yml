@@ -74,3 +74,26 @@ jobs:
 
       - name: cargo test (default features)
         run: cargo test --locked --workspace
+
+  keyrings-prego:
+    # keyrings.prego (pure Python): build the sdist and the wheel, install the wheel, run the tests against
+    # the installed package with a fake prego. It is not published from CI.
+    name: keyrings.prego build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and test
+        working-directory: keyrings-prego
+        run: |
+          python3 --version
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet build==1.6.1 pytest==9.2.0 keyring==25.7.0
+          "$RUNNER_TEMP/venv/bin/python" -m build --outdir "$RUNNER_TEMP/dist" .
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --no-deps "$RUNNER_TEMP"/dist/*.whl
+          cp -r tests "$RUNNER_TEMP/tests"
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/venv/bin/python" -m pytest -q -p no:cacheprovider tests

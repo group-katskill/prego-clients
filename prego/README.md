@@ -23,6 +23,10 @@ cargo install prego
 | `prego env push <ref>` | From 0.8.0. Pushes a new version of a set from `--file vars.json`, `--env-file .env` (strings only), `--set KEY=VALUE` and `--set-json KEY=<JSON>`. The push replaces the whole set. `--if-current <hash>`, `--message`, `--level tenant\|namespace`. |
 | `prego env history\|rollback\|diff <ref>` | From 0.8.0. The versions of a set, a rollback (`--to <n> --reason`), and the keys changed between two versions. |
 | `prego env hash <file>` | From 0.8.0. The RFC 8785 `sha256:` hash of a JSON object, the same as the registry, offline. |
+| `prego setup python` | From 0.9.0. Writes the prego index (`explicit = true`) and `[tool.uv.sources]` to `pyproject.toml`, never a token. Without `--project`, the sources are the projects you can read. `--tool poetry` writes a Poetry source, `--tool pip` prints the line and the dependency confusion warning. `--print` writes nothing. |
+| `prego python publish <file>...` | From 0.9.0. Uploads wheels and sdists to the namespace (`--namespace`). Files over 90 MiB are refused before the upload. |
+| `prego token --python [--url <url>]` | From 0.9.0. Prints a Python token (30 minutes) for the namespace of the URL, cached until 1 minute before it ends. For the keyring helper `keyrings.prego`. |
+| `prego exec [--python] [--pip] -- <command>` | From 0.9.0. The Python mode (also automatic for `uv`, `pip`, `python`, `twine`, `poetry`, `pdm`, `hatch`): one Python token in the uv, twine and Poetry variables, and in `PIP_EXTRA_INDEX_URL` with `--pip`. |
 | `prego setup docker` | Prints the `~/.docker/config.json` snippet. With `--write`, adds `credHelpers` for the Prego OCI hosts to that file. It makes a backup copy first and keeps all other keys. |
 
 Stock `docker push`, Podman and BuildKit send each layer in one request, and Prego accepts at most 95 MiB in one

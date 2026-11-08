@@ -17,6 +17,7 @@ pub mod http;
 pub mod jwt;
 pub mod npm;
 pub mod oci;
+pub mod python;
 mod secret;
 pub mod session;
 pub mod sources;

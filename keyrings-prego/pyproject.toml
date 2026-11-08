@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "keyrings.prego"
+version = "0.1.0"
+description = "Keyring backend that gets Prego tokens for Python packages from the prego CLI"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = ["keyring>=23"]
+keywords = ["keyring", "prego", "pip", "uv", "poetry"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS",
+]
+
+[project.urls]
+Source = "https://github.com/group-katskill/prego-clients"
+
+[project.entry-points."keyring.backends"]
+prego = "keyrings.prego"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/keyrings"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "CHANGELOG.md", "LICENSE"]

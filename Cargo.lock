@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-prego"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "cargo-credential",
  "prego-auth",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "docker-credential-prego"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "prego-auth",
  "serde_json",
@@ -1294,7 +1294,7 @@ dependencies = [
 
 [[package]]
 name = "prego"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "base64 0.22.1",
  "crc32fast",
@@ -1303,11 +1303,12 @@ dependencies = [
  "serde_json",
  "sha2",
  "tar",
+ "toml_edit",
 ]
 
 [[package]]
 name = "prego-auth"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "base64 0.22.1",
  "keyring",
@@ -1930,6 +1931,7 @@ dependencies = [
  "indexmap",
  "toml_datetime 1.1.3+spec-1.1.0",
  "toml_parser",
+ "toml_writer",
  "winnow 1.0.4",
 ]
 
@@ -1944,9 +1946,9 @@ dependencies = [
 
 [[package]]
 name = "toml_writer"
-version = "1.1.3+spec-1.1.0"
+version = "1.2.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06bdbd8cfc056b8d2e2e85f29b56a3bdbecb527cef81eb39e3e7b98af4652770"
+checksum = "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a"
 
 [[package]]
 name = "tonic"
