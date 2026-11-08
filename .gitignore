@@ -1,3 +1,6 @@
 /target/
 .creds/
 *.env
+__pycache__/
+*.pyc
+/keyrings-prego/dist/
