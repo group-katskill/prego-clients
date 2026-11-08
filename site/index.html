@@ -46,6 +46,7 @@
           <a href="#oci">Images</a>
           <a href="#go">Go</a>
           <a href="#npm">npm</a>
+          <a href="#vars">Variables</a>
           <a href="#sources">Identity sources</a>
           <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
@@ -342,7 +343,33 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section section-band" id="sources" aria-labelledby="sources-title">
+      <section class="section section-band" id="vars" aria-labelledby="vars-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="vars-title">Release Variables</h2>
+          <p class="section-lede">
+            prego 0.8.0 and later read and push plain settings that go with a release: an API base URL,
+            feature flags, a list of regions. A machine that can pull the release reads them with the same
+            identity.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego env pull acme/releases/payments@1.4.0 --out release.env --expect sha256:9f2c...
+<span class="p">$ </span>set -a; . ./release.env; set +a
+<span class="p">$ </span>prego env push acme/releases/payments@1.4.0 --file release-vars.json   <span class="c"># replaces the whole set</span></code></pre>
+          </div>
+          <ul class="rules">
+            <li><strong>Release Variables are plain text, readable by everyone who can pull the release. Do not store passwords, tokens or keys here.</strong></li>
+            <li>Levels: tenant, namespace and version. The most specific level wins, key by key.</li>
+            <li><code>--expect</code> pins the RFC 8785 hash of the merged set and exits with 3 if anything changed. <code>prego env hash</code> computes it offline.</li>
+            <li>Every value in the env output is in single quotes. History, rollback and diff keep each version.</li>
+          </ul>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/release-variables.md">Release Variables guide</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="sources" aria-labelledby="sources-title">
         <div class="wrap">
           <h2 class="section-title display" id="sources-title">Identity sources</h2>
           <p class="section-lede">
@@ -389,7 +416,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section" id="safety" aria-labelledby="safety-title">
+      <section class="section section-band" id="safety" aria-labelledby="safety-title">
         <div class="wrap">
           <h2 class="section-title display" id="safety-title">Safety rules</h2>
           <ul class="rules">
@@ -407,7 +434,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section section-band" id="guides" aria-labelledby="guides-title">
+      <section class="section" id="guides" aria-labelledby="guides-title">
         <div class="wrap">
           <h2 class="section-title display" id="guides-title">Guides</h2>
           <ul class="cards">
@@ -428,6 +455,10 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
               <p>From 0.6.0: private scoped npm packages for npm, pnpm, Yarn and Bun. <code>prego setup npm</code> writes no token; trusted publishing from GitLab CI and GitHub Actions; dependency confusion.</p>
             </li>
             <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/release-variables.md">Release Variables</a></h3>
+              <p>From 0.8.0: <code>prego env</code> pulls and pushes plain release settings, pins them with <code>--expect</code>, and keeps history and rollback. Not for secrets.</p>
+            </li>
+            <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a></h3>
               <p>GitLab <code>id_tokens</code>, GitHub Actions OIDC, SPIFFE and cloud workloads, image builds, and how to manage Prego from CI with an admin token. No stored secret.</p>
             </li>
@@ -443,7 +474,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section" id="security" aria-labelledby="security-title">
+      <section class="section section-band" id="security" aria-labelledby="security-title">
         <div class="wrap two-col">
           <div>
             <h2 class="section-title display" id="security-title">Security</h2>

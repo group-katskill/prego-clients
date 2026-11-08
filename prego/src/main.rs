@@ -5,6 +5,7 @@
 mod admin;
 mod args;
 mod docker_config;
+mod env;
 mod go;
 mod login;
 mod npm;
@@ -66,6 +67,29 @@ Commands:
                                   current directory. --user writes ~/.npmrc. --print writes nothing. The
                                   scope defaults to the tenant's only npm scope
   npm-env                         print export PREGO_NPM_TOKEN='<token>', for eval \"$(prego npm-env)\"
+  env pull <ref> [--format env|json|flat] [--expect <hash>] [--out FILE]
+                                  get the Release Variables of a release, merged from the tenant,
+                                  namespace and version sets (the most specific wins). <ref> is
+                                  <tenant>/<package>@<version> (namespace default) or
+                                  <tenant>/<namespace>/<package...>@<version>. The format is env when stdout
+                                  is not a terminal: KEY='value' lines, every value shell-quoted, JSON values
+                                  as canonical JSON. --expect exits with 3 if the resolved hash is different
+                                  (nothing is written)
+  env push <ref> --file vars.json | --env-file .env | --set KEY=VALUE | --set-json KEY=<JSON>
+           [--message <text>] [--if-current <hash>] [--level tenant|namespace]
+                                  push a new version of a set. The push replaces the whole set: the file
+                                  (a .env file gives strings only), then --set and --set-json on top.
+                                  --if-current refuses the push if the current hash is different. With
+                                  --level, <ref> is <tenant> or <tenant>/<namespace>. Needs publish
+  env history <ref> [--level ...] list the versions of a set (* is the current one)
+  env rollback <ref> --to <n> --reason <text> [--level ...]
+                                  make version n the current one (no new version is made)
+  env diff <ref> --from <n> --to <m> [--level ...]
+                                  show the keys added, removed and changed between two versions
+  env hash <file|->               print the sha256 hash of a JSON object of variables (RFC 8785
+                                  canonical form), the same as the registry, offline
+                                  Release Variables are plain text, readable by everyone who can pull the
+                                  release. Do not store passwords, tokens or keys here.
   exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
                                   PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
                                   (mode 0600, deleted at the end) that holds it (Go before 1.24)
@@ -166,6 +190,7 @@ fn main() {
                 } => go::setup(&globals, &namespace, &prefixes, write, &env),
                 Command::SetupNpm(opts) => npm::setup(&globals, &opts, &env),
                 Command::NpmEnv => npm::npm_env(&globals, &env),
+                Command::Env(c) => env::run(&globals, &c, &env),
                 Command::Exec { command } => match go::exec(&globals, &command, &env) {
                     Ok(code) => std::process::exit(code),
                     Err(e) => Err(e),
@@ -181,4 +206,14 @@ fn main() {
 fn fail(message: &str) -> ! {
     eprintln!("{message}");
     std::process::exit(1);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn help_says_release_variables_are_not_secrets() {
+        let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(help.contains(crate::env::NOT_SECRETS), "{help}");
+        assert!(help.contains("The push replaces the whole set"));
+    }
 }

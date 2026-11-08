@@ -6,8 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-08
+
+### Added
+
+- `docs/release-variables.md`: the Release Variables guide for `prego env` (0.8.0). README, the website and
+  PROTOCOL.md 1.10.0 section 12 (routes, RFC 8785 hashes, env output) and the `vars:write` admin scope.
+- `docs/openapi.yaml` 1.5.0: the Release Variables routes (`/v1/vars/*` and `/v1/admin/tenants/{tenant}/vars/*`),
+  their schemas, the `vars:write` scope and the new error codes and fields.
+
 ### Changed
 
+- Release 0.8.0: `prego env` for Release Variables (registry 1.8.0), with the guide
+  `docs/release-variables.md`, the website section, PROTOCOL.md 1.10.0 and `docs/openapi.yaml` 1.5.0.
 - Go `.netrc` with an API key (registry 1.6.0): the Go quickstart has a "Last resort" section with the grant
   switch "Allow this API key in .netrc" and the new `401` text; PROTOCOL.md 1.9.0 section 9.2 and the website
   say the same. `prego go-auth` stays first.

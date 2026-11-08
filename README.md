@@ -278,6 +278,26 @@ prego exec -- npm publish
 The [npm quickstart](docs/npm-quickstart.md) has the console setup, publishing, CI, trusted publishing, the
 dependency-confusion note and the errors. [PROTOCOL.md](PROTOCOL.md) section 10 has the client contract.
 
+## Release Variables
+
+From prego 0.8.0 and registry 1.8.0. Release Variables are plain settings that go with a release (an API base
+URL, feature flags), on the tenant, a namespace or a package version. A machine that can pull the release can
+read them with the same identity.
+
+**Release Variables are plain text, readable by everyone who can pull the release. Do not store passwords,
+tokens or keys here.**
+
+```sh
+prego env pull acme/releases/payments@1.4.0 --out release.env --expect sha256:...   # exit 3 if it changed
+prego env push acme/releases/payments@1.4.0 --file release-vars.json               # replaces the whole set
+prego env history acme/releases/payments@1.4.0
+prego env rollback acme/releases/payments@1.4.0 --to 2 --reason "..."
+prego env hash release-vars.json                                                   # offline, RFC 8785
+```
+
+The [Release Variables guide](docs/release-variables.md) has the levels, the merge, references, access, CI and
+the errors. [PROTOCOL.md](PROTOCOL.md) section 12 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -306,6 +326,8 @@ prego setup go --prefix go.acme.com             # the go env -w lines (0.4.0)
 prego go publish --dry-run                      # a Go module zip from the tag (0.4.0)
 prego setup npm --scope @acme                   # .npmrc lines with ${PREGO_NPM_TOKEN} (0.6.0)
 prego exec -- npm install                       # a fresh token in PREGO_NPM_TOKEN (0.6.0)
+prego env pull acme/payments@1.4.0 --out release.env   # Release Variables of a release (0.8.0)
+prego env push acme/payments@1.4.0 --file vars.json    # push a new version of the set (0.8.0)
 ```
 
 `prego oci push <input> <image>`:
