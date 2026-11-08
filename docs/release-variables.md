@@ -188,8 +188,8 @@ proves its identity. But the two systems make different promises about the value
 - **Storage is plain text.** Prego encrypts the data at rest only (the Cloudflare default for D1 and R2). A secrets
   manager encrypts each value and limits who can see it.
 - **Reads are counted, not audited.** Each resolve adds one to the tenant's monthly usage, the same as a download.
-  Writes, rollbacks and refusals are audited, but a read does not get an audit row. A secret needs an audit row for
-  each read.
+  Pushes, rollbacks, set changes and a refused push from a reader are audited. A read does not get an audit row. A
+  secret needs an audit row for each read.
 - **Values that look like credentials are refused.** A push with a value in a known credential format (for example a
   private key, a cloud access key or a GitHub token) gets `422 looks_like_secret`. Key names that end like
   `_PASSWORD` or `_TOKEN` give a warning. Only a person in the console can override the refusal, and the audit log
