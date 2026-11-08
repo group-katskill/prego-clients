@@ -171,3 +171,30 @@ GitHub Actions works the same with `permissions: id-token: write`. See the [CI g
 | `403 plan_limit` | Too many sets, or the storage quota is full | See the usage page in the console. |
 | `413 value_too_large` / `set_too_large` | Over 64 KiB per value or 256 KiB per set | Make the set smaller. |
 | `429` with `retry after` | The tenant reached its usage limit for this month, or the rate limit | Try again later. |
+
+## FAQ
+
+### Are Release Variables a secrets manager?
+
+No. Release Variables and a secrets manager (for example Doppler) both give a value to a machine after the machine
+proves its identity. But the two systems make different promises about the value.
+
+- **Access follows the release.** Every identity that can pull a package can read its variables. A consumer in
+  another tenant with a read grant can read the version-level set when its `cross_tenant` flag is on. The flag is on
+  by default. A secret must not follow this path.
+- **Versions stay, and each has a content hash.** Prego keeps the last 50 versions of a set. It also keeps the
+  current version and every version that was current in the last 30 days. CI can pin a resolved hash with
+  `--expect`. A secret needs rotation and revocation, not a long history.
+- **Storage is plain text.** Prego encrypts the data at rest only (the Cloudflare default for D1 and R2). A secrets
+  manager encrypts each value and limits who can see it.
+- **Reads are counted, not audited.** Each resolve adds one to the tenant's monthly usage, the same as a download.
+  Writes, rollbacks and refusals are audited, but a read does not get an audit row. A secret needs an audit row for
+  each read.
+- **Values that look like credentials are refused.** A push with a value in a known credential format (for example a
+  private key, a cloud access key or a GitHub token) gets `422 looks_like_secret`. Key names that end like
+  `_PASSWORD` or `_TOKEN` give a warning. Only a person in the console can override the refusal, and the audit log
+  records the override. Machines cannot override it. The check finds known formats only, so it is not a guarantee.
+
+Use Release Variables for settings that belong to a release: API URLs, feature flags, schema versions, region lists.
+Keep passwords, tokens and keys in a secrets manager. In Release Variables, store only the name or the path that
+points to the secret.
