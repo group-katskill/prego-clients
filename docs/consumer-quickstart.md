@@ -23,7 +23,7 @@ cargo install cargo-credential-prego
 cargo-credential-prego --version
 ```
 
-All Prego client crates are on [crates.io](https://crates.io/crates/cargo-credential-prego), version 0.3.0.
+All Prego client crates are on [crates.io](https://crates.io/crates/cargo-credential-prego), version 0.8.0.
 
 Or install all Prego tools (`cargo-credential-prego`, `docker-credential-prego`, `prego`) with the install
 script. It checks the SHA-256 sum and copies the binaries to `~/.local/bin`:
