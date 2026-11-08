@@ -17,6 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   token, cached (mode 0600) until 1 minute before it ends, and refuses a URL on another host.
   `prego python publish <file>...` streams wheels and sdists to the upload API and refuses files over 90 MiB
   before the upload. `pypi_host` in the settings file and `PREGO_PYPI_HOST`.
+- `prego token --python --url` refuses a plain `http://` URL, except for a loopback host: a token is sent
+  only over https.
 
 ## [0.8.0] - 2026-11-08
 

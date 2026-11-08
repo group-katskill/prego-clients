@@ -42,10 +42,24 @@ def _host(service: str) -> str:
     return host
 
 
+LOOPBACK = ("127.0.0.1", "::1", "[::1]", "localhost")
+
+
+def _is_loopback(host: str) -> bool:
+    if host.startswith("["):
+        name = host.split("]", 1)[0] + "]"
+    else:
+        name = host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+    return name in LOOPBACK
+
+
 def is_prego_host(service: str) -> bool:
-    """True for a host under prego.k8skill.com, or the host in PREGO_PYPI_HOST."""
+    """True for a host under prego.k8skill.com, or the host in PREGO_PYPI_HOST. A plain http URL is refused,
+    except for a loopback host (local tests): a token never goes over plain HTTP."""
     host = _host(service)
     if not host:
+        return False
+    if service.strip().lower().startswith("http://") and not _is_loopback(host):
         return False
     configured = os.environ.get("PREGO_PYPI_HOST", "").strip()
     if configured and host == _host(configured):

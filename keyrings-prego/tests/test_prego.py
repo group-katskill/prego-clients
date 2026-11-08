@@ -68,6 +68,17 @@ def test_other_hosts_get_nothing_and_run_nothing(fake_prego: Path) -> None:
     assert calls(fake_prego) == []
 
 
+def test_plain_http_gets_nothing(fake_prego: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    k = PregoKeyring()
+    assert k.get_password("http://pypi.prego.k8skill.com/t/acme/default/simple/", None) is None
+    assert k.get_credential("HTTP://pypi.prego.k8skill.com/", "__token__") is None
+    monkeypatch.setenv("PREGO_PYPI_HOST", "pypi.example.test")
+    assert k.get_password("http://pypi.example.test/t/a/b/simple/", None) is None
+    assert calls(fake_prego) == []
+    monkeypatch.setenv("PREGO_PYPI_HOST", "localhost:8080")
+    assert k.get_password("http://localhost:8080/t/a/b/simple/", None) == "tok.en-1"
+
+
 def test_other_usernames_get_nothing(fake_prego: Path) -> None:
     assert PregoKeyring().get_password(INDEX, "alice") is None
     assert PregoKeyring().get_credential(INDEX, "alice") is None

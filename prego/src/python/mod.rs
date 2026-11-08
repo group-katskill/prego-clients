@@ -50,12 +50,11 @@ pub fn parse_url(url: &str, host: &str) -> Result<UrlParts, String> {
              https://{host}/t/<tenant>/<namespace>/simple/"
         )
     };
-    let rest = url
-        .split_once("://")
-        .map_or(url, |(scheme, rest)| match scheme {
-            "https" | "http" => rest,
-            _ => "",
-        });
+    // A URL without a scheme (pip asks the keyring with the host only) counts as https.
+    let (scheme, rest) = url.split_once("://").unwrap_or(("https", url));
+    if scheme != "https" && scheme != "http" {
+        return Err(bad());
+    }
     let (authority, path) = match rest.find('/') {
         Some(i) => (&rest[..i], &rest[i..]),
         None => (rest, ""),
@@ -65,6 +64,12 @@ pub fn parse_url(url: &str, host: &str) -> Result<UrlParts, String> {
     let normalized = prego_auth::oci::normalize_host(authority).ok_or_else(bad)?;
     if !python::is_prego_host(&normalized, host) {
         return Err(bad());
+    }
+    // A token never goes over plain HTTP, except to a loopback host (local tests).
+    if scheme == "http" && prego_auth::go::scheme(&normalized) != "http" {
+        return Err(format!(
+            "prego: `{url}` uses http. A token is sent only over https (http only for a loopback host)"
+        ));
     }
     let mut parts = path.split('/').skip(1);
     let names = match (parts.next(), parts.next(), parts.next()) {
@@ -251,6 +256,13 @@ mod tests {
             parse_url("pypi-other.prego.k8skill.com", HOST).unwrap(),
             ("pypi-other.prego.k8skill.com".to_string(), None)
         );
+        assert!(parse_url("http://pypi.prego.k8skill.com/t/a/b/", HOST)
+            .unwrap_err()
+            .contains("uses http"));
+        assert_eq!(
+            parse_url("http://localhost:9/t/a/b/simple/", "localhost:9").unwrap(),
+            ("localhost:9".to_string(), names("a", "b"))
+        );
         assert_eq!(
             parse_url("http://127.0.0.1:9/t/a/b/legacy/", "127.0.0.1:9").unwrap(),
             ("127.0.0.1:9".to_string(), names("a", "b"))
@@ -262,6 +274,9 @@ mod tests {
             "ftp://pypi.prego.k8skill.com/t/a/b/",
             "https://pypi.prego.k8skill.com/x/a/b/",
             "https://pypi.prego.k8skill.com/t/a b/c/",
+            "http://pypi.prego.k8skill.com/t/a/b/",
+            "http://pypi.prego.k8skill.com",
+            "http://pypi-other.prego.k8skill.com/t/a/b/simple/",
         ] {
             assert!(parse_url(bad, HOST).is_err(), "{bad}");
         }
