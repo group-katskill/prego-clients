@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-08
+
 ### Added
 
 - Python packages: `docs/python-quickstart.md`, a README section, PROTOCOL.md 1.11.0 section 13 (URLs,
@@ -15,6 +17,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Release 0.9.0: Python packages (registry 1.9.0), with the guide `docs/python-quickstart.md`.
 - `docs/release-variables.md`: FAQ "Are Release Variables a secrets manager?".
 - Docs: crates.io has all four crates at 0.8.0 (`README.md`, `docs/consumer-quickstart.md`,
   `docs/go-quickstart.md`); the README release steps name `cargo publish --workspace --locked`.

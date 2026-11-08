@@ -6,10 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-08
+
 ### Added
 
 - `python` module: the Python packages host (`PREGO_PYPI_HOST`, `pypi_host`, default `pypi.prego.k8skill.com`),
   the base, index and upload URLs of a namespace, and the Prego host check. `FileConfig::pypi_host`.
+
+### Changed
+
+- Release 0.9.0: the `python` module for `prego` 0.9.0.
 
 ## [0.8.0] - 2026-11-08
 

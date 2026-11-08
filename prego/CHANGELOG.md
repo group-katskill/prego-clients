@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-08
+
 ### Added
 
 - Python packages (registry 1.9.0): `prego setup python [--project NAME]... [--tool uv|poetry|pip] [--print]`
@@ -19,6 +21,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   before the upload. `pypi_host` in the settings file and `PREGO_PYPI_HOST`.
 - `prego token --python --url` refuses a plain `http://` URL, except for a loopback host: a token is sent
   only over https.
+
+### Changed
+
+- Release 0.9.0: Python packages (registry 1.9.0).
 
 ## [0.8.0] - 2026-11-08
 
