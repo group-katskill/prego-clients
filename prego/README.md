@@ -19,6 +19,10 @@ cargo install prego
 | `prego setup npm [--scope @acme]` | From 0.6.0. Writes the scope line and `${PREGO_NPM_TOKEN}` (never a token) to `.npmrc`. `--client pnpm\|yarn\|bun` for the other tools (`.yarnrc.yml`, `bunfig.toml`), `--user` for `~/.npmrc`, `--print` to write nothing, `--namespace` for another namespace. |
 | `prego npm-env` | From 0.6.0. Prints `export PREGO_NPM_TOKEN='<token>'`, for `eval "$(prego npm-env)"`. |
 | `prego exec -- <command>` | From 0.4.0. Runs the command with `NETRC` set to a temporary file (mode 0600) that holds a registry token, for Go before 1.24. From 0.6.0 also with the token in `PREGO_NPM_TOKEN` and `PREGO_TOKEN`, for npm, pnpm, Yarn and Bun. |
+| `prego env pull <ref>` | From 0.8.0. Gets the Release Variables of a release (`acme/payments@1.4.0`), merged from the tenant, namespace and version sets. `--format env\|json\|flat`, `--out FILE`. `--expect <hash>` exits with 3 if the resolved hash is different. In env format every value is shell-quoted. |
+| `prego env push <ref>` | From 0.8.0. Pushes a new version of a set from `--file vars.json`, `--env-file .env` (strings only), `--set KEY=VALUE` and `--set-json KEY=<JSON>`. The push replaces the whole set. `--if-current <hash>`, `--message`, `--level tenant\|namespace`. |
+| `prego env history\|rollback\|diff <ref>` | From 0.8.0. The versions of a set, a rollback (`--to <n> --reason`), and the keys changed between two versions. |
+| `prego env hash <file>` | From 0.8.0. The RFC 8785 `sha256:` hash of a JSON object, the same as the registry, offline. |
 | `prego setup docker` | Prints the `~/.docker/config.json` snippet. With `--write`, adds `credHelpers` for the Prego OCI hosts to that file. It makes a backup copy first and keeps all other keys. |
 
 Stock `docker push`, Podman and BuildKit send each layer in one request, and Prego accepts at most 95 MiB in one
@@ -31,7 +35,10 @@ prego oci push api.tar acme/default/api:1.4.0
 
 `prego` uses the same identity sources, options and settings file (`~/.config/prego/config.toml`) as
 `cargo-credential-prego` and `docker-credential-prego`. See the repository `README.md` and
-`docs/go-quickstart.md` and `docs/npm-quickstart.md`.
+`docs/go-quickstart.md`, `docs/npm-quickstart.md` and `docs/release-variables.md`.
+
+Release Variables are plain text, readable by everyone who can pull the release. Do not store passwords, tokens
+or keys here.
 
 `prego token` prints a secret. Use it in a variable (`export PREGO_NPM_TOKEN="$(prego token)"`), not in a
 log.

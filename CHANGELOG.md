@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/release-variables.md`: the Release Variables guide for `prego env` (0.8.0). README, the website and
+  PROTOCOL.md 1.10.0 section 12 (routes, RFC 8785 hashes, env output) and the `vars:write` admin scope.
+
 ### Changed
 
 - Go `.netrc` with an API key (registry 1.6.0): the Go quickstart has a "Last resort" section with the grant

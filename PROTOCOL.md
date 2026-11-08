@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.9.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.10.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -185,6 +185,7 @@ be refreshed. Exchange again when you need a new one.
 | `trust_configs:write` | Create, delete and test trust configs. |
 | `principals:write` | Create, change, revoke and delete principals, including API key principals. |
 | `grants:write` | Create and delete grants. |
+| `vars:write` | Push Release Variable sets and move their `current` pointer (registry 1.8.0). |
 
 There is no wildcard scope. `grants:write` is powerful: a job with it can grant itself `publish`.
 
@@ -571,3 +572,40 @@ refresh_token=<refresh token>
 
 Always `200 {}`, also for an unknown or revoked token. It ends the whole session. The client deletes the local
 session also when the call fails, and says so.
+
+## 12. Release Variables (registry 1.8.0, prego 0.8.0)
+
+Release Variables are plain settings on the tenant, a namespace or a package version. They are not secrets:
+everyone who can pull the release can read them.
+
+### 12.1 Requests
+
+The routes are on the STS host, with the plain path (no edge code) and a registry token from section 1
+(`Authorization: Bearer <registry token>`):
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /v1/vars/resolve?ref=<tenant>/<namespace>/<package>@<version>` | The merged view of the three levels. |
+| `GET /v1/vars/sets?tenant=&level=[&namespace=][&package=&version=][&version_number=n]` | One set: its current version, or version `n`. |
+| `PUT /v1/vars/sets` `{tenant, level, namespace?, package?, version?, variables, message?, if_current?}` | Push a new version. `variables` is the whole map. `201` for a new version, `200` when the content is the same. |
+| `GET /v1/vars/sets/{rvs_id}/versions` | `{items: [...]}`, newest first. |
+| `POST /v1/vars/sets/{rvs_id}/current` `{version, reason}` | Move the `current` pointer. No new version. |
+
+No access gives `404`, never `403`, so a set's existence does not leak. Read but no `publish` gives `403` on a
+write.
+
+### 12.2 Canonical form and hashes
+
+- The canonical form of a map is RFC 8785 (JSON Canonicalization Scheme) in UTF-8: keys sorted by UTF-16 code
+  units, no whitespace, numbers as ECMAScript prints an IEEE 754 double, minimal string escapes.
+- A set version's `hash` is `sha256:<64 hex>` of the canonical form of its `{key: value}` map.
+- The `resolved_hash` of a resolve is the same hash of the merged `{key: value}` map. A client must compute it
+  again from the values in the answer and refuse the answer if it differs. `prego env pull --expect` compares
+  it and exits with code 3 on a mismatch.
+
+### 12.3 Environment output
+
+`KEY='value'` lines, sorted by key. Every value is in single quotes, and a `'` becomes `'\''`. A JSON value
+(not a string) is its canonical JSON text. Keys match `^[A-Za-z_][A-Za-z0-9_]{0,127}$`, so each one is a valid
+shell variable name. A client checks the key again before it writes a line.
+

@@ -72,6 +72,8 @@ pub enum Command {
     Logout,
     /// `prego status`.
     Status,
+    /// `prego env ...`.
+    Env(crate::env::EnvCommand),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -81,7 +83,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 10] = [
+const WITH_VALUE: [&str; 22] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -92,6 +94,18 @@ const WITH_VALUE: [&str; 10] = [
     "--tag",
     "--prefix",
     "--client",
+    "--format",
+    "--expect",
+    "--out",
+    "--file",
+    "--env-file",
+    "--set",
+    "--set-json",
+    "--message",
+    "--if-current",
+    "--level",
+    "--to",
+    "--reason",
 ];
 /// Options without a value.
 const FLAGS: [&str; 7] = [
@@ -323,10 +337,148 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
                 _ => return Err("usage: prego exec -- <command> [args]".into()),
             }
         }
+        ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };
     Ok(Parsed::Run { globals, command })
+}
+
+/// Checks that a command gets only its own options and flags.
+type Allow<'a> = dyn Fn(&[&str], &[&str]) -> Result<(), String> + 'a;
+
+/// `prego env <subcommand>`.
+fn parse_env(
+    words: &[&str],
+    opts: &[(&str, String)],
+    allow: &Allow<'_>,
+) -> Result<crate::env::EnvCommand, String> {
+    use crate::env::reference::Level;
+    use crate::env::{jcs, EnvCommand, Format};
+    let take = |name: &str| -> Vec<String> {
+        opts.iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .collect()
+    };
+    let one = |name: &str| -> Result<Option<String>, String> {
+        let mut v = take(name);
+        if v.len() > 1 {
+            return Err(format!("{name} can be given one time only"));
+        }
+        Ok(v.pop())
+    };
+    let number = |name: &str| -> Result<u64, String> {
+        let v = one(name)?.ok_or_else(|| format!("{name} <version number> is required"))?;
+        v.parse::<u64>()
+            .ok()
+            .filter(|n| *n > 0)
+            .ok_or_else(|| format!("{name} `{v}` is not a version number"))
+    };
+    let hash = |name: &str| -> Result<Option<String>, String> {
+        match one(name)? {
+            Some(h) if !jcs::is_hash(&h) => Err(format!(
+                "{name} `{h}` is not a hash: use sha256:<64 lowercase hex>"
+            )),
+            h => Ok(h),
+        }
+    };
+    let level = || -> Result<Level, String> {
+        match one("--level")? {
+            Some(l) => Level::parse(&l),
+            None => Ok(Level::Version),
+        }
+    };
+    let usage = "usage: prego env pull|push|history|rollback|diff <ref> [options], or prego env hash <file>";
+    Ok(match words {
+        ["pull", r] => {
+            allow(&["--format", "--expect", "--out"], &[])?;
+            EnvCommand::Pull {
+                reference: r.to_string(),
+                format: one("--format")?.map(|f| Format::parse(&f)).transpose()?,
+                expect: hash("--expect")?,
+                out: one("--out")?,
+            }
+        }
+        ["push", r] => {
+            allow(
+                &[
+                    "--file",
+                    "--env-file",
+                    "--set",
+                    "--set-json",
+                    "--message",
+                    "--if-current",
+                    "--level",
+                ],
+                &[],
+            )?;
+            let (file, env_file) = (one("--file")?, one("--env-file")?);
+            if file.is_some() && env_file.is_some() {
+                return Err("give --file or --env-file, not both".into());
+            }
+            let (sets, set_jsons) = (take("--set"), take("--set-json"));
+            if file.is_none() && env_file.is_none() && sets.is_empty() && set_jsons.is_empty() {
+                return Err(
+                    "give the variables: --file vars.json, --env-file .env, --set KEY=VALUE or \
+                     --set-json KEY=<JSON>"
+                        .into(),
+                );
+            }
+            let message = one("--message")?;
+            if message.as_ref().is_some_and(|m| m.chars().count() > 200) {
+                return Err("--message is at most 200 characters".into());
+            }
+            EnvCommand::Push {
+                reference: r.to_string(),
+                level: level()?,
+                file,
+                env_file,
+                sets,
+                set_jsons,
+                message,
+                if_current: hash("--if-current")?,
+            }
+        }
+        ["history", r] => {
+            allow(&["--level"], &[])?;
+            EnvCommand::History {
+                reference: r.to_string(),
+                level: level()?,
+            }
+        }
+        ["rollback", r] => {
+            allow(&["--level", "--to", "--reason"], &[])?;
+            let reason = one("--reason")?
+                .filter(|s| !s.trim().is_empty())
+                .ok_or("--reason <text> is required")?;
+            if reason.chars().count() > 200 {
+                return Err("--reason is at most 200 characters".into());
+            }
+            EnvCommand::Rollback {
+                reference: r.to_string(),
+                level: level()?,
+                to: number("--to")?,
+                reason,
+            }
+        }
+        ["diff", r] => {
+            allow(&["--level", "--from", "--to"], &[])?;
+            EnvCommand::Diff {
+                reference: r.to_string(),
+                level: level()?,
+                from: number("--from")?,
+                to: number("--to")?,
+            }
+        }
+        ["hash", f] => {
+            allow(&[], &[])?;
+            EnvCommand::Hash {
+                file: f.to_string(),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
 }
 
 #[cfg(test)]
@@ -591,5 +743,116 @@ mod tests {
         ] {
             assert!(p(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn env_commands() {
+        use crate::env::reference::Level;
+        use crate::env::{EnvCommand, Format};
+        let env = |a: &[&str]| match p(a).unwrap() {
+            Parsed::Run {
+                command: Command::Env(c),
+                ..
+            } => c,
+            other => panic!("{other:?}"),
+        };
+        let h = format!("sha256:{}", "a".repeat(64));
+        assert_eq!(
+            env(&["env", "pull", "acme/p@1", "--format", "env", "--expect", &h, "--out", "r.env"]),
+            EnvCommand::Pull {
+                reference: "acme/p@1".into(),
+                format: Some(Format::Env),
+                expect: Some(h.clone()),
+                out: Some("r.env".into()),
+            }
+        );
+        assert_eq!(
+            env(&[
+                "env",
+                "push",
+                "acme",
+                "--level",
+                "tenant",
+                "--set",
+                "A=1",
+                "--set",
+                "B=2",
+                "--set-json",
+                "C=[1]",
+                "--message",
+                "m",
+                "--if-current",
+                &h
+            ]),
+            EnvCommand::Push {
+                reference: "acme".into(),
+                level: Level::Tenant,
+                file: None,
+                env_file: None,
+                sets: vec!["A=1".into(), "B=2".into()],
+                set_jsons: vec!["C=[1]".into()],
+                message: Some("m".into()),
+                if_current: Some(h.clone()),
+            }
+        );
+        assert_eq!(
+            env(&["env", "rollback", "acme/p@1", "--to", "3", "--reason", "bad flag"]),
+            EnvCommand::Rollback {
+                reference: "acme/p@1".into(),
+                level: Level::Version,
+                to: 3,
+                reason: "bad flag".into(),
+            }
+        );
+        assert_eq!(
+            env(&[
+                "env",
+                "diff",
+                "acme/ns",
+                "--level",
+                "namespace",
+                "--from",
+                "1",
+                "--to",
+                "2"
+            ]),
+            EnvCommand::Diff {
+                reference: "acme/ns".into(),
+                level: Level::Namespace,
+                from: 1,
+                to: 2
+            }
+        );
+        assert_eq!(
+            env(&["env", "hash", "-"]),
+            EnvCommand::Hash { file: "-".into() }
+        );
+        assert_eq!(
+            env(&["env", "history", "acme/p@1"]),
+            EnvCommand::History {
+                reference: "acme/p@1".into(),
+                level: Level::Version
+            }
+        );
+        for bad in [
+            &["env"][..],
+            &["env", "pull"],
+            &["env", "pull", "a/p@1", "--format", "yaml"],
+            &["env", "pull", "a/p@1", "--expect", "sha256:abc"],
+            &["env", "pull", "a/p@1", "--set", "A=1"],
+            &["env", "push", "a/p@1"],
+            &["env", "push", "a/p@1", "--file", "a", "--env-file", "b"],
+            &["env", "push", "a/p@1", "--set", "A=1", "--level", "package"],
+            &["env", "push", "a/p@1", "--set", "A=1", "--if-current", "x"],
+            &["env", "rollback", "a/p@1", "--to", "2"],
+            &["env", "rollback", "a/p@1", "--to", "0", "--reason", "r"],
+            &["env", "diff", "a/p@1", "--from", "1"],
+            &["env", "hash"],
+            &["env", "hash", "f", "--json"],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
+        let long = "m".repeat(201);
+        assert!(p(&["env", "push", "a/p@1", "--set", "A=1", "--message", &long]).is_err());
     }
 }

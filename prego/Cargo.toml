@@ -25,7 +25,8 @@ prego-auth = { version = "0.7.0", path = "../prego-auth", default-features = fal
 base64 = "0.22"
 crc32fast = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+# float_roundtrip: exact number parsing, so the RFC 8785 hash of `prego env` equals the registry hash.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 # `prego oci push`: blob digests, and the docker save tar format.
 sha2 = "0.10"
 tar = { version = "0.4", default-features = false }

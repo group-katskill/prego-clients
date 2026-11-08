@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `prego env` for Release Variables (registry 1.8.0): `pull`, `push`, `history`, `rollback`, `diff` and `hash`.
+  References with 2, 3 and 4 or more segments. `pull --format env|json|flat --out FILE`; the env format
+  shell-quotes every value, and `--expect <hash>` exits with 3 and writes nothing if the resolved hash is
+  different. `pull` computes the resolved hash again and refuses an answer that does not match it. `push`
+  replaces the whole set from `--file`, `--env-file` (strings only), `--set` and `--set-json`, with
+  `--if-current`, `--message` and `--level tenant|namespace`. `hash` gives the RFC 8785 hash offline, the
+  same as the registry. The help says that Release Variables are not secrets.
+
+### Changed
+
+- `serde_json` parses numbers exactly (`float_roundtrip`), so the canonical form of a number is the same as in
+  the registry.
+
 ## [0.7.0] - 2026-11-07
 
 ### Changed
