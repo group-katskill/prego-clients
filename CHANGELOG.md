@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `docs/release-variables.md`: FAQ "Are Release Variables a secrets manager?".
 - Docs: crates.io has all four crates at 0.8.0 (`README.md`, `docs/consumer-quickstart.md`,
   `docs/go-quickstart.md`); the README release steps name `cargo publish --workspace --locked`.
 
