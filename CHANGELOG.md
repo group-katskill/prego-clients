@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: crates.io has all four crates at 0.8.0 (`README.md`, `docs/consumer-quickstart.md`,
+  `docs/go-quickstart.md`); the README release steps name `cargo publish --workspace --locked`.
+
 ## [0.8.0] - 2026-11-08
 
 ### Added

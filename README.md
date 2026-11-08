@@ -104,8 +104,8 @@ curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/down
 sh install.sh                    # or: sh install.sh --version 0.4.0 --dir /usr/local/bin
 ```
 
-Or from [crates.io](https://crates.io/crates/prego) with Cargo (all four crates are there at 0.3.0; older
-versions are yanked):
+Or from [crates.io](https://crates.io/crates/prego) with Cargo (all four crates are there at 0.8.0; versions 0.4.0 to
+0.7.0 are only on the GitHub releases):
 
 ```sh
 cargo install cargo-credential-prego docker-credential-prego prego
@@ -475,7 +475,8 @@ Releases come from GitHub Actions (`.github/workflows/release.yml`). The maintai
 The workflow checks that the tag matches every crate version, builds the three binaries for the three targets
 with cargo-zigbuild, signs `SHA256SUMS` with cosign (keyless, GitHub OIDC), and attaches everything to a GitHub
 release: the archives with SHA-256 sums, `SHA256SUMS`, `SHA256SUMS.sigstore.json` and `install.sh`.
-Publishing to crates.io is a separate manual step for now (`prego-auth` first).
+Publishing to crates.io is a separate manual step: `cargo publish --workspace --locked` from a clean checkout of
+the tag. Cargo publishes `prego-auth` first.
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy and tests on every push to `main` and on every pull request.
 The website in `site/` is deployed to GitHub Pages by `.github/workflows/pages.yml`.

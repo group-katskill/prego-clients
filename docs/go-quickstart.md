@@ -10,8 +10,8 @@ Prego serves private Go modules through the GOPROXY protocol. Public modules sti
 ## What you need
 
 - Go 1.24 or later for the GOAUTH helper. For older Go, see [Old Go and other build tools](#old-go-and-other-build-tools).
-- `prego` 0.4.0 or later: the [install script](../README.md#install), or `cargo install prego` when crates.io
-  has 0.4.0 or later. Use 0.5.0 or later for the 300 MiB check before the upload.
+- `prego` 0.4.0 or later: the [install script](../README.md#install), or `cargo install prego` (crates.io has
+  0.8.0). Use 0.5.0 or later for the 300 MiB check before the upload.
 - In the Prego console (<https://app.prego.k8skill.com>), a tenant admin:
   - registers the **module path prefixes** of the tenant under **Settings**, for example `go.acme.com` or
     `github.com/acme`. On a shared code host the prefix has at least two parts (`github.com/acme`, not
