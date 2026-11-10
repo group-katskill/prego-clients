@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `prego whoami` shows the principal name on a `name:` line, for example `name:       ag-cloud-dev`. Registry 1.10.0
+  and later send it; with an older server the line says `unknown (the STS did not send it)`.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added

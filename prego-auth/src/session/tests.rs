@@ -253,6 +253,34 @@ fn refresh_rotates_and_keeps_fresh_tokens() {
 }
 
 #[test]
+fn the_principal_name_is_kept_with_the_cached_token() {
+    // Registry 1.10.0 and later send principal_name with the poll and the refresh answers.
+    let named = MockResponse::json(
+        200,
+        r#"{"access_token":"reg-1","token_type":"Bearer","expires_in":900,"principal_name":"prego-cli on laptop","refresh_token":"rt-1","session":{"id":"dvs_1","idle_expires_at":1700000,"expires_at":3592000}}"#,
+    );
+    let server = MockServer::start(vec![
+        start_answer(),
+        named,
+        token_answer("reg-2", "rt-2", false),
+    ]);
+    let store = Arc::new(MemStore::default());
+    let cfg = logged_in(&server, &store);
+    let device = handle(&store);
+
+    // From the cache: the name stays with the token.
+    let t = registry_token(&http(), &cfg, &device, None, &|| 1_000_100, &no_sleep).unwrap();
+    assert_eq!(t.token.expose(), "reg-1");
+    assert_eq!(t.principal_name.as_deref(), Some("prego-cli on laptop"));
+
+    // An older server: no name in the refresh answer.
+    let res = "https://cargo.example.test/t/acme/default/";
+    let t = registry_token(&http(), &cfg, &device, Some(res), &|| 1_000_100, &no_sleep).unwrap();
+    assert_eq!(t.token.expose(), "reg-2");
+    assert_eq!(t.principal_name, None);
+}
+
+#[test]
 fn an_expired_token_is_refreshed() {
     let server = MockServer::start(vec![
         start_answer(),
