@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/consumer-quickstart.md` and `docs/ci.md`: the "Name each registry once" warning. When two Cargo
+  config files set `credential-provider` for the same registry, Cargo joins the arrays and every fetch fails with
+  ``prego: unknown argument `cargo-credential-prego` ``.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added
