@@ -17,6 +17,19 @@ index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
 credential-provider = ["cargo-credential-prego", "--tenant", "acme"]
 ```
 
+**Name each registry once.** Set `credential-provider` for a registry in one config file only: the user file
+`~/.cargo/config.toml` or the repository file `.cargo/config.toml`, not the two. Cargo joins array values from all
+its config files. When two files set `credential-provider` for the same registry, Cargo joins the two arrays into
+one command, so the second `cargo-credential-prego` becomes an argument of the first. Then every fetch from that
+registry fails with:
+
+```text
+prego: unknown argument `cargo-credential-prego`
+```
+
+To correct it, remove the `credential-provider` line for that registry from one of the two files. The `index` line
+can stay in the two files, because it is not an array.
+
 See the repository `README.md` for all arguments and identity sources, and `PROTOCOL.md` for the STS
 contract.
 

@@ -25,6 +25,23 @@ index = "sparse+https://cargo.prego.k8skill.com/t/acme/default/index/"
 credential-provider = ["cargo-credential-prego", "--tenant", "acme"]
 ```
 
+**Name each registry once.** Set `credential-provider` for a registry in one config file only: the user file
+`~/.cargo/config.toml` or the repository file `.cargo/config.toml`, not the two. Cargo joins array values from all
+its config files. When two files set `credential-provider` for the same registry, Cargo joins the two arrays into
+one command, so the second `cargo-credential-prego` becomes an argument of the first. Then every fetch from that
+registry fails with:
+
+```text
+prego: unknown argument `cargo-credential-prego`
+```
+
+To correct it, remove the `credential-provider` line for that registry from one of the two files. The `index` line
+can stay in the two files, because it is not an array.
+
+In CI, the usual cause is a CI image or runner that has a user-level Cargo config (`~/.cargo/config.toml`, or
+`$CARGO_HOME/config.toml`) with a `credential-provider` for the same registry. Keep the line in the repository
+file and remove it from the image, or the reverse.
+
 ## GitLab CI (`id_tokens`)
 
 **Console:**
