@@ -111,6 +111,9 @@ Or from [crates.io](https://crates.io/crates/prego) with Cargo (all four crates 
 cargo install cargo-credential-prego docker-credential-prego prego
 ```
 
+`cargo install prego-cli` is the same: the crate `prego-cli` is an alias of `prego`, with the same source and
+version, and it installs the same `prego` binary. Install one of the two, not both.
+
 Each [GitHub release](https://github.com/group-katskill/prego-clients/releases) (tag `prego-clients-vX.Y.Z`) has
 prebuilt binaries with SHA-256 sums for:
 
@@ -500,7 +503,8 @@ The workflow checks that the tag matches every crate version, builds the three b
 with cargo-zigbuild, signs `SHA256SUMS` with cosign (keyless, GitHub OIDC), and attaches everything to a GitHub
 release: the archives with SHA-256 sums, `SHA256SUMS`, `SHA256SUMS.sigstore.json` and `install.sh`.
 Publishing to crates.io is a separate manual step: `cargo publish --workspace --locked` from a clean checkout of
-the tag. Cargo publishes `prego-auth` first.
+the tag. Cargo publishes `prego-auth` first. Then publish the alias `prego-cli` with
+`tools/publish-prego-cli.sh prego-clients-vX.Y.Z` (a dry run) and the same command with `--publish`.
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy and tests on every push to `main` and on every pull request.
 The website in `site/` is deployed to GitHub Pages by `.github/workflows/pages.yml`.

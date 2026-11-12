@@ -31,8 +31,8 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy
           rustup default "$RUST_VERSION"
 
-      - name: shellcheck install.sh
-        run: shellcheck --severity=warning install.sh
+      - name: shellcheck
+        run: shellcheck --severity=warning install.sh tools/publish-prego-cli.sh
 
       - name: cargo fmt
         run: cargo fmt --all --check

@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- The crate `prego-cli` on crates.io, an alias of `prego`: the same source and version, the same binary `prego`.
+  `tools/publish-prego-cli.sh` publishes it from the release tag. No code change in `prego`.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added

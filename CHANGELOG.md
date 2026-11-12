@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `tools/publish-prego-cli.sh` and `tools/prego-cli/README.md`: publish the crates.io crate `prego-cli`, an alias
+  of `prego` (same source, same version, same binary `prego`), from a signed tag. Dry run by default; `--publish`
+  publishes. README: the alias in the Install section and the publish step in the Release section. CI runs
+  shellcheck on the script.
+
+### Added
+
 - `docs/consumer-quickstart.md` and `docs/ci.md`: the "Name each registry once" warning. When two Cargo
   config files set `credential-provider` for the same registry, Cargo joins the arrays and every fetch fails with
   ``prego: unknown argument `cargo-credential-prego` ``.
