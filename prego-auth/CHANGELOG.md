@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `RegistryToken::principal_name`: the name of the principal that the token is for, from the STS answer field
+  `principal_name` (registry 1.10.0 and later; `None` from older servers). For display only. The STS exchange, the
+  device code poll and the session refresh read it, and the session token cache keeps it. `sts::display_name`
+  removes control characters and cuts the name to 100 characters.
+
+### Changed
+
+- `RegistryToken` has a new public field. Code that builds it with a struct literal must set `principal_name`, or
+  use `RegistryToken::new`.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added

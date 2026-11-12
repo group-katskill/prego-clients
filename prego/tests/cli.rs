@@ -47,6 +47,20 @@ fn sts_ok() -> MockResponse {
     )
 }
 
+/// An STS answer of registry 1.10.0 and later: with the principal name.
+fn sts_ok_named(name: &str) -> MockResponse {
+    MockResponse::json(
+        200,
+        &json!({
+            "access_token": REG_TOKEN,
+            "token_type": "Bearer",
+            "expires_in": 900,
+            "principal_name": name,
+        })
+        .to_string(),
+    )
+}
+
 #[test]
 fn token_prints_only_the_registry_token() {
     let server = MockServer::start(vec![sts_ok()]);
@@ -126,6 +140,10 @@ fn whoami_shows_the_principal_but_not_the_token() {
     assert!(r.stdout.contains("tenant:     acme"), "{}", r.stdout);
     assert!(r.stdout.contains("source:     api-key"));
     assert!(r.stdout.contains("principal:  prn_1 (not verified)"));
+    // An older STS: no principal_name.
+    assert!(r
+        .stdout
+        .contains("name:       unknown (the STS did not send it)"));
     assert!(r.stdout.contains("tenant id:  ten_1 (not verified)"));
     assert!(r
         .stdout
@@ -140,6 +158,27 @@ fn whoami_shows_the_principal_but_not_the_token() {
     assert!(!r.stdout.contains(REG_TOKEN));
     assert!(!r.stdout.contains(API_KEY));
     assert!(!server.requests()[0].form().contains_key("resource"));
+}
+
+#[test]
+fn whoami_shows_the_principal_name_from_the_sts() {
+    // Control characters from the server never reach the terminal.
+    let server = MockServer::start(vec![sts_ok_named(" ag-cloud-dev\u{1b}[2J ")]);
+    let sts = format!("{}/v1/sts/token/e/k7mq", server.base_url());
+    let r = run(
+        &["whoami", "--sts-url", &sts],
+        &[("PREGO_TENANT", "acme"), ("PREGO_API_KEY", API_KEY)],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(r.stdout.contains("principal:  prn_1 (not verified)"));
+    assert!(
+        r.stdout.contains("name:       ag-cloud-dev[2J\n"),
+        "{}",
+        r.stdout
+    );
+    assert!(!r.stdout.contains('\u{1b}'));
+    assert!(!r.stdout.contains(REG_TOKEN));
+    assert!(!r.stdout.contains(API_KEY));
 }
 
 #[test]

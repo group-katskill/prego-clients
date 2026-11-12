@@ -148,6 +148,9 @@ struct TokenRecord {
     token: String,
     expires_at: i64,
     lifetime: i64,
+    /// Older clients did not store it.
+    #[serde(default)]
+    principal_name: Option<String>,
 }
 
 /// The token answer of a poll or a refresh.
@@ -155,6 +158,8 @@ struct TokenRecord {
 struct TokenAnswer {
     access_token: Option<String>,
     expires_in: Option<i64>,
+    #[serde(default)]
+    principal_name: Option<String>,
     refresh_token: Option<String>,
     session: Option<SessionAnswer>,
 }
@@ -361,11 +366,13 @@ fn save_answer(
         .save(&session_key(config), &text)
         .map_err(|e| Error::Storage(format!("cannot store the login session: {e}")))?;
 
-    let t = RegistryToken::new(Secret::new(token), sent_at, lifetime);
+    let t = RegistryToken::new(Secret::new(token), sent_at, lifetime)
+        .with_principal_name(answer.principal_name);
     let cached = TokenRecord {
         token: t.token.expose().to_string(),
         expires_at: t.expires_at,
         lifetime: t.lifetime,
+        principal_name: t.principal_name.clone(),
     };
     // The session is stored. A registry token that cannot be stored is only a lost cache entry.
     if let Ok(text) = serde_json::to_string(&cached) {
@@ -457,6 +464,7 @@ fn registry_token_inner(
                 token: Secret::new(t.token),
                 expires_at: t.expires_at,
                 lifetime: t.lifetime,
+                principal_name: t.principal_name.and_then(|n| sts::display_name(&n)),
             };
             let t_now = now();
             let enough_left = !half_left || t.expires_at - t_now >= t.lifetime / 2;

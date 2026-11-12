@@ -33,6 +33,9 @@ pub struct RegistryToken {
     pub expires_at: i64,
     /// The lifetime in seconds that the server gave (`expires_in`).
     pub lifetime: i64,
+    /// The name of the principal that the token is for (`principal_name`, registry 1.10.0 and later).
+    /// For display only; never use it for an access decision. `None` when the server did not send it.
+    pub principal_name: Option<String>,
 }
 
 impl RegistryToken {
@@ -42,7 +45,14 @@ impl RegistryToken {
             token,
             expires_at: received_at + lifetime,
             lifetime,
+            principal_name: None,
         }
+    }
+
+    /// The same token with the principal name from the server answer (see [`display_name`]).
+    pub fn with_principal_name(mut self, name: Option<String>) -> Self {
+        self.principal_name = name.and_then(|n| display_name(&n));
+        self
     }
 
     /// The cache margin: `min(60 s, lifetime / 4)`.
@@ -59,6 +69,21 @@ impl RegistryToken {
     pub fn is_fresh(&self, now: i64) -> bool {
         now < self.fresh_until()
     }
+}
+
+/// The longest principal name that a client shows.
+pub const MAX_PRINCIPAL_NAME_CHARS: usize = 100;
+
+/// A principal name from the server, safe to print on a terminal: control characters are removed, the
+/// text is trimmed and cut to [`MAX_PRINCIPAL_NAME_CHARS`]. `None` if nothing is left.
+pub fn display_name(raw: &str) -> Option<String> {
+    let clean: String = raw
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(MAX_PRINCIPAL_NAME_CHARS)
+        .collect();
+    let clean = clean.trim();
+    (!clean.is_empty()).then(|| clean.to_string())
 }
 
 /// The cache margin for a token lifetime: `min(60 s, lifetime / 4)`.
@@ -110,6 +135,8 @@ pub fn resource_base(url: &str) -> Option<String> {
 struct Success {
     access_token: Option<String>,
     expires_in: Option<i64>,
+    #[serde(default)]
+    principal_name: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -224,7 +251,8 @@ pub fn parse_response(res: &Response, tenant: &str, now: i64) -> Result<Registry
             .ok_or_else(|| Error::BadResponse("no access_token".into()))?;
         let lifetime = lifetime(body.expires_in, &token)
             .ok_or_else(|| Error::BadResponse("no expires_in and no exp and iat claims".into()))?;
-        return Ok(RegistryToken::new(Secret::new(token), now, lifetime));
+        return Ok(RegistryToken::new(Secret::new(token), now, lifetime)
+            .with_principal_name(body.principal_name));
     }
 
     let failure: Option<Failure> = serde_json::from_str(&res.body).ok();
@@ -270,6 +298,28 @@ mod tests {
             "eyJhbGciOiJFUzI1NiJ9.{}.c2ln",
             URL_SAFE_NO_PAD.encode(payload)
         )
+    }
+
+    #[test]
+    fn principal_name_is_kept_for_display_and_cleaned() {
+        let body = r#"{"access_token":"opaque","expires_in":900,"principal_name":"ag-cloud-dev"}"#;
+        let t = parse_response(&resp(200, body), "acme", 0).unwrap();
+        assert_eq!(t.principal_name.as_deref(), Some("ag-cloud-dev"));
+
+        let t = parse_response(
+            &resp(200, r#"{"access_token":"opaque","expires_in":900}"#),
+            "acme",
+            0,
+        )
+        .unwrap();
+        assert_eq!(t.principal_name, None);
+
+        assert_eq!(display_name("  ci\u{7}\n "), Some("ci".into()));
+        assert_eq!(display_name(" \t\r "), None);
+        assert_eq!(
+            display_name(&"x".repeat(300)).map(|n| n.chars().count()),
+            Some(MAX_PRINCIPAL_NAME_CHARS)
+        );
     }
 
     #[test]

@@ -105,6 +105,11 @@ pub fn whoami(
     }
     // Read from the token without a signature check. Show only, never trust.
     println!("principal:  {} (not verified)", claim("sub"));
+    // From the STS answer over TLS, for display only (registry 1.10.0 and later).
+    match &token.principal_name {
+        Some(name) => println!("name:       {name}"),
+        None => println!("name:       unknown (the STS did not send it)"),
+    }
     println!("tenant id:  {} (not verified)", claim("tid"));
     println!("token:      lifetime {lifetime} {scope} (not shown; use `prego token`)");
     println!("cargo:      sparse+https://cargo.prego.k8skill.com/t/{t}/{namespace}/index/");
