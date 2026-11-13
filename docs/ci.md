@@ -188,8 +188,8 @@ prego oci push api.tar "acme/default/api:$CI_COMMIT_SHORT_SHA"
 The token realm takes at most 60 requests per minute from one IP address. From registry 1.2.0, only refused
 requests count against the IP address. A successful token request counts against your tenant's budget per
 minute, so many parallel jobs behind one NAT address are limited only by that budget. `prego oci push` keeps one token per
-repository and gets a new one only shortly before it expires. Very short grant lifetimes (1 or 2 minutes)
-mean many more token requests.
+repository and gets a new one only shortly before it expires. Short grant lifetimes (5 minutes)
+mean more token requests.
 
 ## npm packages
 

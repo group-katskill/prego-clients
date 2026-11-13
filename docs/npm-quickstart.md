@@ -90,7 +90,7 @@ npm install
 ```
 
 `prego exec` works for npm, pnpm, Yarn, Bun and any other tool that reads the variable. It sets
-`PREGO_NPM_TOKEN` and `PREGO_TOKEN`. The token is valid for 15 minutes by default (the grant sets 1 to 30
+`PREGO_NPM_TOKEN` and `PREGO_TOKEN`. The token is valid for 15 minutes by default (the grant sets 5 to 30
 minutes). A single command that runs longer than that gets `401` part way. Run it again with `prego exec`.
 `prego npm-env` prints the lifetime on stderr.
 

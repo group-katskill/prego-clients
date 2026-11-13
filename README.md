@@ -71,8 +71,8 @@ Prego registries accept only a short-lived **registry token** (15 minutes by def
 
 ### Token lifetime
 
-From registry 1.2.0, a tenant owner sets the token lifetime per grant: 5 to 30 minutes on Indie and Org, 1 to
-30 minutes on Publisher, fixed at 15 minutes on Trial and Consumer. The default is 15 minutes. A token gets
+From registry 1.2.0, a tenant owner sets the token lifetime per grant: 5 to 30 minutes on Indie, Org and
+Publisher, fixed at 15 minutes on Trial and Consumer. The default is 15 minutes. A token gets
 the shortest lifetime of the grants it can be used with. Revoking a machine takes effect within seconds,
 whatever the lifetime.
 
@@ -81,7 +81,8 @@ From 0.5.0, the clients handle any lifetime:
 - They send the registry URL as `resource`, so the STS gives the lifetime of the grants for that namespace.
 - They compute the expiry from `expires_in` and the local time, never from the token's `exp` claim, so a
   wrong local clock does not matter.
-- They cache a token until its expiry minus `min(60 s, lifetime / 4)`. Cargo caches a 1-minute token for 45 s.
+- They cache a token until its expiry minus `min(60 s, lifetime / 4)`. The rule also works for a
+  token shorter than a grant can set: Cargo caches a 1-minute token for 45 s.
 - They get a new token before the old one expires (also between the parts of a big upload), and after a
   `401`. Go and Docker also get a new token after a `401` by themselves.
 - On `429` from the STS, they wait for `Retry-After` (at most 60 s) and try again at most two times. A
