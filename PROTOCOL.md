@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.11.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.11.1. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -110,7 +110,7 @@ The tenant's plan sets the range:
 | Consumer | fixed 15 min | 15 min |
 | Indie | 5 to 30 min | 15 min |
 | Org | 5 to 30 min | 15 min |
-| Publisher | 1 to 30 min | 15 min |
+| Publisher | 5 to 30 min | 15 min |
 
 The registry also checks the token age on each request. If a grant matches the request but the token is
 older than that grant's lifetime (plus 5 s), the registry answers `401` "token older than this grant allows;
@@ -254,7 +254,8 @@ The audience is `prego.k8skill.com` unless the user sets another one (`--audienc
   expires_in`. Do not use the `exp` claim, so a wrong local clock does not matter. If `expires_in` is
   missing, use `exp - iat` from the token. If both are there, use the shorter one.
 - The cache margin is `min(60 s, lifetime / 4)`. A cache gives out a token only until `expiry - margin`.
-  For a 1-minute token the margin is 15 s.
+  The rule works for any lifetime, also one shorter than a grant can set: for a 1-minute token the margin
+  is 15 s.
 - Send `resource` for the registry URL that the token is for. If the STS answers `400 invalid_target`, ask
   one more time without `resource`. Do not loop.
 - On `429`, wait for `Retry-After` (at most 60 s) plus a small random time, and try again at most two times.

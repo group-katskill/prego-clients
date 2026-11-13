@@ -58,7 +58,7 @@ go get go.acme.com/core@v1.4.0
 go build ./...
 ```
 
-`prego go-auth` gets a registry token (15 minutes by default; the grant sets it, from 1 to 30 minutes) and
+`prego go-auth` gets a registry token (15 minutes by default; the grant sets it, from 5 to 30 minutes) and
 gives it to Go for the Prego URL only. Go never
 sends it to `proxy.golang.org`. A long build gets a new token when Prego answers `401`. When Prego answers
 `404` for a public module, the helper gives the same token again and makes no new STS call. The token cache

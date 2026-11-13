@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.5.0
+  version: 1.5.1
   summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by Katskill.
   description: |
     The public, tenant-facing API of Prego by Katskill.
@@ -839,8 +839,8 @@ paths:
 
         Registry 1.2.0:
 
-        - `token_ttl_minutes` must be in the plan range of the granting tenant: 5 to 30 on Indie and Org, 1 to
-          30 on Publisher, fixed 15 on Trial and Consumer. Else `400 token_ttl_out_of_range` ("your plan allows
+        - `token_ttl_minutes` must be in the plan range of the granting tenant: 5 to 30 on Indie, Org and
+          Publisher, fixed 15 on Trial and Consumer. Else `400 token_ttl_out_of_range` ("your plan allows
           5 to 30 minutes").
         - `yank` is refused on `oci` and `go` grants, and `delete` on `cargo` grants:
           `400 action_not_supported`.
@@ -2193,7 +2193,7 @@ components:
           default: 15
           description: |
             Registry 1.2.0. The registry token lifetime for this grant, in whole minutes, within the plan range
-            of the granting tenant (5 to 30 on Indie and Org, 1 to 30 on Publisher, fixed 15 on Trial and
+            of the granting tenant (5 to 30 on Indie, Org and Publisher, fixed 15 on Trial and
             Consumer). Outside: `400 token_ttl_out_of_range`.
         broad:
           type: boolean
