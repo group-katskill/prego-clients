@@ -160,9 +160,9 @@
             <p>The install script puts all three tools in <code>~/.local/bin</code>. It checks the SHA-256 sums and never uses <code>sudo</code>:</p>
             <div class="terminal">
               <pre><code><span class="p">$ </span>curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
-<span class="p">$ </span>sh install.sh --version 0.4.0</code></pre>
+<span class="p">$ </span>sh install.sh                    <span class="c"># or: sh install.sh --version 0.10.0</span></code></pre>
             </div>
-            <p>Or from crates.io (all four crates are at 0.3.0):</p>
+            <p>Or from crates.io (all five crates are at 0.10.0, with the alias <code>prego-cli</code>):</p>
             <div class="terminal">
               <pre><code><span class="p">$ </span>cargo install cargo-credential-prego docker-credential-prego prego</code></pre>
             </div>
