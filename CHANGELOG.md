@@ -6,12 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed
-
-- Token lifetime per grant: 5 to 30 minutes on Indie, Org and Publisher, 15 minutes by default (registry
-  1.10.1). The 1-minute floor on Publisher is gone from `site/index.html`, `README.md`, PROTOCOL.md 1.11.1
-  (section 2.1), `docs/openapi.yaml` 1.5.1, `docs/go-quickstart.md`, `docs/npm-quickstart.md` and `docs/ci.md`.
-  The tools still handle a token of any lifetime.
+## [0.10.0] - 2026-11-14
 
 ### Added
 
@@ -24,6 +19,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/consumer-quickstart.md` and `docs/ci.md`: the "Name each registry once" warning. When two Cargo
   config files set `credential-provider` for the same registry, Cargo joins the arrays and every fetch fails with
   ``prego: unknown argument `cargo-credential-prego` ``.
+
+### Changed
+
+- Token lifetime per grant: 5 to 30 minutes on Indie, Org and Publisher, 15 minutes by default (registry
+  1.10.1). The 1-minute floor on Publisher is gone from `site/index.html`, `README.md`, PROTOCOL.md 1.11.1
+  (section 2.1), `docs/openapi.yaml` 1.5.1, `docs/go-quickstart.md`, `docs/npm-quickstart.md` and `docs/ci.md`.
+  The tools still handle a token of any lifetime.
+- Release 0.10.0: Adapters (registry 1.11.1, Publisher plan), with the guide `docs/adapters-quickstart.md`.
 
 ## [0.9.0] - 2026-11-08
 

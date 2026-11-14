@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-14
+
 ### Added
 
 - `prego adapter push <folder> <repo>:<version>` and `prego adapter get <repo>:<version> <folder>` (ADR-0052,
@@ -16,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   fails. Clear messages for `403 plan_limit`, `409 tag_exists` and `400 adapter_invalid`.
 - The crate `prego-cli` on crates.io, an alias of `prego`: the same source and version, the same binary `prego`.
   `tools/publish-prego-cli.sh` publishes it from the release tag. No code change in `prego`.
+
+### Changed
+
+- Release 0.10.0: `prego adapter push` and `prego adapter get`.
 
 ## [0.9.0] - 2026-11-08
 

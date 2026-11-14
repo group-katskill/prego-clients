@@ -6,10 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-14
+
 ### Added
 
 - README: the "Name each registry once" warning. Set `credential-provider` for a registry in one Cargo config
   file only; Cargo joins the arrays from two files into one command.
+
+### Changed
+
+- Release 0.10.0: version only, no code change.
 
 ## [0.9.0] - 2026-11-08
 
