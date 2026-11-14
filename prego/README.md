@@ -27,6 +27,8 @@ cargo install prego
 | `prego python publish <file>...` | From 0.9.0. Uploads wheels and sdists to the namespace (`--namespace`). Files over 90 MiB are refused before the upload. |
 | `prego token --python [--url <url>]` | From 0.9.0. Prints a Python token (30 minutes) for the namespace of the URL, cached until 1 minute before it ends. For the keyring helper `keyrings.prego`. |
 | `prego exec [--python] [--pip] -- <command>` | From 0.9.0. The Python mode (also automatic for `uv`, `pip`, `python`, `twine`, `poetry`, `pdm`, `hatch`): one Python token in the uv, twine and Poetry variables, and in `PIP_EXTRA_INDEX_URL` with `--pip`. |
+| `prego adapter push <folder> <repo>:<version>` | From 0.10.0 (Publisher plan). Pushes an AI model adapter (LoRA and the other peft methods): `adapter_config.json`, one `.safetensors` file and at most 8 text files. It checks them first, with the rules of the registry. `--license` (or `license:` in the README.md front matter) is required; `--base-revision` records the commit of the base model. A version is written one time only. |
+| `prego adapter get <repo>:<version> <folder>` | From 0.10.0. Writes the files of an adapter to a new or empty folder and checks the SHA-256 of each file. Load it with peft (`PeftModel.from_pretrained`) or vLLM (`--lora-modules`). |
 | `prego setup docker` | Prints the `~/.docker/config.json` snippet. With `--write`, adds `credHelpers` for the Prego OCI hosts to that file. It makes a backup copy first and keeps all other keys. |
 
 Stock `docker push`, Podman and BuildKit send each layer in one request, and Prego accepts at most 95 MiB in one

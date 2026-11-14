@@ -47,6 +47,7 @@
           <a href="#go">Go</a>
           <a href="#npm">npm</a>
           <a href="#vars">Variables</a>
+          <a href="#adapters">Adapters</a>
           <a href="#sources">Identity sources</a>
           <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
@@ -369,7 +370,38 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section" id="sources" aria-labelledby="sources-title">
+      <section class="section" id="adapters" aria-labelledby="adapters-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="adapters-title">Adapters</h2>
+          <p class="section-lede">
+            prego 0.10.0 and later push and get AI model adapters: the fine-tuned layers (LoRA) of your AI
+            models, on the Publisher plan. Your machines and your customers load them with their own identity.
+            The base model stays on Hugging Face or in your own storage.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego adapter push ./out/support-bot acme/ml/support-bot:2026-11-14 --license LicenseRef-llama3.1
+<span class="p">$ </span>prego adapter get acme/ml/support-bot:2026-11-14 ./adapters/support-bot</code></pre>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>python</b></div>
+            <pre><code>from transformers import AutoModelForCausalLM
+from peft import PeftModel
+base = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")  <span class="c"># from Hugging Face or a local folder</span>
+model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
+          </div>
+          <ul class="rules">
+            <li>vLLM: <code>--enable-lora --lora-modules support-bot=./adapters/support-bot</code>.</li>
+            <li>Only safetensors weights and text files. Pickle files (<code>.bin</code>, <code>.pt</code>) can run code when they load, so Prego does not accept them.</li>
+            <li>A license is required. A version is written one time only. <code>prego adapter get</code> checks the SHA-256 of each file.</li>
+          </ul>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section section-band" id="sources" aria-labelledby="sources-title">
         <div class="wrap">
           <h2 class="section-title display" id="sources-title">Identity sources</h2>
           <p class="section-lede">
@@ -416,7 +448,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section section-band" id="safety" aria-labelledby="safety-title">
+      <section class="section" id="safety" aria-labelledby="safety-title">
         <div class="wrap">
           <h2 class="section-title display" id="safety-title">Safety rules</h2>
           <ul class="rules">
@@ -434,7 +466,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section" id="guides" aria-labelledby="guides-title">
+      <section class="section section-band" id="guides" aria-labelledby="guides-title">
         <div class="wrap">
           <h2 class="section-title display" id="guides-title">Guides</h2>
           <ul class="cards">
@@ -459,6 +491,10 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
               <p>From 0.8.0: <code>prego env</code> pulls and pushes plain release settings, pins them with <code>--expect</code>, and keeps history and rollback. Not for secrets.</p>
             </li>
             <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a></h3>
+              <p>From 0.10.0, Publisher plan: <code>prego adapter push</code> and <code>get</code> for LoRA adapters as checked safetensors, and loading with peft and vLLM.</p>
+            </li>
+            <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a></h3>
               <p>GitLab <code>id_tokens</code>, GitHub Actions OIDC, SPIFFE and cloud workloads, image builds, and how to manage Prego from CI with an admin token. No stored secret.</p>
             </li>
@@ -474,7 +510,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
-      <section class="section section-band" id="security" aria-labelledby="security-title">
+      <section class="section" id="security" aria-labelledby="security-title">
         <div class="wrap two-col">
           <div>
             <h2 class="section-title display" id="security-title">Security</h2>

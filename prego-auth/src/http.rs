@@ -256,6 +256,67 @@ impl Http {
     }
 }
 
+impl Http {
+    /// Sends a `GET` with the given headers. A `200` body is streamed into `out`, at most `max` bytes, and
+    /// the number of bytes is returned; the `body` of the response is then empty. For any other status the
+    /// body is read as text (at most 64 KiB) and `out` gets nothing. Redirects are not followed.
+    pub fn get_to(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        out: &mut dyn std::io::Write,
+        max: u64,
+    ) -> Result<(FullResponse, u64), String> {
+        let mut builder = ureq::http::Request::builder().method("GET").uri(url);
+        for (n, v) in headers {
+            builder = builder.header(*n, *v);
+        }
+        let req = builder.body(()).map_err(|e| e.to_string())?;
+        let mut res = self.agent.run(req).map_err(|e| e.to_string())?;
+        let status = res.status().as_u16();
+        let headers = res
+            .headers()
+            .iter()
+            .map(|(n, v)| {
+                (
+                    n.as_str().to_ascii_lowercase(),
+                    String::from_utf8_lossy(v.as_bytes()).into_owned(),
+                )
+            })
+            .collect();
+        if status != 200 {
+            let body = res
+                .body_mut()
+                .with_config()
+                .limit(MAX_BODY)
+                .read_to_string()
+                .unwrap_or_default();
+            return Ok((
+                FullResponse {
+                    status,
+                    headers,
+                    body,
+                },
+                0,
+            ));
+        }
+        // One byte over the limit tells a body that is too large from one that fits exactly.
+        let mut reader = res.body_mut().as_reader().take(max.saturating_add(1));
+        let n = std::io::copy(&mut reader, out).map_err(|e| e.to_string())?;
+        if n > max {
+            return Err(format!("the response is larger than {max} bytes"));
+        }
+        Ok((
+            FullResponse {
+                status,
+                headers,
+                body: String::new(),
+            },
+            n,
+        ))
+    }
+}
+
 fn read(res: Result<ureq::http::Response<ureq::Body>, ureq::Error>) -> Result<Response, String> {
     let mut res = res.map_err(|e| e.to_string())?;
     let status = res.status().as_u16();

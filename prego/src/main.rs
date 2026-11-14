@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+mod adapter;
 mod admin;
 mod args;
 mod docker_config;
@@ -53,6 +54,17 @@ Commands:
                                   above the 95 MiB limit of docker push work. <image> is
                                   [host/]<tenant>/<namespace>/<repo>[:tag]. --from mounts blobs that are
                                   already in another repository of the tenant
+  adapter push <folder> <repo>:<version> [--license <id>] [--base-revision <rev>]
+                                  push an AI model adapter (LoRA and the other peft methods; Publisher and
+                                  Trial plans). The folder has adapter_config.json, one .safetensors file
+                                  and at most 8 text files (README.md, tokenizer files). prego checks them
+                                  first, with the rules of the registry. The license comes from --license,
+                                  or from license: in the README.md front matter. A version is written one
+                                  time only. <repo> is [host/]<tenant>/<namespace>/<repo>
+  adapter get <repo>:<version> <folder>
+                                  write the files of an adapter to a new or empty folder, and check their
+                                  SHA-256. Load it with peft (PeftModel.from_pretrained) or vLLM
+                                  (--lora-modules name=<folder>)
   go publish [<module dir>] [<tag>] [--namespace <ns>] [--dry-run] [--json]
                                   build the module zip from the git tree of the tag (not from the working
                                   directory) and publish it. The tag defaults to the tag on HEAD
@@ -180,6 +192,22 @@ fn main() {
                     registry,
                 } => setup::cargo(&globals, &namespace, registry.as_deref(), &env),
                 Command::SetupDocker { write } => setup::docker(write, &env),
+                Command::AdapterPush {
+                    folder,
+                    reference,
+                    license,
+                    base_revision,
+                } => adapter::push(
+                    &globals,
+                    &folder,
+                    &reference,
+                    license.as_deref(),
+                    base_revision.as_deref(),
+                    &env,
+                ),
+                Command::AdapterGet { reference, folder } => {
+                    adapter::get(&globals, &reference, &folder, &env)
+                }
                 Command::OciPush {
                     input,
                     reference,

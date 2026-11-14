@@ -1,14 +1,17 @@
-//! A small OCI Distribution client for pushes: the token challenge, blob checks, mounts, chunked uploads
-//! with resume, and manifests.
+//! A small OCI Distribution client: the token challenge, blob checks, mounts, chunked uploads with resume,
+//! manifests, and downloads of manifests and blobs (`prego adapter get`).
 
+use std::fs::File;
+use std::io::{Seek, Write};
 use std::time::Duration;
 
 use prego_auth::http::{Body, FullResponse, Http};
 use prego_auth::oci::{check_challenge_realm, RealmTokens};
 use prego_auth::{Config, SubjectToken};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
-use super::input::{Blob, Manifest, Source};
+use super::input::{hex, Blob, Manifest, Source};
 
 /// Largest upload part. The registry body limit is 100 MB.
 pub const MAX_PART: u64 = 95 * 1024 * 1024;
@@ -73,6 +76,44 @@ impl<'a> Registry<'a> {
         if let Some(f) = from {
             scopes.push(format!("repository:{f}:pull"));
         }
+        Self::connect_with(
+            http,
+            base,
+            name,
+            config,
+            subject,
+            scopes,
+            from,
+            requested_part,
+            sleep,
+        )
+    }
+
+    /// Like [`Registry::connect`], with a token for `pull` only (downloads).
+    pub fn connect_pull(
+        http: &'a Http,
+        base: &str,
+        name: &str,
+        config: &'a Config,
+        subject: &'a SubjectToken,
+        sleep: &'a dyn Fn(Duration),
+    ) -> Result<Self, String> {
+        let scopes = vec![format!("repository:{name}:pull")];
+        Self::connect_with(http, base, name, config, subject, scopes, None, None, sleep)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn connect_with(
+        http: &'a Http,
+        base: &str,
+        name: &str,
+        config: &'a Config,
+        subject: &'a SubjectToken,
+        scopes: Vec<String>,
+        from: Option<&str>,
+        requested_part: Option<u64>,
+        sleep: &'a dyn Fn(Duration),
+    ) -> Result<Self, String> {
         let mut reg = Registry {
             http,
             base: base.trim_end_matches('/').to_string(),
@@ -294,6 +335,113 @@ impl<'a> Registry<'a> {
         Ok(())
     }
 
+    /// Gets a manifest by tag or digest: its media type, its bytes and the `Docker-Content-Digest` header.
+    pub fn get_manifest(
+        &mut self,
+        reference: &str,
+        max: u64,
+    ) -> Result<(String, Vec<u8>, Option<String>), String> {
+        let url = format!("{}/v2/{}/manifests/{reference}", self.base, self.name);
+        let mut buf = Vec::new();
+        let res = self.call_with("GET", &url, true, &mut |reg, token| {
+            buf.clear();
+            reg.get_once(&url, token, &mut buf, max)
+        })?;
+        if res.status != 200 {
+            return Err(registry_error(
+                &format!("get manifest {reference}"),
+                &res,
+                res.status,
+            ));
+        }
+        let media_type = res
+            .header("content-type")
+            .unwrap_or("")
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        let digest = res
+            .header("docker-content-digest")
+            .map(|d| d.trim().to_string());
+        Ok((media_type, buf, digest))
+    }
+
+    /// Downloads a blob into `file` and checks its size and SHA-256. The registry sends a small blob
+    /// itself and answers `307` with a short-lived link for a large one. The link is followed without the
+    /// registry token. A failed download from the link starts again with a new link.
+    pub fn get_blob(&mut self, digest: &str, size: u64, file: &mut File) -> Result<(), String> {
+        let url = format!("{}/v2/{}/blobs/{digest}", self.base, self.name);
+        let mut attempt = 0;
+        loop {
+            let mut out = HashingFile::new(file);
+            let res = self.call_with("GET", &url, true, &mut |reg, token| {
+                out.reset()?;
+                reg.get_once(&url, token, &mut out, size)
+            })?;
+            let fetched = match res.status {
+                200 => Ok(()),
+                301 | 302 | 303 | 307 | 308 => {
+                    let loc = res.header("location").ok_or(
+                        "prego: the registry answered a redirect without a Location header",
+                    )?;
+                    let target = self.download_link(loc)?;
+                    out.reset()?;
+                    match self.http.get_to(&target, &[], &mut out, size) {
+                        Ok((r, _)) if r.status == 200 => Ok(()),
+                        Ok((r, _)) => Err(format!(
+                            "prego: download of blob {digest}: HTTP {} from the storage link",
+                            r.status
+                        )),
+                        Err(e) => Err(format!("prego: download of blob {digest}: {e}")),
+                    }
+                }
+                s => return Err(registry_error(&format!("get blob {digest}"), &res, s)),
+            };
+            match fetched {
+                Ok(()) => return out.check(digest, size),
+                Err(e) if attempt >= RETRY_DELAYS.len() => return Err(e),
+                Err(_) => {
+                    (self.sleep)(RETRY_DELAYS[attempt]);
+                    attempt += 1;
+                }
+            }
+        }
+    }
+
+    /// The URL of a download redirect. A path stays on the registry. An absolute link must be `https`
+    /// (or `http` when the registry itself is `http` on a loopback host, for tests).
+    fn download_link(&self, loc: &str) -> Result<String, String> {
+        if loc.starts_with('/') && !loc.starts_with("//") {
+            return resolve(&self.base, loc);
+        }
+        let plain_ok = self.base.starts_with("http://");
+        if loc.starts_with("https://") || (plain_ok && loc.starts_with("http://")) {
+            return Ok(loc.to_string());
+        }
+        Err("prego: the registry sent a download link that is not https".into())
+    }
+
+    /// One `GET` with the registry token, streamed into `out` on `200`.
+    fn get_once(
+        &self,
+        url: &str,
+        token: Option<&prego_auth::Secret>,
+        out: &mut dyn Write,
+        max: u64,
+    ) -> Result<FullResponse, String> {
+        let auth = token.map(|t| format!("Bearer {}", t.expose()));
+        let mut h: Vec<(&str, &str)> = vec![(
+            "Accept",
+            "application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json, application/json",
+        )];
+        if let Some(a) = &auth {
+            h.push(("Authorization", a));
+        }
+        self.http.get_to(url, &h, out, max).map(|(r, _)| r)
+    }
+
     /// The `Location` header as an absolute URL on the registry host.
     fn location(&self, res: &FullResponse) -> Result<String, String> {
         let loc = res
@@ -312,6 +460,22 @@ impl<'a> Registry<'a> {
         payload: &Payload<'_>,
         retry: bool,
     ) -> Result<FullResponse, String> {
+        self.call_with(method, url, retry, &mut |reg, token| {
+            reg.send_once(method, url, headers, payload, token)
+        })
+    }
+
+    /// The retry rules of [`Registry::call`], for any way to send the request.
+    fn call_with<F>(
+        &mut self,
+        method: &str,
+        url: &str,
+        retry: bool,
+        send: &mut F,
+    ) -> Result<FullResponse, String>
+    where
+        F: FnMut(&Self, Option<&prego_auth::Secret>) -> Result<FullResponse, String>,
+    {
         let mut new_token = false;
         let mut transient = 0;
         let mut throttled = 0;
@@ -320,7 +484,7 @@ impl<'a> Registry<'a> {
                 Some(t) => Some(t.token(&self.scopes).map_err(|e| e.to_string())?),
                 None => None,
             };
-            let res = self.send_once(method, url, headers, payload, token.as_ref());
+            let res = send(self, token.as_ref());
             match res {
                 Ok(r) if r.status == 401 && self.tokens.is_some() && !new_token => {
                     new_token = true;
@@ -507,15 +671,21 @@ fn registry_error(what: &str, res: &FullResponse, status: u16) -> String {
         .and_then(|e| e.get("message"))
         .and_then(Value::as_str)
         .unwrap_or("");
-    let hint = match (status, code) {
-        (404, _) | (_, "NAME_UNKNOWN") => {
-            ". No grant for this repository, or the name is wrong. Check the grants in the console"
+    let detail = first
+        .as_ref()
+        .and_then(|e| e.pointer("/detail/error"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let hint = match (status, code, detail) {
+        (_, _, "plan_limit") => {
+            ". Only the Publisher plan (and Trial) can push adapters. The plan of the tenant that owns the \
+             repository must change. Do this in the console: Settings, Plan"
         }
-        (403, _) => {
-            ". The identity cannot push to this repository, or the tenant is over its storage quota"
+        (_, _, "tag_exists") => {
+            ". An adapter version is written one time only. Push the adapter with a new version (tag)"
         }
-        (401, _) => ". The registry refused the registry token",
-        _ => "",
+        (_, _, "adapter_invalid") => ". The registry refused the adapter. Correct it and push again",
+        _ => hint_for(status, code),
     };
     let mut out = format!("prego: {what}: HTTP {status}");
     if !code.is_empty() {
@@ -526,6 +696,77 @@ fn registry_error(what: &str, res: &FullResponse, status: u16) -> String {
     }
     out.push_str(hint);
     out
+}
+
+/// The hint for an error without a Prego detail code.
+fn hint_for(status: u16, code: &str) -> &'static str {
+    match (status, code) {
+        (404, _) | (_, "NAME_UNKNOWN") => {
+            ". No grant for this repository, or the name is wrong. Check the grants in the console"
+        }
+        (403, _) => {
+            ". The identity cannot push to this repository, or the tenant is over its storage quota"
+        }
+        (401, _) => ". The registry refused the registry token",
+        _ => "",
+    }
+}
+
+/// A file that a download writes to, with the SHA-256 and the size of what was written.
+struct HashingFile<'f> {
+    file: &'f mut File,
+    hash: Sha256,
+    written: u64,
+}
+
+impl<'f> HashingFile<'f> {
+    fn new(file: &'f mut File) -> Self {
+        HashingFile {
+            file,
+            hash: Sha256::new(),
+            written: 0,
+        }
+    }
+
+    /// Empties the file, for a new attempt.
+    fn reset(&mut self) -> Result<(), String> {
+        self.file
+            .set_len(0)
+            .and_then(|()| self.file.rewind())
+            .map_err(|e| format!("prego: cannot write the download: {e}"))?;
+        self.hash = Sha256::new();
+        self.written = 0;
+        Ok(())
+    }
+
+    /// Checks the size and the digest of what was written.
+    fn check(self, digest: &str, size: u64) -> Result<(), String> {
+        self.file
+            .flush()
+            .map_err(|e| format!("prego: cannot write the download: {e}"))?;
+        let actual = format!("sha256:{}", hex(&self.hash.finalize()));
+        if self.written != size || actual != digest {
+            return Err(format!(
+                "prego: blob {digest} does not match its digest or size (got {actual}, {} bytes). The \
+                 download is not used",
+                self.written
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl Write for HashingFile<'_> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let n = self.file.write(buf)?;
+        self.hash.update(&buf[..n]);
+        self.written += n as u64;
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
 }
 
 #[cfg(test)]
