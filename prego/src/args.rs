@@ -41,6 +41,18 @@ pub enum Command {
     SetupDocker {
         write: bool,
     },
+    /// `prego adapter push <folder> <repo>:<version>`.
+    AdapterPush {
+        folder: String,
+        reference: String,
+        license: Option<String>,
+        base_revision: Option<String>,
+    },
+    /// `prego adapter get <repo>:<version> <folder>`.
+    AdapterGet {
+        reference: String,
+        folder: String,
+    },
     OciPush {
         /// An OCI image layout directory or a `docker save` tar file.
         input: String,
@@ -99,7 +111,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 25] = [
+const WITH_VALUE: [&str; 27] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -125,6 +137,8 @@ const WITH_VALUE: [&str; 25] = [
     "--project",
     "--tool",
     "--url",
+    "--license",
+    "--base-revision",
 ];
 /// Options without a value.
 const FLAGS: [&str; 9] = [
@@ -291,6 +305,31 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
                 from: one("--from")?,
                 chunk_size_mib,
             }
+        }
+        ["adapter", "push", folder, reference] => {
+            allow(&["--license", "--base-revision"], &[])?;
+            Command::AdapterPush {
+                folder: folder.to_string(),
+                reference: reference.to_string(),
+                license: one("--license")?,
+                base_revision: one("--base-revision")?,
+            }
+        }
+        ["adapter", "get", reference, folder] => {
+            allow(&[], &[])?;
+            Command::AdapterGet {
+                reference: reference.to_string(),
+                folder: folder.to_string(),
+            }
+        }
+        ["adapter", "push", ..] => {
+            return Err(
+                "usage: prego adapter push <folder> <repo>:<version> [--license <id>] [--base-revision <rev>]"
+                    .into(),
+            )
+        }
+        ["adapter", "get", ..] => {
+            return Err("usage: prego adapter get <repo>:<version> <folder>".into())
         }
         ["oci", "push", ..] => {
             return Err(

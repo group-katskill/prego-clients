@@ -1,9 +1,9 @@
 //! `prego oci push`: pushes an image from an OCI image layout or a `docker save` tar file, with chunked
 //! uploads for layers above the 95 MiB body limit.
 
-mod input;
-mod reference;
-mod registry;
+pub(crate) mod input;
+pub(crate) mod reference;
+pub(crate) mod registry;
 
 use std::path::Path;
 

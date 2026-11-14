@@ -15,6 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Adapters: `docs/adapters-quickstart.md`, a README section, the `#adapters` section and a guide card on the
+  website, with the `prego adapter get`, peft `PeftModel` and vLLM snippets.
 - `tools/publish-prego-cli.sh` and `tools/prego-cli/README.md`: publish the crates.io crate `prego-cli`, an alias
   of `prego` (same source, same version, same binary `prego`), from a signed tag. Dry run by default; `--publish`
   publishes. README: the alias in the Install section and the publish step in the Release section. CI runs

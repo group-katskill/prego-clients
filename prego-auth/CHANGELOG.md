@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `Http::get_to`: a `GET` that streams a `200` body into a writer, with a size limit (for `prego adapter get`).
+
 ## [0.9.0] - 2026-11-08
 
 ### Added

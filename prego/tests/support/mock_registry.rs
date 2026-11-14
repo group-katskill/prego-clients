@@ -78,6 +78,15 @@ pub struct State {
     pub revoke_at: HashSet<usize>,
     /// Request numbers (`/v2/` only) that answer 429 with `Retry-After: 1`.
     pub throttle_at: HashSet<usize>,
+    /// Blobs of this size or more get a `307` to `/storage/...` (no token there), as the Prego registry
+    /// does for large blobs.
+    pub redirect_from: Option<usize>,
+    /// Blob `GET`s send one changed byte.
+    pub corrupt_get: bool,
+    /// Adapter manifests get `403 DENIED` with `plan_limit` (a plan without Adapters).
+    pub deny_adapters: bool,
+    /// The port of this server, for absolute storage links.
+    pub port: u16,
     patches: usize,
     v2_requests: usize,
 }
@@ -93,6 +102,7 @@ impl MockRegistry {
         let port = listener.local_addr().unwrap().port();
         let state = Arc::new(Mutex::new(State {
             min_chunk,
+            port,
             basic: basic.to_string(),
             ..State::default()
         }));
@@ -169,6 +179,11 @@ impl Res {
     fn err(status: u16, code: &str, msg: &str) -> Self {
         Res::new(status).json(&format!(
             r#"{{"errors":[{{"code":"{code}","message":"{msg}"}}]}}"#
+        ))
+    }
+    fn err_detail(status: u16, code: &str, msg: &str, detail: &str) -> Self {
+        Res::new(status).json(&format!(
+            r#"{{"errors":[{{"code":"{code}","message":"{msg}","detail":{{"error":"{detail}"}}}}]}}"#
         ))
     }
 }
@@ -285,6 +300,13 @@ fn handle(s: &mut State, port: u16, req: &Req) -> Res {
             "this token URL does not issue repository tokens",
         );
     }
+    if let Some(rest) = req.path.strip_prefix("/storage/") {
+        // The short-lived storage link: no token.
+        let Some((name, digest)) = rest.rsplit_once('/') else {
+            return Res::new(404);
+        };
+        return blob_body(s, name, digest);
+    }
     if !req.path.starts_with("/v2/") {
         return Res::new(404);
     }
@@ -360,7 +382,17 @@ fn route(s: &mut State, req: &Req) -> Res {
     }
     if let Some((name, digest)) = p.split_once("/blobs/") {
         return match req.method.as_str() {
-            "HEAD" | "GET" => match s.blobs.get(&(name.into(), digest.into())) {
+            "GET" => match s.blobs.get(&(name.into(), digest.into())) {
+                Some(b) if s.redirect_from.is_some_and(|n| b.len() >= n) => Res::new(307)
+                    .h(
+                        "Location",
+                        format!("http://127.0.0.1:{}/storage/{name}/{digest}", s.port),
+                    )
+                    .h("Docker-Content-Digest", digest),
+                Some(_) => blob_body(s, name, digest),
+                None => Res::err(404, "BLOB_UNKNOWN", "blob unknown"),
+            },
+            "HEAD" => match s.blobs.get(&(name.into(), digest.into())) {
                 Some(b) => Res::new(200)
                     .h("Content-Length", b.len().to_string())
                     .h("Docker-Content-Digest", digest),
@@ -372,6 +404,24 @@ fn route(s: &mut State, req: &Req) -> Res {
     if let Some((name, reference)) = p.split_once("/manifests/") {
         if req.method == "PUT" {
             return put_manifest(s, name, reference, req);
+        }
+        if req.method == "GET" {
+            let digest = if reference.starts_with("sha256:") {
+                Some(reference.to_string())
+            } else {
+                s.tags.get(&(name.into(), reference.into())).cloned()
+            };
+            return match digest.and_then(|d| Some((d.clone(), s.manifests.get(&(name.into(), d))?)))
+            {
+                Some((d, (mt, body))) => {
+                    let mut r = Res::new(200)
+                        .h("Content-Type", mt.clone())
+                        .h("Docker-Content-Digest", d);
+                    r.body = body.clone();
+                    r
+                }
+                None => Res::err(404, "MANIFEST_UNKNOWN", "manifest unknown"),
+            };
         }
         return Res::new(405);
     }
@@ -493,6 +543,30 @@ fn put_manifest(s: &mut State, name: &str, reference: &str, req: &Req) -> Res {
         return Res::err(400, "MANIFEST_INVALID", "not JSON");
     };
     let mt = req.headers.get("content-type").cloned().unwrap_or_default();
+    let adapter = v
+        .get("artifactType")
+        .and_then(Value::as_str)
+        .is_some_and(|t| t.starts_with("application/vnd.prego.adapter."));
+    if adapter && s.deny_adapters {
+        return Res::err_detail(
+            403,
+            "DENIED",
+            "Org plan does not include Adapters; the Publisher plan does",
+            "plan_limit",
+        );
+    }
+    if adapter && !reference.starts_with("sha256:") {
+        if let Some(held) = s.tags.get(&(name.into(), reference.into())) {
+            if *held != digest {
+                return Res::err_detail(
+                    409,
+                    "DENIED",
+                    "tag of an adapter is written once; push the adapter with a new tag",
+                    "tag_exists",
+                );
+            }
+        }
+    }
     if let Some(children) = v.get("manifests").and_then(Value::as_array) {
         for c in children {
             let cd = c["digest"].as_str().unwrap_or("");
@@ -520,6 +594,22 @@ fn put_manifest(s: &mut State, name: &str, reference: &str, req: &Req) -> Res {
     Res::new(201)
         .h("Location", format!("/v2/{name}/manifests/{digest}"))
         .h("Docker-Content-Digest", digest)
+}
+
+/// A `200` with the blob, or with one byte changed when `corrupt_get` is set.
+fn blob_body(s: &State, name: &str, digest: &str) -> Res {
+    match s.blobs.get(&(name.into(), digest.into())) {
+        Some(b) => {
+            let mut body = b.clone();
+            if s.corrupt_get && !body.is_empty() {
+                body[0] ^= 1;
+            }
+            let mut r = Res::new(200).h("Docker-Content-Digest", digest);
+            r.body = body;
+            r
+        }
+        None => Res::err(404, "BLOB_UNKNOWN", "blob unknown"),
+    }
 }
 
 /// A tiny base64 decoder, so the tests need no extra crate.

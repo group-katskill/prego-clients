@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- `prego adapter push <folder> <repo>:<version>` and `prego adapter get <repo>:<version> <folder>` (ADR-0052,
+  registry 1.11.1, Publisher plan and Trial): AI model adapters as one OCI artifact. The push checks the folder
+  with the rules of the registry first (peft config, one safetensors file with a valid header, at most 8 text
+  files, 2 GiB, a license) and sends a manifest that is the same for the same files. The get checks the
+  SHA-256 of each file, follows the storage link without the registry token, and writes nothing if a check
+  fails. Clear messages for `403 plan_limit`, `409 tag_exists` and `400 adapter_invalid`.
 - The crate `prego-cli` on crates.io, an alias of `prego`: the same source and version, the same binary `prego`.
   `tools/publish-prego-cli.sh` publishes it from the release tag. No code change in `prego`.
 

@@ -302,6 +302,27 @@ prego python publish dist/*        # upload wheels and sdists (at most 90 MiB ea
 The [Python guide](docs/python-quickstart.md) has pip, Poetry, publishing, CI and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 13 has the client contract.
 
+## Adapters
+
+From prego 0.10.0 and registry 1.11.1 (Publisher plan and Trial). AI model adapters are the fine-tuned
+layers (LoRA and the other peft methods) of your AI models. Prego keeps them as one checked OCI artifact:
+`adapter_config.json`, one `.safetensors` weights file and at most 8 text files, at most 2 GiB.
+
+```sh
+prego adapter push ./out/support-bot acme/ml/support-bot:2026-11-14 --license LicenseRef-llama3.1
+prego adapter get acme/ml/support-bot:2026-11-14 ./adapters/support-bot
+```
+
+- `prego adapter push` checks the folder with the rules of the registry before it sends anything. Pickle files
+  (`.bin`, `.pt`, `.ckpt`) are refused. A license is required (`--license`, or `license:` in the README.md
+  front matter). `--base-revision` records the commit of the base model.
+- A version is written one time only. A second push of other content to the same version gets `409`.
+- `prego adapter get` writes the files to a new or empty folder and checks the SHA-256 of each file. Load it with
+  `PeftModel.from_pretrained(base, "./adapters/support-bot")` or vLLM `--lora-modules`.
+
+The [Adapters quickstart](docs/adapters-quickstart.md) has the console setup, the rules, loading, CI and the
+errors.
+
 ## Release Variables
 
 From prego 0.8.0 and registry 1.8.0. Release Variables are plain settings that go with a release (an API base
@@ -355,6 +376,8 @@ prego env push acme/payments@1.4.0 --file vars.json    # push a new version of t
 prego setup python                              # the uv index in pyproject.toml (0.9.0)
 prego exec -- uv sync                           # a Python token for uv, pip, twine, Poetry (0.9.0)
 prego python publish dist/*                     # upload wheels and sdists (0.9.0)
+prego adapter push ./out/bot acme/ml/bot:v1     # push an AI model adapter (0.10.0, Publisher)
+prego adapter get acme/ml/bot:v1 ./adapters/bot # write an adapter to a folder (0.10.0)
 ```
 
 `prego oci push <input> <image>`:
