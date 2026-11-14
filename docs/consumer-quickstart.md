@@ -23,7 +23,7 @@ cargo install cargo-credential-prego
 cargo-credential-prego --version
 ```
 
-All Prego client crates are on [crates.io](https://crates.io/crates/cargo-credential-prego), version 0.8.0.
+All Prego client crates are on [crates.io](https://crates.io/crates/cargo-credential-prego), version 0.10.0.
 
 Or install all Prego tools (`cargo-credential-prego`, `docker-credential-prego`, `prego`) with the install
 script. It checks the SHA-256 sum and copies the binaries to `~/.local/bin`:
@@ -38,7 +38,7 @@ Or download a prebuilt binary from the
 
 ```sh
 TARGET=aarch64-apple-darwin   # or x86_64-unknown-linux-musl, aarch64-unknown-linux-musl
-VERSION=0.4.0
+VERSION=0.10.0
 BASE=https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v$VERSION
 curl -fsSLO "$BASE/cargo-credential-prego-$TARGET.tar.gz"
 curl -fsSLO "$BASE/cargo-credential-prego-$TARGET.tar.gz.sha256"

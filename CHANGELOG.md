@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- crates.io has all five crates at 0.10.0 (`prego`, `prego-auth`, `cargo-credential-prego`,
+  `docker-credential-prego` and the alias `prego-cli`): `README.md`, the website, `docs/consumer-quickstart.md`
+  and `docs/go-quickstart.md`. The website install script line no longer pins 0.4.0, and the consumer quickstart
+  download uses `VERSION=0.10.0`.
+
 ## [0.10.0] - 2026-11-14
 
 ### Added
