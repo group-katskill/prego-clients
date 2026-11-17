@@ -403,3 +403,31 @@ fn stored_record_debug_and_errors_hold_no_token() {
         "{shown}"
     );
 }
+
+#[test]
+fn a_session_keeps_its_key_on_either_control_host_name() {
+    // ADR-0054: a session from `prego login` on the sts name stays valid when the STS URL is on the api name.
+    let with = |url: &str| Config {
+        tenant: "acme".into(),
+        sts_url: url.into(),
+        edge_code: Some("k7mq".into()),
+        audience: crate::DEFAULT_AUDIENCE.into(),
+        source: crate::SourceChoice::Auto,
+        ca_file: None,
+    };
+    let api = with("https://api.prego.k8skill.com/v1/sts/token");
+    let sts = with("https://sts.prego.k8skill.com/v1/sts/token");
+    assert_eq!(session_key(&api), session_key(&sts));
+    assert_eq!(
+        session_key(&sts),
+        "session:acme@https://sts.prego.k8skill.com/v1/sts/token"
+    );
+    assert_eq!(token_key(&api, Some("r")), token_key(&sts, Some("r")));
+    let other = with("https://sts.example.test/v1/sts/token");
+    assert_ne!(session_key(&other), session_key(&sts));
+    // Requests still go to the configured name.
+    assert_eq!(
+        device_url(&api, "token").unwrap(),
+        "https://api.prego.k8skill.com/v1/sts/device/e/k7mq/token"
+    );
+}

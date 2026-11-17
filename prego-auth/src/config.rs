@@ -5,8 +5,45 @@ use crate::error::Error;
 use crate::file_config::FileConfig;
 use crate::sources::SourceKind;
 
-/// The default STS endpoint.
-pub const DEFAULT_STS_URL: &str = "https://sts.prego.k8skill.com/v1/sts/token";
+/// The default STS endpoint, on the control host `api.prego.k8skill.com` (ADR-0054).
+pub const DEFAULT_STS_URL: &str = "https://api.prego.k8skill.com/v1/sts/token";
+/// The names of the Prego control host: the api name and its sts alias (ADR-0054). A request on either name
+/// gets the same answer. The OCI realm in a registry challenge stays on the sts name.
+const CONTROL_HOST_NAMES: [(&str, &str); 2] = [
+    ("api.prego.k8skill.com", "sts.prego.k8skill.com"),
+    (
+        "api-staging.prego.k8skill.com",
+        "sts-staging.prego.k8skill.com",
+    ),
+];
+
+/// The origins (`scheme://authority`) that are the same host as `origin`: `origin` itself, and for the
+/// Prego control host also its other name (api or sts), on https only.
+pub(crate) fn same_host_origins(origin: &str) -> Vec<String> {
+    let mut out = vec![origin.to_string()];
+    let lower = origin.to_ascii_lowercase();
+    for (api, sts) in CONTROL_HOST_NAMES {
+        for (this, other) in [(api, sts), (sts, api)] {
+            if lower == format!("https://{this}") {
+                out.push(format!("https://{other}"));
+            }
+        }
+    }
+    out
+}
+
+/// `url` with the api name of the control host changed to its sts name. Stored sessions and cached tokens
+/// use this form in their keys, so a session from `prego login` on either name stays valid after the default
+/// changed to the api name.
+pub(crate) fn store_url(url: &str) -> String {
+    for (api, sts) in CONTROL_HOST_NAMES {
+        let prefix = format!("https://{api}/");
+        if url.len() >= prefix.len() && url[..prefix.len()].eq_ignore_ascii_case(&prefix) {
+            return format!("https://{sts}/{}", &url[prefix.len()..]);
+        }
+    }
+    url.to_string()
+}
 /// The path of the token exchange on the STS host, without the edge code.
 pub const STS_PATH: &str = "/v1/sts/token";
 /// The default audience for SVIDs and CI tokens.
@@ -258,7 +295,7 @@ mod tests {
         let c = Config::from_parts(&[], &MapEnv::new(), &file).unwrap();
         assert_eq!(
             c.token_url().unwrap(),
-            "https://sts.prego.k8skill.com/v1/sts/token/e/k7mq"
+            "https://api.prego.k8skill.com/v1/sts/token/e/k7mq"
         );
         assert_eq!(c.sts_url, DEFAULT_STS_URL);
         let env = MapEnv::new().with("PREGO_EDGE_CODE", "ab2c");
@@ -397,6 +434,93 @@ mod tests {
             "https://sts.example.com/x",
         ] {
             Config::from_args(&["--tenant", "a", "--sts-url", ok], &MapEnv::new()).unwrap();
+        }
+    }
+
+    #[test]
+    fn the_sts_name_is_still_accepted() {
+        // ADR-0054: api is the default; a configured sts URL is used as it is.
+        assert_eq!(
+            DEFAULT_STS_URL,
+            "https://api.prego.k8skill.com/v1/sts/token"
+        );
+        for url in [
+            "https://sts.prego.k8skill.com/v1/sts/token",
+            "https://api.prego.k8skill.com/v1/sts/token",
+        ] {
+            let env = MapEnv::new()
+                .with("PREGO_TENANT", "acme")
+                .with("PREGO_STS_URL", url);
+            let c = Config::from_parts(&[], &env, &FileConfig::default()).unwrap();
+            assert_eq!(c.sts_url, url);
+            let c = Config::from_parts(
+                &[&format!("--sts-url={url}/e/k7mq")],
+                &env,
+                &FileConfig::default(),
+            )
+            .unwrap();
+            assert_eq!(c.sts_url, url);
+            assert_eq!(c.token_url().unwrap(), format!("{url}/e/k7mq"));
+        }
+        let file = FileConfig {
+            tenant: Some("acme".into()),
+            sts_url: Some("https://sts.prego.k8skill.com/v1/sts/token".into()),
+            ..FileConfig::default()
+        };
+        let c = Config::from_parts(&[], &MapEnv::new(), &file).unwrap();
+        assert_eq!(c.sts_url, "https://sts.prego.k8skill.com/v1/sts/token");
+    }
+
+    #[test]
+    fn control_host_names() {
+        assert_eq!(
+            same_host_origins("https://api.prego.k8skill.com"),
+            [
+                "https://api.prego.k8skill.com",
+                "https://sts.prego.k8skill.com"
+            ]
+        );
+        assert_eq!(
+            same_host_origins("https://sts.prego.k8skill.com"),
+            [
+                "https://sts.prego.k8skill.com",
+                "https://api.prego.k8skill.com"
+            ]
+        );
+        assert_eq!(
+            same_host_origins("https://api-staging.prego.k8skill.com"),
+            [
+                "https://api-staging.prego.k8skill.com",
+                "https://sts-staging.prego.k8skill.com"
+            ]
+        );
+        for origin in [
+            "http://api.prego.k8skill.com",
+            "https://api.prego.k8skill.com:8443",
+            "https://sts.example.test",
+            "http://127.0.0.1:8787",
+        ] {
+            assert_eq!(same_host_origins(origin), [origin], "{origin}");
+        }
+        assert_eq!(
+            store_url("https://api.prego.k8skill.com/v1/sts/token"),
+            "https://sts.prego.k8skill.com/v1/sts/token"
+        );
+        assert_eq!(
+            store_url("https://API.prego.k8skill.com/v1/sts/token"),
+            "https://sts.prego.k8skill.com/v1/sts/token"
+        );
+        assert_eq!(
+            store_url("https://api-staging.prego.k8skill.com/v1/sts/token"),
+            "https://sts-staging.prego.k8skill.com/v1/sts/token"
+        );
+        for url in [
+            "https://sts.prego.k8skill.com/v1/sts/token",
+            "https://api.prego.k8skill.com.evil.test/v1/sts/token",
+            "http://api.prego.k8skill.com/v1/sts/token",
+            "https://sts.example.test/v1/sts/token",
+        ] {
+            assert_eq!(store_url(url), url);
         }
     }
 

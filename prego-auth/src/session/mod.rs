@@ -185,14 +185,18 @@ fn failure(res: &Response) -> (Option<String>, Option<String>) {
 
 /// The key of a session in the store: tenant and STS.
 pub fn session_key(config: &Config) -> String {
-    format!("session:{}@{}", config.tenant, config.sts_url)
+    format!(
+        "session:{}@{}",
+        config.tenant,
+        crate::config::store_url(&config.sts_url)
+    )
 }
 
 fn token_key(config: &Config, resource: Option<&str>) -> String {
     format!(
         "token:{}@{}#{:016x}",
         config.tenant,
-        config.sts_url,
+        crate::config::store_url(&config.sts_url),
         store::fnv1a(resource.unwrap_or(""))
     )
 }

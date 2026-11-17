@@ -6,14 +6,14 @@ info:
   description: |
     The public, tenant-facing API of Prego by Katskill.
 
-    - **STS** (`sts.prego.k8skill.com`): exchange a subject token (JWT-SVID, OIDC ID token or API key) for a
+    - **STS** (`api.prego.k8skill.com`): exchange a subject token (JWT-SVID, OIDC ID token or API key) for a
       short-lived registry token. See `PROTOCOL.md`.
     - **Cargo registry** (`cargo.prego.k8skill.com`): the Cargo sparse registry protocol. Every request carries a
       registry token from the STS. Cargo gets it from `cargo-credential-prego`.
-    - **Release Variables** (`sts.prego.k8skill.com/v1/vars`, registry 1.8.0): plain settings that go with a
+    - **Release Variables** (`api.prego.k8skill.com/v1/vars`, registry 1.8.0): plain settings that go with a
       release, on the tenant, a namespace or a package version. Read and pushed with a registry token, and under
       the admin API for the console. They are not secrets: everyone who can pull the release can read them.
-    - **Admin API** (`sts.prego.k8skill.com/v1/admin`): manage tenants, members, namespaces, trust configs,
+    - **Admin API** (`api.prego.k8skill.com/v1/admin`): manage tenants, members, namespaces, trust configs,
       principals and grants. Two kinds of callers:
       - **Humans** (the Prego console at `app.prego.k8skill.com`): a Firebase ID token. Access follows the
         member's role: `reader`, `publisher`, `admin` or `owner`.
@@ -43,8 +43,10 @@ info:
     email: security@k8skill.com
 
 servers:
+  - url: https://api.prego.k8skill.com
+    description: STS and admin API (the control host, ADR-0054)
   - url: https://sts.prego.k8skill.com
-    description: STS and admin API
+    description: The same host. sts.prego.k8skill.com is an alias and keeps working.
 
 tags:
   - name: sts

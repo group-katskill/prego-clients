@@ -6,8 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-17
+
 ### Changed
 
+- Release 0.11.0: the default control host is `api.prego.k8skill.com` (ADR-0054). The default STS URL is
+  `https://api.prego.k8skill.com/v1/sts/token`. sts.prego.k8skill.com is an alias and keeps working. PROTOCOL.md
+  1.12.0 (the api host, with a note on the alias; the OCI realm in the registry's challenge stays on the sts
+  name), the `docs/openapi.yaml` servers, `README.md`, the guides, the website and the admin examples (Ansible,
+  OpenTofu, `prego-admin-token.sh`) use the api host.
 - Token lifetime per grant: 15 to 30 minutes on Indie, Org and Publisher (registry 1.16.0); fixed 15 minutes on
   Trial and Consumer; 15 minutes by default. `README.md`, `PROTOCOL.md` 2.1, `docs/ci.md`, `docs/go-quickstart.md`,
   `docs/npm-quickstart.md`, `docs/openapi.yaml` and the website.
@@ -17,7 +24,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   namespace delete `blockers`; `POST .../domains` and `POST .../domains/{id}/verify` with `403 plan_limit` on
   Indie; `GET .../audit/access`.
 - `docs/frontline-ci-publish.md`: "a usage pack ($25)", and egress bandwidth for pulls does not count toward usage.
-
 - crates.io has all five crates at 0.10.0 (`prego`, `prego-auth`, `cargo-credential-prego`,
   `docker-credential-prego` and the alias `prego-cli`): `README.md`, the website, `docs/consumer-quickstart.md`
   and `docs/go-quickstart.md`. The website install script line no longer pins 0.4.0, and the consumer quickstart

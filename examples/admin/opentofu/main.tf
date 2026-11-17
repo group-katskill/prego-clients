@@ -43,7 +43,7 @@ variable "wanted_grants" {
 }
 
 data "http" "grants" {
-  url = "https://sts.prego.k8skill.com/v1/admin/tenants/${var.tenant}/grants"
+  url = "https://api.prego.k8skill.com/v1/admin/tenants/${var.tenant}/grants"
   request_headers = {
     Accept        = "application/json"
     Authorization = "Bearer ${var.admin_token}"

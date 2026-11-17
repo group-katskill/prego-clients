@@ -176,7 +176,7 @@ then a fallback in the [settings file](#settings-file).
 | Argument | Environment | Default | Meaning |
 | --- | --- | --- | --- |
 | `--tenant <slug>` | `PREGO_TENANT` | required | Tenant slug sent to the STS. Can also come from the [settings file](#settings-file). |
-| `--sts-url <url>` | `PREGO_STS_URL` | `https://sts.prego.k8skill.com/v1/sts/token` | STS endpoint. The console's token URL (`.../v1/sts/token/e/<edge code>`) also works. |
+| `--sts-url <url>` | `PREGO_STS_URL` | `https://api.prego.k8skill.com/v1/sts/token` | STS endpoint. The console's token URL (`.../v1/sts/token/e/<edge code>`) also works. |
 | `--edge-code <code>` | `PREGO_EDGE_CODE` | required | Your tenant's edge code, 4 characters, for example `k7mq`. The console shows it. See [Edge code](#edge-code). |
 | `--audience <aud>` | `PREGO_AUDIENCE` | `prego.k8skill.com` | Audience to request for SVIDs and CI tokens. |
 | `--source <name>` | `PREGO_SOURCE` | `auto` | Use only one source: `spiffe`, `svid-file`, `gitlab`, `github`, `token-file`, `api-key`. |
@@ -412,7 +412,8 @@ edge_code = "k7mq"   # from the console (0.6.0)
 
 ### Edge code
 
-From 0.6.0 the tools get registry tokens at `https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>`. The
+From 0.6.0 the tools get registry tokens at `https://api.prego.k8skill.com/v1/sts/token/e/<edge code>` (from
+0.11.0 the default host is `api.`; sts.prego.k8skill.com is an alias and keeps working). The
 edge code is 4 characters, fixed for your tenant, for example `k7mq`. It is not a secret. The Prego console
 shows it, and the answer that creates a principal (API key or trust) has it as `edge_code` and as the full
 `token_url`. Set it one time: `edge_code` in the settings file, `PREGO_EDGE_CODE`, or `--edge-code`. You can
