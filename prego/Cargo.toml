@@ -1,7 +1,7 @@
 [package]
 name = "prego"
 version = "0.11.0"
-description = "Command-line tool for Prego by Katskill: registry tokens, whoami, setup for Cargo, Docker and Go, chunked OCI image push, Go module publish and the GOAUTH helper."
+description = "Command-line tool for Prego by KatSkill: registry tokens, whoami, setup for Cargo, Docker and Go, chunked OCI image push, Go module publish and the GOAUTH helper."
 readme = "README.md"
 keywords = ["prego", "registry", "oci", "cargo", "go"]
 categories = ["command-line-utilities", "authentication"]

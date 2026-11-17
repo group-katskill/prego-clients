@@ -12,7 +12,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_COMMIT: &str = env!("PREGO_GIT_COMMIT");
 
 const HELP: &str = "\
-docker-credential-prego: Docker credential helper for Prego by Katskill.
+docker-credential-prego: Docker credential helper for Prego by KatSkill.
 
 Docker runs this program. Configure it in ~/.docker/config.json:
 

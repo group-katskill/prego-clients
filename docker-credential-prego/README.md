@@ -1,6 +1,6 @@
 # docker-credential-prego
 
-Docker credential helper for the **Prego by Katskill** OCI registry (`oci.prego.k8skill.com`).
+Docker credential helper for the **Prego by KatSkill** OCI registry (`oci.prego.k8skill.com`).
 
 Docker, Podman, BuildKit, crane and ORAS run it to sign in. The helper finds a machine identity (SPIFFE
 JWT-SVID, GitLab or GitHub CI OIDC token, token file, or API key) and gives it to Docker for the Prego token

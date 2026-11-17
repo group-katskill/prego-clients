@@ -10,7 +10,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![MSRV: 1.91](https://img.shields.io/badge/MSRV-1.91-orange)](Cargo.toml)
 
-Open source client tools for **Prego by Katskill**, a private package registry with federated machine identity.
+Open source client tools for **Prego by KatSkill**, a private package registry with federated machine identity.
 They serve four package types: Rust **crates** (Cargo), **OCI images** (Docker, Podman, Helm and others), **Go
 modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; from 0.6.0).
 

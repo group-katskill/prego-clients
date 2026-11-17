@@ -1,4 +1,4 @@
-//! `prego`: the command-line tool for Prego by Katskill.
+//! `prego`: the command-line tool for Prego by KatSkill.
 
 #![forbid(unsafe_code)]
 
@@ -22,7 +22,7 @@ const GIT_COMMIT: &str = env!("PREGO_GIT_COMMIT");
 const USER_AGENT: &str = concat!("prego/", env!("CARGO_PKG_VERSION"));
 
 const HELP: &str = "\
-prego: command-line tool for Prego by Katskill.
+prego: command-line tool for Prego by KatSkill.
 
 Usage: prego [options] <command>
 

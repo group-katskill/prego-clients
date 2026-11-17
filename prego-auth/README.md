@@ -1,6 +1,6 @@
 # prego-auth
 
-Identity sources and the STS token exchange for **Prego by Katskill** clients.
+Identity sources and the STS token exchange for **Prego by KatSkill** clients.
 
 `cargo-credential-prego` uses this library. A later `prego` CLI will use it too.
 

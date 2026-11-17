@@ -1,7 +1,7 @@
 [package]
 name = "prego-auth"
 version = "0.11.0"
-description = "Identity sources and the STS token exchange for Prego by Katskill clients."
+description = "Identity sources and the STS token exchange for Prego by KatSkill clients."
 readme = "README.md"
 keywords = ["prego", "spiffe", "oidc", "token-exchange", "registry"]
 categories = ["authentication"]

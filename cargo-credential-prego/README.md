@@ -1,6 +1,6 @@
 # cargo-credential-prego
 
-Cargo credential provider for **Prego by Katskill** registries.
+Cargo credential provider for **Prego by KatSkill** registries.
 
 Cargo runs it to get a registry token. The provider finds a machine identity (SPIFFE JWT-SVID, GitLab or
 GitHub CI OIDC token, token file, or API key), exchanges it at the Prego STS, and gives Cargo a short-lived

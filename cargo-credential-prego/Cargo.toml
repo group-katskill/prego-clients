@@ -1,7 +1,7 @@
 [package]
 name = "cargo-credential-prego"
 version = "0.11.0"
-description = "Cargo credential provider for Prego by Katskill registries. Exchanges a machine identity for a short-lived registry token."
+description = "Cargo credential provider for Prego by KatSkill registries. Exchanges a machine identity for a short-lived registry token."
 readme = "README.md"
 keywords = ["cargo", "credential-provider", "prego", "spiffe", "oidc"]
 categories = ["development-tools::cargo-plugins", "authentication"]

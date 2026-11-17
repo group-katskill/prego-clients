@@ -104,7 +104,7 @@ fi
 
 sed -i.bak \
     -e 's/^name = "prego"$/name = "prego-cli"/' \
-    -e 's/^description = .*$/description = "Alias of the crate prego, the command-line tool for Prego by Katskill. Installs the same prego binary, from the same source and version."/' \
+    -e 's/^description = .*$/description = "Alias of the crate prego, the command-line tool for Prego by KatSkill. Installs the same prego binary, from the same source and version."/' \
     "$manifest"
 rm -f "$manifest.bak"
 printf '\n# prego-cli is an alias of prego: the binary keeps the name prego.\n[[bin]]\nname = "prego"\npath = "src/main.rs"\n' >> "$manifest"

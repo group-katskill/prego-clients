@@ -1,4 +1,4 @@
-//! Identity sources and the STS token exchange for Prego by Katskill clients.
+//! Identity sources and the STS token exchange for Prego by KatSkill clients.
 //!
 //! A client finds a subject token on the machine ([`sources`]), sends it to the Prego STS ([`sts`]) and
 //! gets a short-lived registry token. [`TokenClient`] does both steps and keeps the result in memory.
