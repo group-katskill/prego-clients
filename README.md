@@ -71,7 +71,7 @@ Prego registries accept only a short-lived **registry token** (15 minutes by def
 
 ### Token lifetime
 
-From registry 1.2.0, a tenant owner sets the token lifetime per grant: 5 to 30 minutes on Indie, Org and
+From registry 1.16.0, a tenant owner sets the token lifetime per grant: 15 to 30 minutes on Indie, Org and
 Publisher, fixed at 15 minutes on Trial and Consumer. The default is 15 minutes. A token gets
 the shortest lifetime of the grants it can be used with. Revoking a machine takes effect within seconds,
 whatever the lifetime.

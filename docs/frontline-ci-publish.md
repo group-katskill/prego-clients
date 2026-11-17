@@ -257,8 +257,8 @@ tags and branches of that project can publish.
 - **Your customers** (Publisher plan) pull from their own Prego tenant through a cross-domain grant. Their machines
   sign in as themselves; you give out no tokens and rotate nothing.
 - **Usage.** Every plan has a monthly usage limit, shown in the console by package type. At 100%, pulls and
-  publishes stop until the 1st of the month or until you add a $25 pack. Nothing is deleted. One customer can use
-  at most half of a Publisher's usage limit.
+  publishes stop until the 1st of the month or until you add a usage pack ($25). Egress bandwidth for pulls does
+  not count toward usage. Nothing is deleted. One customer can use at most half of a Publisher's usage limit.
 
 ## Why this is better than a mirror
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.5.1
+  version: 1.6.0
   summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by Katskill.
   description: |
     The public, tenant-facing API of Prego by Katskill.
@@ -352,6 +352,14 @@ paths:
         - firebaseIdToken: []
         - adminToken: ["admin:read"]
       summary: Get a tenant. Role reader or higher.
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description: |
+            Registry 1.13.0. Adds `namespace_usage` for this namespace. The slug is case-blind. An unknown
+            namespace, one pending deletion, or a namespace of another tenant gives `404 not_found`.
+          schema: { type: string }
       responses:
         "200":
           description: The tenant with the caller's role and the usage.
@@ -458,7 +466,9 @@ paths:
         - firebaseIdToken: []
       x-human-only: true
       summary: Remove a member. Role admin; owner to remove an owner.
-      description: Removing the last owner returns `409`.
+      description: |
+        An owner never removes itself, also when other owners exist: `409 conflict` "an owner cannot remove
+        itself; another owner must do it". Another owner removes it. Removing the last owner returns `409`.
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "403": { $ref: "#/components/responses/AdminError" }
@@ -537,6 +547,40 @@ paths:
     parameters:
       - $ref: "#/components/parameters/Tenant"
       - $ref: "#/components/parameters/Namespace"
+    patch:
+      tags: [admin]
+      operationId: updateNamespace
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["namespaces:write"]
+      summary: Change the description of a namespace. Role admin or higher.
+      description: |
+        `{ns}` is the slug or the `ns_` ID. Only the description changes; the slug never does, and any other
+        field gives `400`. A namespace pending deletion gives `404`. Audit `admin.namespace.update`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description]
+              additionalProperties: false
+              properties:
+                description:
+                  type: [string, "null"]
+                  maxLength: 500
+                  description: |
+                    At most 500 characters after a trim (the rule of create), or `null`. `null` or an empty
+                    string clears it.
+      responses:
+        "200":
+          description: The namespace, as create gives it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Namespace" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
     delete:
       tags: [admin]
       operationId: deleteNamespace
@@ -544,7 +588,13 @@ paths:
         - firebaseIdToken: []
       x-human-only: true
       summary: Delete an empty namespace. Role owner.
-      description: The namespace must have no crates. `default` cannot be deleted.
+      description: |
+        `{ns}` is the slug or the `ns_` ID. Only if it has no packages of any type (crates, OCI repositories, Go
+        modules, npm packages, Python projects; live or pending deletion), no live Release Variables sets
+        (namespace or version level) and no live grants. Else one `409 conflict` that lists every blocker:
+        message "namespace still has 2 crates, 1 variable set and 1 grant; delete them first", and
+        `error.blockers`. Variable sets and grants pending deletion and purged package tombstones do not block
+        the delete. `default` cannot be deleted (`400`).
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "403": { $ref: "#/components/responses/AdminError" }
@@ -839,9 +889,9 @@ paths:
 
         Registry 1.2.0:
 
-        - `token_ttl_minutes` must be in the plan range of the granting tenant: 5 to 30 on Indie, Org and
-          Publisher, fixed 15 on Trial and Consumer. Else `400 token_ttl_out_of_range` ("your plan allows
-          5 to 30 minutes").
+        - `token_ttl_minutes` must be in the plan range of the granting tenant: 15 to 30 on Indie, Org and
+          Publisher (registry 1.16.0), fixed 15 on Trial and Consumer. Else `400 token_ttl_out_of_range`
+          ("Tokens live 15 to 30 minutes.").
         - `yank` is refused on `oci` and `go` grants, and `delete` on `cargo` grants:
           `400 action_not_supported`.
         - A grant with `ecosystem = any` and `package_glob = *` needs `"broad": true`, else
@@ -954,6 +1004,152 @@ paths:
                   next_before: { type: [string, "null"] }
         "403": { $ref: "#/components/responses/AdminError" }
         "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/audit/access:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listAccessEvents
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List the access events of one UTC day (ADR-0053). Role admin or higher.
+      description: |
+        The tenant's Tier B events of one UTC day: good token exchanges, publishes, yanks and unyanks, pushes and
+        uploads, and Release Variable writes (with result ok only). They are kept 400 days and are not in
+        `GET /tenants/{tenant}/audit`, which lists Tier A rows. A page holds the events of at most 20 stored
+        objects; pass `next_cursor` back as `cursor` for the rest of the day (`null` after the last). Without the
+        audit bucket the answer is `available: false` with no items.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: "`YYYY-MM-DD`. Default today (UTC). Must be within the last 400 days, else `400`."
+          schema: { type: string, format: date }
+        - name: cursor
+          in: query
+          required: false
+          description: "`next_cursor` from the previous page. A cursor of another tenant or day is `400`."
+          schema: { type: string }
+      responses:
+        "200":
+          description: A page of access events, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, available, items, next_cursor]
+                properties:
+                  date: { type: string, format: date }
+                  available: { type: boolean }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+                  next_cursor: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/packs/history:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    get:
+      tags: [admin]
+      operationId: listPacksHistory
+      security:
+        - firebaseIdToken: []
+        - adminToken: ["admin:read"]
+      summary: List the pack history, newest first (ADR-0050). Role admin or higher.
+      description: No dollar amounts, no operator names and no operator reasons are shown.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: 1 to 100, default 50. Else `400`.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          required: false
+          description: "`next_cursor` from the previous page. A bad cursor is `400`."
+          schema: { type: string }
+      responses:
+        "200":
+          description: A page of pack events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PackEvent" }
+                  next_cursor:
+                    type: [string, "null"]
+                    description: An opaque string, or `null` on the last page.
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/domains:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+    post:
+      tags: [admin]
+      operationId: addDomain
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Add a verified domain. Role admin or higher.
+      description: |
+        `method` is `sign_in` or `dns_txt`. On Indie: `403 plan_limit` "Verified domains are on the Org and
+        Publisher plans.". Trial, Org, Publisher and Consumer may add and verify domains. On every plan the list,
+        `DELETE` and restore stay allowed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, method]
+              properties:
+                domain: { type: string }
+                method: { type: string, enum: [sign_in, dns_txt] }
+      responses:
+        "201":
+          description: The domain. A `dns_txt` result adds `txt_name` and `txt_value`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Domain" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/domains/{id}/verify:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - $ref: "#/components/parameters/Id"
+    post:
+      tags: [admin]
+      operationId: verifyDomain
+      security:
+        - firebaseIdToken: []
+      x-human-only: true
+      summary: Run the domain check now. Role admin or higher.
+      description: |
+        `sign_in` checks the caller again; `dns_txt` runs the DNS check now. Not found yet: `400` naming the
+        record. At most 10 checks per hour per tenant (`429`). On Indie: `403 plan_limit` "Verified domains are
+        on the Org and Publisher plans.".
+      responses:
+        "200":
+          description: The domain.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Domain" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "429": { $ref: "#/components/responses/AdminError" }
 
   # ---------------- Cargo registry ----------------
 
@@ -1969,6 +2165,18 @@ components:
             current_hash:
               type: [string, "null"]
               description: Release Variables. On a `conflict` from `if_current`, the current hash (null if the set has no version).
+            blockers:
+              type: object
+              description: On the `409 conflict` of a namespace delete, the counts of what blocks it.
+              required: [crates, oci_repositories, go_modules, npm_packages, python_projects, var_sets, grants]
+              properties:
+                crates: { type: integer, minimum: 0 }
+                oci_repositories: { type: integer, minimum: 0 }
+                go_modules: { type: integer, minimum: 0 }
+                npm_packages: { type: integer, minimum: 0 }
+                python_projects: { type: integer, minimum: 0 }
+                var_sets: { type: integer, minimum: 0 }
+                grants: { type: integer, minimum: 0 }
     CargoError:
       type: object
       required: [errors]
@@ -1997,11 +2205,16 @@ components:
           type: array
           items:
             type: object
-            required: [tenant_id, tenant_slug, role]
+            required: [tenant_id, tenant_slug, tenant_name, plan, role]
             properties:
               tenant_id: { type: string }
               tenant_slug: { $ref: "#/components/schemas/Slug" }
+              tenant_name: { type: string }
+              plan:
+                type: string
+                description: The tenant's plan slug, the same value as `plan` in the tenant detail.
               role: { $ref: "#/components/schemas/Role" }
+          description: A tenant in delete grace is not in `memberships`.
 
     Tenant:
       type: object
@@ -2026,6 +2239,65 @@ components:
               type: object
               description: Usage of the tenant, for example storage and downloads.
               additionalProperties: true
+            namespace_usage:
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/NamespaceUsage"
+              description: |
+                Registry 1.13.0. `null` without `?namespace=`. With it, the usage of that namespace. Every other
+                field (`capacity`, `usage`, `limits`, packs, stops) stays tenant-wide.
+
+    NamespaceUsage:
+      type: object
+      required: [namespace, month, namespace_since, counts_complete, by_type]
+      description: |
+        `pulls` and `pushes` this month use the classes of `capacity.by_type` (pulls: downloads and metadata
+        reads; pushes: writes and upload chunks). They count only good requests on the namespace's own packages,
+        also by grantee tenants. They are display counts: charges, limits, percent, packs and stops do not use
+        them. `storage_bytes` is read at request time. OCI and adapters: each blob and manifest body that the
+        namespace's repositories reference counts in full in that namespace, so a blob shared by two namespaces
+        counts in both, and the sum over namespaces can be larger than `usage.storage_by_type.oci`. Go zips,
+        Python files and Release Variable bodies count once in a namespace (each hash once). Release Variable
+        sets at tenant level are in no namespace.
+      properties:
+        namespace: { type: string }
+        month: { type: string, examples: ["2026-11"] }
+        namespace_since:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When Prego first recorded a namespace count for the tenant. Nothing before it is counted (no
+            backfill), and it does not reset each month.
+        counts_complete:
+          type: boolean
+          description: |
+            The meter keeps named counts for at most 100 namespaces of a tenant in a month. More namespaces
+            share one bucket that the API does not show. `false` when this month has that bucket and the
+            namespace has no named counts (its counts can be in the bucket); else `true`.
+        by_type:
+          type: object
+          required: [cargo, oci, go, npm, python, rv]
+          properties:
+            cargo: { $ref: "#/components/schemas/NamespaceTypeUsage" }
+            oci:
+              allOf:
+                - $ref: "#/components/schemas/NamespaceTypeUsage"
+                - type: object
+                  properties:
+                    adapter:
+                      $ref: "#/components/schemas/NamespaceTypeUsage"
+                      description: ADR-0052. A part of `oci`, already counted in it.
+            go: { $ref: "#/components/schemas/NamespaceTypeUsage" }
+            npm: { $ref: "#/components/schemas/NamespaceTypeUsage" }
+            python: { $ref: "#/components/schemas/NamespaceTypeUsage" }
+            rv: { $ref: "#/components/schemas/NamespaceTypeUsage" }
+    NamespaceTypeUsage:
+      type: object
+      required: [pulls, pushes, storage_bytes]
+      properties:
+        pulls: { type: integer, minimum: 0 }
+        pushes: { type: integer, minimum: 0 }
+        storage_bytes: { type: integer, minimum: 0 }
 
     Membership:
       type: object
@@ -2052,6 +2324,41 @@ components:
         email: { type: string, format: email }
         role: { $ref: "#/components/schemas/Role" }
         created_by: { type: string }
+        created_at: { type: string, format: date-time }
+
+    PackEvent:
+      type: object
+      required: [at, kind, event, quantity, source]
+      properties:
+        at: { type: string, format: date-time }
+        kind: { type: string, enum: [usage, storage] }
+        event:
+          type: string
+          enum: [free, added, ended, frozen, expired, reload_wanted]
+          description: |
+            `free` (the free Publisher usage pack), `added` (usage packs granted or bought, or storage packs
+            added), `ended` (storage packs ended: fewer packs set, or a move off Org and Publisher, with `note`
+            "plan changed"), `frozen` (a move off Org and Publisher after the tenant got usage packs; `quantity`
+            is `null`), `expired` (a frozen balance ended 12 months after the plan ended), `reload_wanted` (auto
+            reload wanted a pack; until Stripe the note is "reload wanted, not charged").
+        quantity:
+          type: [number, "null"]
+          description: |
+            The number of packs (usage: 2 decimals; storage: 100 GiB packs; `null` when not recorded).
+        source: { type: string, enum: [free, prego, purchase, auto_reload] }
+        note: { type: string }
+    Domain:
+      type: object
+      required: [id, domain, method, state, created_at]
+      properties:
+        id: { type: string, examples: ["dom_01JC..."] }
+        domain: { type: string, description: Lowercase, no trailing dot. }
+        method: { type: string, enum: [sign_in, dns_txt] }
+        state: { type: string, enum: [pending, verified, lapsed, unverified] }
+        txt_name: { type: string, examples: ["_prego-verify.acme.com"] }
+        txt_value: { type: string }
+        verified_at: { type: [string, "null"], format: date-time }
+        lapsed_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
 
     Namespace:
@@ -2193,8 +2500,8 @@ components:
           default: 15
           description: |
             Registry 1.2.0. The registry token lifetime for this grant, in whole minutes, within the plan range
-            of the granting tenant (5 to 30 on Indie, Org and Publisher, fixed 15 on Trial and
-            Consumer). Outside: `400 token_ttl_out_of_range`.
+            of the granting tenant (15 to 30 on Indie, Org and Publisher from registry 1.16.0, fixed 15 on
+            Trial and Consumer). Outside: `400 token_ttl_out_of_range`.
         broad:
           type: boolean
           description: |

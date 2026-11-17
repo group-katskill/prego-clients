@@ -8,6 +8,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Token lifetime per grant: 15 to 30 minutes on Indie, Org and Publisher (registry 1.16.0); fixed 15 minutes on
+  Trial and Consumer; 15 minutes by default. `README.md`, `PROTOCOL.md` 2.1, `docs/ci.md`, `docs/go-quickstart.md`,
+  `docs/npm-quickstart.md`, `docs/openapi.yaml` and the website.
+- `docs/openapi.yaml` 1.6.0: `tenant_name` and `plan` in the `GET /v1/admin/me` memberships;
+  `PATCH /v1/admin/tenants/{tenant}/namespaces/{ns}` (the description); `GET .../packs/history`;
+  `?namespace=` on the tenant detail with `namespace_usage`; the `409` when an owner removes itself; the
+  namespace delete `blockers`; `POST .../domains` and `POST .../domains/{id}/verify` with `403 plan_limit` on
+  Indie; `GET .../audit/access`.
+- `docs/frontline-ci-publish.md`: "a usage pack ($25)", and egress bandwidth for pulls does not count toward usage.
+
 - crates.io has all five crates at 0.10.0 (`prego`, `prego-auth`, `cargo-credential-prego`,
   `docker-credential-prego` and the alias `prego-cli`): `README.md`, the website, `docs/consumer-quickstart.md`
   and `docs/go-quickstart.md`. The website install script line no longer pins 0.4.0, and the consumer quickstart
