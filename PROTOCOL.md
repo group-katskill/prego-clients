@@ -102,15 +102,15 @@ grants it can be used with:
 - No grant in scope (for example a principal with admin scopes only): 15 minutes.
 - Admin tokens: always 15 minutes.
 
-The tenant's plan sets the range:
+The tenant's plan sets the range (registry 1.16.0):
 
 | Plan | Lifetime per grant | Default |
 | --- | --- | --- |
 | Trial | fixed 15 min | 15 min |
 | Consumer | fixed 15 min | 15 min |
-| Indie | 5 to 30 min | 15 min |
-| Org | 5 to 30 min | 15 min |
-| Publisher | 5 to 30 min | 15 min |
+| Indie | 15 to 30 min | 15 min |
+| Org | 15 to 30 min | 15 min |
+| Publisher | 15 to 30 min | 15 min |
 
 The registry also checks the token age on each request. If a grant matches the request but the token is
 older than that grant's lifetime (plus 5 s), the registry answers `401` "token older than this grant allows;
