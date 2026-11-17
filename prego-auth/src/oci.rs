@@ -91,7 +91,8 @@ pub fn realm_url(config: &Config) -> Result<String, Error> {
 
 /// Checks the realm from a registry's `401` challenge for a repository and returns it. The realm must be on
 /// the STS host of `config`, with the path `/v1/oci/token/e/<edge code>`, so the subject token never goes to
-/// another host. The code is the edge code of the repository's tenant. It can be another tenant's code (a
+/// another host. For the Prego control host, its api and sts names are the same host (ADR-0054): the
+/// registry gives the realm on the sts name. The code is the edge code of the repository's tenant. It can be another tenant's code (a
 /// grant from that tenant): the subject token still names the caller, so the code is not compared with the
 /// configured one.
 pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, String> {
@@ -103,10 +104,14 @@ pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, Str
              try again later."
         )
     };
-    let code = realm
-        .strip_prefix(&origin)
-        .and_then(|p| p.strip_prefix(REALM_PATH))
-        .and_then(|p| p.strip_prefix("/e/"))
+    let code = crate::config::same_host_origins(&origin)
+        .iter()
+        .find_map(|o| {
+            realm
+                .strip_prefix(o.as_str())
+                .and_then(|p| p.strip_prefix(REALM_PATH))
+                .and_then(|p| p.strip_prefix("/e/"))
+        })
         .ok_or_else(refuse)?;
     crate::config::check_edge_code(code).map_err(|_| refuse())?;
     Ok(realm.to_string())
@@ -432,6 +437,10 @@ mod tests {
     fn realm_is_on_the_sts_host() {
         assert_eq!(
             realm_url(&config(crate::DEFAULT_STS_URL)).unwrap(),
+            "https://api.prego.k8skill.com/v1/oci/token/e/k7mq"
+        );
+        assert_eq!(
+            realm_url(&config("https://sts.prego.k8skill.com/v1/sts/token")).unwrap(),
             "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq"
         );
         assert_eq!(
@@ -471,6 +480,50 @@ mod tests {
         none.edge_code = None;
         let other = "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c";
         assert_eq!(check_challenge_realm(&none, other).unwrap(), other);
+    }
+
+    #[test]
+    fn challenge_realm_on_either_control_host_name() {
+        // ADR-0054: the registry gives the realm on the sts name; the STS URL can be on either name.
+        for sts in [
+            crate::DEFAULT_STS_URL,
+            "https://sts.prego.k8skill.com/v1/sts/token",
+        ] {
+            let cfg = config(sts);
+            for realm in [
+                "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq",
+                "https://api.prego.k8skill.com/v1/oci/token/e/k7mq",
+            ] {
+                assert_eq!(
+                    check_challenge_realm(&cfg, realm).unwrap(),
+                    realm,
+                    "{sts} {realm}"
+                );
+            }
+            for bad in [
+                "https://api-staging.prego.k8skill.com/v1/oci/token/e/k7mq",
+                "https://sts-staging.prego.k8skill.com/v1/oci/token/e/k7mq",
+                "http://api.prego.k8skill.com/v1/oci/token/e/k7mq",
+                "https://api.prego.k8skill.com.evil.example.test/v1/oci/token/e/k7mq",
+                "https://other.prego.k8skill.com/v1/oci/token/e/k7mq",
+            ] {
+                assert!(check_challenge_realm(&cfg, bad).is_err(), "{sts} {bad}");
+            }
+        }
+        let staging = config("https://api-staging.prego.k8skill.com/v1/sts/token");
+        let realm = "https://sts-staging.prego.k8skill.com/v1/oci/token/e/k7mq";
+        assert_eq!(check_challenge_realm(&staging, realm).unwrap(), realm);
+        assert!(check_challenge_realm(
+            &staging,
+            "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq"
+        )
+        .is_err());
+        // Another STS host has no alias.
+        let other = config("https://sts.example.test/v1/sts/token");
+        assert!(
+            check_challenge_realm(&other, "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq")
+                .is_err()
+        );
     }
 
     #[test]

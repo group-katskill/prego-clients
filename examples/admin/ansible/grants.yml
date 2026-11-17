@@ -11,7 +11,7 @@
   gather_facts: false
   vars:
     prego_tenant: acme
-    prego_admin_url: "https://sts.prego.k8skill.com/v1/admin/tenants/{{ prego_tenant }}"
+    prego_admin_url: "https://api.prego.k8skill.com/v1/admin/tenants/{{ prego_tenant }}"
     prego_admin_token: "{{ lookup('ansible.builtin.env', 'PREGO_ADMIN_TOKEN') }}"
     # The wanted grants. Same body as POST .../grants (see docs/openapi.yaml).
     prego_grants:

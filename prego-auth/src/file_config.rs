@@ -6,7 +6,7 @@
 //!
 //! ```toml
 //! tenant = "acme"
-//! sts_url = "https://sts.prego.k8skill.com/v1/sts/token"
+//! sts_url = "https://api.prego.k8skill.com/v1/sts/token"
 //! edge_code = "k7mq"
 //! audience = "prego.k8skill.com"
 //! source = "auto"

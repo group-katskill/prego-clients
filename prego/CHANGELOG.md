@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-17
+
+### Changed
+
+- The default STS URL is `https://api.prego.k8skill.com/v1/sts/token` (ADR-0054, through `prego-auth` 0.11.0).
+  sts.prego.k8skill.com is an alias and keeps working. A `prego login` session from an older version stays
+  valid. `prego oci push` and `prego adapter` accept the token realm of the registry on the sts name.
+
 ## [0.10.0] - 2026-11-14
 
 ### Added

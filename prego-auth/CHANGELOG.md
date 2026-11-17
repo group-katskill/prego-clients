@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-17
+
+### Changed
+
+- The default STS URL is `https://api.prego.k8skill.com/v1/sts/token`, on the control host `api.prego.k8skill.com`
+  (ADR-0054). sts.prego.k8skill.com is an alias and keeps working: an STS URL that you set (argument,
+  `PREGO_STS_URL` or `sts_url` in the settings file) is used as it is.
+- `oci::check_challenge_realm` accepts the realm on either name of the control host (api or sts, and the
+  staging pair). The registry gives the realm on the sts name. Other hosts are still refused.
+- Stored sessions and cached tokens use the sts name in their keys for both names, so a `prego login` session
+  stays valid after the upgrade.
+
 ## [0.10.0] - 2026-11-14
 
 ### Added

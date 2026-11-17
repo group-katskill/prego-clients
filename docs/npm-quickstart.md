@@ -146,7 +146,7 @@ OIDC token with audience `prego.k8skill.com`.
 **Without the `prego` tool.** Exchange the CI ID token at the STS with curl:
 
 ```sh
-export PREGO_NPM_TOKEN="$(curl -fsS https://sts.prego.k8skill.com/v1/sts/token/e/k7mq \
+export PREGO_NPM_TOKEN="$(curl -fsS https://api.prego.k8skill.com/v1/sts/token/e/k7mq \
   -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
   -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
   -d tenant=acme --data-urlencode "subject_token=$PREGO_ID_TOKEN" | jq -r .access_token)"

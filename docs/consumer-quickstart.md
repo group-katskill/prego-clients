@@ -116,7 +116,7 @@ cargo build
 
 Cargo starts `cargo-credential-prego`. With a login session, the provider trades the session for a registry
 token. With an API key, the provider sends the key to the Prego STS
-(`https://sts.prego.k8skill.com/v1/sts/token/e/k7mq`) and gets a registry token (15 minutes by default; the grant of
+(`https://api.prego.k8skill.com/v1/sts/token/e/k7mq`) and gets a registry token (15 minutes by default; the grant of
 the tenant that shares the crates can set a shorter or longer one). Cargo uses that token for the registry
 and asks for a new one shortly before it expires. The API key itself never goes to the
 registry.

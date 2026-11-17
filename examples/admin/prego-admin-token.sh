@@ -8,7 +8,7 @@
 #   PREGO_TENANT         tenant slug, for example acme (required)
 #   PREGO_ADMIN_SCOPE    space-separated admin scopes, for example "admin:read grants:write" (required)
 #   PREGO_ID_TOKEN       the CI OIDC token (GitLab id_tokens). Or set PREGO_SUBJECT_TOKEN.
-#   PREGO_STS_URL        default https://sts.prego.k8skill.com/v1/sts/token
+#   PREGO_STS_URL        default https://api.prego.k8skill.com/v1/sts/token
 #
 # The subject token goes to curl on stdin, so it does not show in the process list.
 # The script never prints the subject token. On error it prints the STS error code only.
@@ -23,7 +23,7 @@ if [ -z "$subject" ]; then
   echo "prego-admin-token: set PREGO_ID_TOKEN or PREGO_SUBJECT_TOKEN" >&2
   exit 1
 fi
-sts_url="${PREGO_STS_URL:-https://sts.prego.k8skill.com/v1/sts/token}"
+sts_url="${PREGO_STS_URL:-https://api.prego.k8skill.com/v1/sts/token}"
 case "$sts_url" in
   https://*) ;;
   *) echo "prego-admin-token: PREGO_STS_URL must use https" >&2; exit 1 ;;

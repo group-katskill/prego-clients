@@ -253,7 +253,7 @@ manage-prego:
 ID token on stdin, so the token does not show in the process list:
 
 ```sh
-printf '%s' "$PREGO_ID_TOKEN" | curl -sS --proto '=https' https://sts.prego.k8skill.com/v1/sts/token \
+printf '%s' "$PREGO_ID_TOKEN" | curl -sS --proto '=https' https://api.prego.k8skill.com/v1/sts/token \
   --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
   --data-urlencode 'subject_token@-' \
   --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:jwt' \
@@ -263,7 +263,7 @@ printf '%s' "$PREGO_ID_TOKEN" | curl -sS --proto '=https' https://sts.prego.k8sk
 ```
 
 Then call the admin API with `Authorization: Bearer $PREGO_ADMIN_TOKEN`, for example
-`GET https://sts.prego.k8skill.com/v1/admin/tenants/acme/grants`. The token is valid for 15 minutes. The
+`GET https://api.prego.k8skill.com/v1/admin/tenants/acme/grants`. The token is valid for 15 minutes. The
 operations and their scopes are in [`openapi.yaml`](openapi.yaml).
 
 | Error | What to do |

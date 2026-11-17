@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.11.1. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.12.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -27,9 +27,13 @@ client. A change that breaks this contract is a MAJOR version change for the reg
 ## 1. STS request
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>
+POST https://api.prego.k8skill.com/v1/sts/token/e/<edge code>
 Content-Type: application/x-www-form-urlencoded
 ```
+
+The control host is `api.prego.k8skill.com` (ADR-0054). sts.prego.k8skill.com is an alias and keeps working:
+a request on either name gets the same answer. The OCI token realm in the registry's challenge (section 7) stays
+on the sts name; use it as it is.
 
 A JSON body with the same fields is also accepted.
 
@@ -140,7 +144,7 @@ tokens with `401`.
 ## 4. Admin token (machines to the admin API)
 
 A machine, for example a CI job or an OpenTofu or Ansible run, can manage objects in its own tenant through the
-admin API (`https://sts.prego.k8skill.com/v1/admin/...`). It uses an admin token from the STS. It needs no stored
+admin API (`https://api.prego.k8skill.com/v1/admin/...`). It uses an admin token from the STS. It needs no stored
 secret: it uses the same subject token as for registry access.
 
 A human admin or owner of the tenant first gives the principal **admin scopes** in the Prego console. A machine
@@ -352,7 +356,7 @@ All Prego client tools read the same settings file: `$XDG_CONFIG_HOME/prego/conf
 ```toml
 tenant = "acme"
 # All keys are optional.
-# sts_url = "https://sts.prego.k8skill.com/v1/sts/token"
+# sts_url = "https://api.prego.k8skill.com/v1/sts/token"
 # edge_code = "k7mq"
 # audience = "prego.k8skill.com"
 # source = "auto"
@@ -486,7 +490,7 @@ identity or an API key (section 5). All paths carry the edge code, which picks t
 ### 11.1 Start
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/start
+POST https://api.prego.k8skill.com/v1/sts/device/e/<edge code>/start
 Content-Type: application/json
 
 {"client": "prego-cli/0.7.0", "access": [{"ecosystem": "any", "actions": ["read"]}]}
@@ -505,7 +509,7 @@ Content-Type: application/json
 ### 11.2 Poll
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/token
+POST https://api.prego.k8skill.com/v1/sts/device/e/<edge code>/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=<device code>
@@ -527,7 +531,7 @@ the refresh token and the session (section 11.4) before you use the registry tok
 ### 11.3 Refresh
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/token/e/<edge code>
+POST https://api.prego.k8skill.com/v1/sts/token/e/<edge code>
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=refresh_token&refresh_token=<refresh token>&resource=<registry base URL>
@@ -565,7 +569,7 @@ use `PREGO_API_KEY` or a workload identity.
 ### 11.5 Logout
 
 ```
-POST https://sts.prego.k8skill.com/v1/sts/device/e/<edge code>/revoke
+POST https://api.prego.k8skill.com/v1/sts/device/e/<edge code>/revoke
 Content-Type: application/x-www-form-urlencoded
 
 refresh_token=<refresh token>
