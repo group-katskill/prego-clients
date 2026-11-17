@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: Prego public API
   version: 1.6.0
-  summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by Katskill.
+  summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by KatSkill.
   description: |
-    The public, tenant-facing API of Prego by Katskill.
+    The public, tenant-facing API of Prego by KatSkill.
 
     - **STS** (`api.prego.k8skill.com`): exchange a subject token (JWT-SVID, OIDC ID token or API key) for a
       short-lived registry token. See `PROTOCOL.md`.

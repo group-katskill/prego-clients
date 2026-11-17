@@ -11,7 +11,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_COMMIT: &str = env!("PREGO_GIT_COMMIT");
 
 const HELP: &str = "\
-cargo-credential-prego: Cargo credential provider for Prego by Katskill.
+cargo-credential-prego: Cargo credential provider for Prego by KatSkill.
 
 Cargo runs this program. Configure it in .cargo/config.toml:
 

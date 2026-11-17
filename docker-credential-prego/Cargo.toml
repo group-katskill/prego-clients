@@ -1,7 +1,7 @@
 [package]
 name = "docker-credential-prego"
 version = "0.11.0"
-description = "Docker credential helper for Prego by Katskill OCI registries. Gives Docker a machine identity for the Prego token realm."
+description = "Docker credential helper for Prego by KatSkill OCI registries. Gives Docker a machine identity for the Prego token realm."
 readme = "README.md"
 keywords = ["docker", "credential-helper", "oci", "prego", "spiffe"]
 categories = ["command-line-utilities", "authentication"]

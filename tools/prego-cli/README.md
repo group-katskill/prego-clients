@@ -1,7 +1,7 @@
 # prego-cli
 
 `prego-cli` is an alias of the crate [`prego`](https://crates.io/crates/prego), the command-line tool for
-**Prego by Katskill**. It has the same source and the same version number as `prego`, and it installs the
+**Prego by KatSkill**. It has the same source and the same version number as `prego`, and it installs the
 same binary, `prego`.
 
 ```sh

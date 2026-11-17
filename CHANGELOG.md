@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The brand is spelled KatSkill: "Prego by KatSkill" and "KatSkill LLC" in `LICENSE`, `NOTICE`, the READMEs,
+  `docs/openapi.yaml`, the website, the Cargo.toml `authors` and `description` fields, the help text of `prego`,
+  `cargo-credential-prego` and `docker-credential-prego`, and `tools/publish-prego-cli.sh`. The GitHub org,
+  URLs, domains and crate names do not change. The Cargo.toml fields reach crates.io with the next release.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed

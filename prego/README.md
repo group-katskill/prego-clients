@@ -1,6 +1,6 @@
 # prego
 
-Command-line tool for **Prego by Katskill**.
+Command-line tool for **Prego by KatSkill**.
 
 ```sh
 cargo install prego
