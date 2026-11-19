@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-19
+
+### Changed
+
+- Release 0.12.0 with `prego` 0.12.0 (Snippets). The test-only mock server (`test-support` feature) serves byte
+  bodies (`MockResponse::bytes`) and keeps the request body as bytes (`MockRequest::raw`). No change in the
+  public API.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed

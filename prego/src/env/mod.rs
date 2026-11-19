@@ -170,33 +170,11 @@ impl Api {
     /// Gets a registry token. The token's tenant is the configured tenant (for a cross-tenant pull, the
     /// grantee); with no tenant configured, it is the tenant of the reference.
     fn new(globals: &[&str], r: &Ref, env: &dyn Env) -> Result<Api, String> {
-        let file = FileConfig::load(env).map_err(|e| e.to_string())?;
-        let has_tenant = globals.iter().any(|g| g.starts_with("--tenant="))
-            || env.var("PREGO_TENANT").is_some()
-            || file.tenant.is_some();
-        let tenant_arg = format!("--tenant={}", r.tenant);
-        let mut all: Vec<&str> = globals.to_vec();
-        if !has_tenant {
-            all.push(&tenant_arg);
-        }
-        let config = Config::from_parts(&all, env, &file).map_err(|e| e.to_string())?;
-        let base = config
-            .sts_url
-            .strip_suffix("/v1/sts/token")
-            .ok_or_else(|| {
-                format!(
-                    "prego: the STS URL `{}` does not end in /v1/sts/token",
-                    config.sts_url
-                )
-            })?
-            .to_string();
-        let (_, token) = crate::token::registry_token(&config, &[], None, env)?;
-        let http = Http::with_ca_file(crate::USER_AGENT, config.ca_file.as_deref())
-            .map_err(|e| format!("prego: PREGO_CA_FILE: {e}"))?;
+        let c = connect(globals, &r.tenant, false, env)?;
         Ok(Api {
-            http,
-            base,
-            auth: format!("Bearer {}", token.token.expose()),
+            http: c.http,
+            base: c.base,
+            auth: c.auth,
         })
     }
 
@@ -252,6 +230,58 @@ impl Api {
     }
 }
 
+/// The control host and a registry token for its machine routes (`/v1/vars/`, `/v1/snippets/`).
+pub(crate) struct Connection {
+    pub http: Http,
+    /// `https://api.prego.k8skill.com`, from the STS URL.
+    pub base: String,
+    /// `Bearer <token>`.
+    pub auth: String,
+}
+
+/// Gets a registry token. The token's tenant is the configured tenant (for a cross-tenant read, the
+/// grantee); with no tenant configured, it is `tenant` (the tenant of the reference). `transfers` gives
+/// the HTTP client with the long timeouts of uploads and downloads.
+pub(crate) fn connect(
+    globals: &[&str],
+    tenant: &str,
+    transfers: bool,
+    env: &dyn Env,
+) -> Result<Connection, String> {
+    let file = FileConfig::load(env).map_err(|e| e.to_string())?;
+    let has_tenant = globals.iter().any(|g| g.starts_with("--tenant="))
+        || env.var("PREGO_TENANT").is_some()
+        || file.tenant.is_some();
+    let tenant_arg = format!("--tenant={tenant}");
+    let mut all: Vec<&str> = globals.to_vec();
+    if !has_tenant {
+        all.push(&tenant_arg);
+    }
+    let config = Config::from_parts(&all, env, &file).map_err(|e| e.to_string())?;
+    let base = config
+        .sts_url
+        .strip_suffix("/v1/sts/token")
+        .ok_or_else(|| {
+            format!(
+                "prego: the STS URL `{}` does not end in /v1/sts/token",
+                config.sts_url
+            )
+        })?
+        .to_string();
+    let (_, token) = crate::token::registry_token(&config, &[], None, env)?;
+    let http = if transfers {
+        Http::for_transfers(crate::USER_AGENT, config.ca_file.as_deref())
+    } else {
+        Http::with_ca_file(crate::USER_AGENT, config.ca_file.as_deref())
+    }
+    .map_err(|e| format!("prego: PREGO_CA_FILE: {e}"))?;
+    Ok(Connection {
+        http,
+        base,
+        auth: format!("Bearer {}", token.token.expose()),
+    })
+}
+
 /// The error text for a refused request. `404` means no set or no grant: the registry does not say which.
 fn api_error(res: &FullResponse, what: &str) -> String {
     let body: Value = serde_json::from_str(&res.body).unwrap_or(Value::Null);
@@ -291,7 +321,7 @@ fn api_error(res: &FullResponse, what: &str) -> String {
 }
 
 /// URL query text with percent-encoding of everything but the unreserved characters.
-fn query(pairs: &[(&str, String)]) -> String {
+pub(crate) fn query(pairs: &[(&str, String)]) -> String {
     let enc = |s: &str| {
         s.bytes()
             .map(|b| match b {
@@ -309,7 +339,7 @@ fn query(pairs: &[(&str, String)]) -> String {
         .join("&")
 }
 
-fn text(v: &Value) -> String {
+pub(crate) fn text(v: &Value) -> String {
     match v {
         Value::Null => "-".into(),
         Value::String(s) => s.clone(),

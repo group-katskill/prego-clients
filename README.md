@@ -343,6 +343,27 @@ prego env hash release-vars.json                                                
 The [Release Variables guide](docs/release-variables.md) has the levels, the merge, references, access, CI and
 the errors. [PROTOCOL.md](PROTOCOL.md) section 12 has the client contract.
 
+## Snippets
+
+From prego 0.12.0 and registry 1.24.0. A snippet is a named set of text files (scripts, prompts, agent skills,
+templates) with versions that do not change, read by machines and agents with the identity they already have.
+Like a gist, but private and versioned.
+
+**An agent follows the text in a snippet. Pin the hash with `--expect`, and grant `read` only on snippets you
+trust.**
+
+```sh
+prego snippet push ./deploy-scripts acme/ops/deploy-scripts --tag stable     # a new version, if the files changed
+prego snippet get acme/ops/deploy-scripts@stable ./scripts --expect sha256:...  # exit 3 if it changed
+prego snippet log acme/ops/deploy-scripts
+prego snippet diff acme/ops/deploy-scripts 6 stable
+prego snippet rollback acme/ops/deploy-scripts --to 6 --reason "..."
+prego snippet hash ./deploy-scripts                                            # offline
+```
+
+The [Snippets guide](docs/snippets.md) has references, the file rules, the hash, CI and the errors.
+[PROTOCOL.md](PROTOCOL.md) section 14 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -378,6 +399,8 @@ prego exec -- uv sync                           # a Python token for uv, pip, tw
 prego python publish dist/*                     # upload wheels and sdists (0.9.0)
 prego adapter push ./out/bot acme/ml/bot:v1     # push an AI model adapter (0.10.0, Publisher)
 prego adapter get acme/ml/bot:v1 ./adapters/bot # write an adapter to a folder (0.10.0)
+prego snippet push ./skill acme/agent-skill     # push a new version of a snippet (0.12.0)
+prego snippet get acme/agent-skill@stable --expect sha256:...   # get a pinned snippet (0.12.0)
 ```
 
 `prego oci push <input> <image>`:

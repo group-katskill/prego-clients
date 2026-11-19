@@ -39,7 +39,7 @@ pub struct Ref {
     pub version: Option<String>,
 }
 
-fn slug(what: &str, s: &str) -> Result<(), String> {
+pub(crate) fn slug(what: &str, s: &str) -> Result<(), String> {
     let ok = !s.is_empty()
         && s.len() <= 64
         && s.bytes()

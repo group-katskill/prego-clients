@@ -6,8 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-19
+
+### Added
+
+- Snippets (ADR-0057, registry 1.24.0, `prego snippet`): `docs/snippets.md`, a README section, PROTOCOL.md
+  1.13.0 section 14 (routes, content rules, version hash, fixed tar form, client behavior), the `#snippets`
+  section, a nav link and a guide card on the website.
+- `prego/tests/vectors/snippets/`: the shared Snippets hash vectors from the registry, copied as data.
+
 ### Changed
 
+- Release 0.12.0: `prego snippet`.
 - The brand is spelled KatSkill: "Prego by KatSkill" and "KatSkill LLC" in `LICENSE`, `NOTICE`, the READMEs,
   `docs/openapi.yaml`, the website, the Cargo.toml `authors` and `description` fields, the help text of `prego`,
   `cargo-credential-prego` and `docker-credential-prego`, and `tools/publish-prego-cli.sh`. The GitHub org,

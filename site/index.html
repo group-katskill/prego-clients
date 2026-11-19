@@ -47,6 +47,7 @@
           <a href="#go">Go</a>
           <a href="#npm">npm</a>
           <a href="#vars">Variables</a>
+          <a href="#snippets">Snippets</a>
           <a href="#adapters">Adapters</a>
           <a href="#sources">Identity sources</a>
           <a href="#safety">Safety</a>
@@ -370,6 +371,32 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         </div>
       </section>
 
+      <section class="section" id="snippets" aria-labelledby="snippets-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="snippets-title">Snippets</h2>
+          <p class="section-lede">
+            prego 0.12.0 and later push and get snippets: named sets of text files (scripts, prompts, agent
+            skills, templates) with versions that do not change. Machines and agents read them with the identity
+            they already have. Like a gist, but private and versioned.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego snippet push ./deploy-scripts acme/ops/deploy-scripts --tag stable
+<span class="p">$ </span>prego snippet get acme/ops/deploy-scripts@stable ./scripts --expect sha256:4b1e...
+<span class="p">$ </span>prego snippet diff acme/ops/deploy-scripts 6 stable</code></pre>
+          </div>
+          <ul class="rules">
+            <li><strong>An agent follows the text in a snippet. Pin the hash with <code>--expect</code> and grant read only on snippets you trust.</strong></li>
+            <li>The same files give the same hash on every machine. <code>prego snippet hash</code> computes it offline; <code>--expect</code> exits with 3 if it changed.</li>
+            <li>Text files only: at most 100 files, 1 MiB each, 8 MiB together. Symlinks and paths that leave the folder are refused.</li>
+            <li>Tags are written one time. Log, diff and rollback keep every version.</li>
+          </ul>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/snippets.md">Snippets guide</a>.
+          </p>
+        </div>
+      </section>
+
       <section class="section" id="adapters" aria-labelledby="adapters-title">
         <div class="wrap">
           <h2 class="section-title display" id="adapters-title">Adapters</h2>
@@ -489,6 +516,10 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/release-variables.md">Release Variables</a></h3>
               <p>From 0.8.0: <code>prego env</code> pulls and pushes plain release settings, pins them with <code>--expect</code>, and keeps history and rollback. Not for secrets.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/snippets.md">Snippets</a></h3>
+              <p>From 0.12.0: <code>prego snippet</code> pushes and gets versioned text files for machines and agents, pinned by hash, with tags, diff and rollback.</p>
             </li>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a></h3>

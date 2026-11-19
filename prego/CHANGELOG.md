@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-19
+
+### Added
+
+- `prego snippet` (ADR-0057, registry 1.24.0): Snippets, named sets of text files with immutable versions.
+  `push <folder|file> <ref> [--tag] [--message] [--if-current] [--tar]`, `get <ref>[@<version>] [<folder>]
+  [--file P] [--tar] [--expect H]`, `ls <tenant>[/<namespace>]`, `log`, `diff <ref> <v1> <v2>`,
+  `tag <ref>@<v> <tag>`, `rollback <ref> --to <v> --reason R`, and `hash <folder|file> [--tar]` (offline).
+  The version hash (RFC 8785 canonical file list) and the fixed tar form are written from the ADR text and
+  checked against the registry's shared test vectors (`tests/vectors/snippets/`, data only).
+- `get` checks the version hash of the file list, reads every file from that exact version by its hash, checks
+  each file's size and SHA-256, and writes only to a new or empty folder: no path leaves the folder, mode
+  `0644` or `0755` only, and nothing is left behind on an error. `--expect` exits with 3 on a mismatch (local
+  or `412`) and writes nothing.
+- `push` checks the files first (100 files, 1 MiB each, 8 MiB together, UTF-8 without NUL, path rules, no
+  symlinks), skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
+  fixed form.
+
+### Changed
+
+- `prego env` and `prego snippet` share the code that gets the control host and the registry token. No change
+  in behavior.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed
