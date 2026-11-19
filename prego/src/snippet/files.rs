@@ -134,9 +134,12 @@ pub fn check_path(path: &str) -> Result<(), String> {
     if path.contains('\\') {
         return Err("the path has a `\\` (use `/`)".into());
     }
-    if let Some(c) = path.chars().find(|c| is_c1(*c) || is_bidi_control(*c)) {
+    if let Some(c) = path
+        .chars()
+        .find(|c| c.is_ascii_control() || is_c1(*c) || is_bidi_control(*c))
+    {
         return Err(format!(
-            "the path has the control character U+{:04X} (C1 and bidi controls are refused)",
+            "the path has the control character U+{:04X} (C0, C1 and bidi controls are refused)",
             u32::from(c)
         ));
     }
@@ -168,7 +171,7 @@ pub fn fold(path: &str) -> String {
 }
 
 /// No two paths are the same after NFC and lowercase, and no path is also a folder of another path
-/// (`a` and `a/b`).
+/// (`a` and `a/b`, also `A` and `a/b`). Both checks use the folded key, as a case-folding file system would.
 fn check_clashes(files: &[File]) -> Result<(), String> {
     let mut folded: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
     for f in files {
@@ -179,15 +182,14 @@ fn check_clashes(files: &[File]) -> Result<(), String> {
             ));
         }
     }
-    let paths: std::collections::BTreeSet<&str> = files.iter().map(|f| f.path.as_str()).collect();
-    for f in files {
-        for (i, b) in f.path.bytes().enumerate() {
-            if b == b'/' && paths.contains(&f.path[..i]) {
-                return Err(format!(
-                    "{} is a file and also a folder of {}",
-                    &f.path[..i],
-                    f.path
-                ));
+    // `/` is not changed by NFC or lowercase, so the folder prefixes of a folded path are the folded folders.
+    for (key, path) in &folded {
+        for (i, b) in key.bytes().enumerate() {
+            if b != b'/' {
+                continue;
+            }
+            if let Some(file) = folded.get(&key[..i]) {
+                return Err(format!("{file} is a file and also a folder of {path}"));
             }
         }
     }
@@ -737,7 +739,25 @@ mod tests {
                 "{bad:?}"
             );
         }
-        for ok in ["caf\u{e9}.md", "a\u{a0}b", "a\u{2065}b", "a\u{202f}b"] {
+        for bad in [
+            "a\u{1}b",
+            "tab\there",
+            "new\nline",
+            "esc\u{1b}[31m",
+            "del\u{7f}",
+        ] {
+            assert!(
+                check_path(bad).unwrap_err().contains("control character"),
+                "{bad:?}"
+            );
+        }
+        for ok in [
+            "caf\u{e9}.md",
+            "a\u{a0}b",
+            "a\u{2065}b",
+            "a\u{202f}b",
+            "a b~!",
+        ] {
             assert!(check_path(ok).is_ok(), "{ok:?}");
         }
     }
@@ -759,6 +779,12 @@ mod tests {
         assert!(clash(&["caf\u{e9}.md", "cafe\u{301}.md"])
             .unwrap_err()
             .contains("NFC"));
+        assert!(clash(&["A", "a/b"])
+            .unwrap_err()
+            .contains("A is a file and also a folder of a/b"));
+        assert!(clash(&["x/Caf\u{e9}", "x/cafe\u{301}/y"])
+            .unwrap_err()
+            .contains("also a folder"));
         assert!(clash(&["D/x", "d/y"]).is_ok());
         assert!(clash(&["a", "ab/c", "a.b/c"]).is_ok());
         assert_eq!(fold("Caf\u{e9}/X"), fold("cafe\u{301}/x"));

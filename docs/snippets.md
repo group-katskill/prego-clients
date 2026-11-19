@@ -96,10 +96,10 @@ same command with a newer version.
 - At most 100 files per version, each at most 1 MiB, all together at most 8 MiB.
 - Text only: UTF-8 with no NUL byte. Binary files are refused.
 - Paths are relative and `/` separated, at most 255 bytes, with no empty, `.` or `..` segment and no `\`.
-- Paths have no C1 control characters (U+0080 to U+009F) and no bidi controls (U+202A to U+202E, U+2066 to
+- Paths have no control characters (U+0001 to U+001F, U+007F to U+009F) and no bidi controls (U+202A to U+202E, U+2066 to
   U+2069). Names must be valid UTF-8.
 - Two paths may not be the same after Unicode NFC and lowercase (`README.md` and `readme.md`), and a path may not
-  also be a folder of another path (`a` and `a/b`). Such a version would not unpack the same on every system.
+  also be a folder of another path (`a` and `a/b`, also `A` and `a/b`). Such a version would not unpack the same on every system.
 - Symlinks, hard links and devices are refused.
 - The mode is `0755` when the owner can run the file, else `0644`.
 

@@ -703,9 +703,9 @@ snippets; the grants decide (`snippet` or `any` ecosystem, `package_glob` on the
 - At most 100 files, each at most 1 MiB, together at most 8 MiB; an upload is at most 8 MiB. Every file is UTF-8
   with no NUL byte.
 - A path is relative and `/` separated, at most 255 bytes, unique, with no empty, `.` or `..` segment, no leading
-  `/` and no `\`, no C1 control character (U+0080 to U+009F) and no bidi control (U+202A to U+202E, U+2066 to
+  `/` and no `\`, no control character (U+0001 to U+001F, U+007F to U+009F) and no bidi control (U+202A to U+202E, U+2066 to
   U+2069). Names are decoded as UTF-8 and refused when they are not valid UTF-8. No two paths are equal after
-  Unicode NFC and lowercase, and no path is also a folder of another path (`a` and `a/b`). In a tarball, a leading `./` is removed and directory entries are skipped. Symlinks, hard
+  Unicode NFC and lowercase, and no path is also a folder of another path after that folding (`a` and `a/b`, `A` and `a/b`). In a tarball, a leading `./` is removed and directory entries are skipped. Symlinks, hard
   links and devices are refused.
 - The mode is `"0755"` when the owner execute bit is set, else `"0644"`.
 - The version hash: one entry `{"path", "mode", "size", "sha256"}` per file (`mode` the text `"0644"` or

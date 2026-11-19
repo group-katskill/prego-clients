@@ -21,8 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `0644` or `0755` only, and nothing is left behind on an error. `--expect` exits with 3 on a mismatch (local
   or `412`) and writes nothing.
 - `push` checks the files first (100 files, 1 MiB each, 8 MiB together, UTF-8 without NUL, path rules
-  including no C1 or bidi controls, no two paths equal after Unicode NFC and lowercase, no path that is also a
-  folder of another path, no symlinks), refuses tags that end in `.tar.gz`, skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
+  including no C0, C1 or bidi controls, no two paths equal after Unicode NFC and lowercase, no path that is also a
+  folder of another path (also after folding), no symlinks), refuses tags that end in `.tar.gz`, skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
   fixed form.
 
 ### Changed
