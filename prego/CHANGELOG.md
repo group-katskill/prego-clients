@@ -25,6 +25,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   folder of another path (also after folding), no symlinks), refuses tags that end in `.tar.gz`, skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
   fixed form.
 
+- An encryption mode other than `none` (header `X-Prego-Encryption` on any snippet read, or
+  `encryption.mode` in version metadata) stops with exit code 2 and writes nothing. A missing header or field
+  is `none`. `get` makes its folder only after every file is read and checked.
+
 ### Changed
 
 - New direct dependency `icu_normalizer` 2.4 (Unicode NFC of snippet paths). It was in the tree already

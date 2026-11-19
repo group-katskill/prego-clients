@@ -730,6 +730,68 @@ fn get_tar_checks_the_tarball_hash() {
 }
 
 #[test]
+fn an_encryption_mode_other_than_none_exits_2_and_writes_nothing() {
+    let c = case("basic");
+    let dir = temp_dir("encryption");
+    let mut sealed = list_answer(&c, 3);
+    sealed["encryption"] = json!({"mode": "age-v1"});
+    let mut plain = list_answer(&c, 3);
+    plain["encryption"] = json!({"mode": "none"});
+    let mut answers = vec![
+        // The field in the file list.
+        sts_ok(),
+        MockResponse::json(200, &sealed.to_string()),
+        // The header on the file list.
+        sts_ok(),
+        MockResponse::json(200, &list_answer(&c, 3).to_string())
+            .with_header("X-Prego-Encryption", "kms-v2"),
+        // The header on one file, after a plain list.
+        sts_ok(),
+        MockResponse::json(200, &plain.to_string()).with_header("X-Prego-Encryption", "none"),
+        MockResponse::bytes(200, "text/plain", c.files[0].2.clone())
+            .with_header("X-Prego-Encryption", "age-v1"),
+        // The header on a tarball.
+        sts_ok(),
+        MockResponse::bytes(200, "application/gzip", vec![0x1f, 0x8b])
+            .with_header("X-Prego-Encryption", "age-v1"),
+        // "none" in both places works.
+        sts_ok(),
+        MockResponse::json(200, &plain.to_string()).with_header("X-Prego-Encryption", "none"),
+    ];
+    answers.extend(
+        file_answers(&c)
+            .into_iter()
+            .map(|r| r.with_header("X-Prego-Encryption", "none")),
+    );
+    let server = MockServer::start(answers);
+    let s = sts(&server);
+    for (args, mode) in [
+        (vec!["snippet", "get", "acme/x", "out"], "age-v1"),
+        (vec!["snippet", "get", "acme/x", "out"], "kms-v2"),
+        (vec!["snippet", "get", "acme/x", "out"], "age-v1"),
+        (
+            vec!["snippet", "get", "acme/x", "x.tar.gz", "--tar"],
+            "age-v1",
+        ),
+    ] {
+        let mut a = args.clone();
+        a.extend(["--sts-url", &s]);
+        let r = run_in(&dir, &a);
+        assert_eq!(r.code, 2, "{a:?}: {}", r.stderr);
+        assert_eq!(
+            r.stderr.trim(),
+            format!("prego: this snippet uses encryption mode {mode}, which this prego version cannot read")
+        );
+        assert!(r.stdout.is_empty());
+        assert!(!dir.join("out").exists() && !dir.join("x.tar.gz").exists());
+    }
+    let r = run_in(&dir, &["snippet", "get", "acme/x", "out", "--sts-url", &s]);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(dir.join("out/run.sh").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn log_diff_tag_rollback_and_ls() {
     let dir = temp_dir("log");
     let h1 = format!("sha256:{}", "1".repeat(64));

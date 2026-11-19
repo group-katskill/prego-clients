@@ -687,7 +687,10 @@ snippets; the grants decide (`snippet` or `any` ecosystem, `package_glob` on the
 | `PUT <s>/tags/<tag>` `{"version": <v>}` | publish | Create a tag. A second write of the same tag is `409 conflict`. |
 | `POST <s>/current` `{"version": <v>, "reason": "..."}` | publish | Move `current` (rollback or roll forward). No new version. `{current_version, current_hash}`. |
 
-- Every read answer has `X-Prego-Snippet-Version` and `X-Prego-Snippet-Hash`. Files and tarballs come with
+- Every read answer has `X-Prego-Snippet-Version`, `X-Prego-Snippet-Hash` and `X-Prego-Encryption: none`, and
+  version metadata has `"encryption": {"mode": "none"}` (reserved for a later add-on). A missing header or field
+  is `none`. A client that sees any other mode stops and uses none of the content.
+- Files and tarballs come with
   `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`.
 - `expect=sha256:<hex>` on a read gives `412 hash_mismatch` when the selected version has another hash.
   `if_current=sha256:<hex>` on a push gives `409 conflict` when `current` has another hash.
@@ -731,3 +734,7 @@ tarball.
 - It writes to a new or empty folder only, creates every folder itself, refuses a path that leaves the folder,
   never overwrites, and sets mode `0644` or `0755`. On an error, it removes what it wrote.
 - `--tar` unpacks the tarball in memory and checks the hash of its file list before it writes the tarball.
+- An encryption mode other than `none`, in the `X-Prego-Encryption` header of any read or in `encryption.mode`
+  of the file list, the diff or a history item, exits with code 2 and the message `this snippet uses encryption
+  mode <m>, which this prego version cannot read`. Nothing is written: `get` makes its folder only after every
+  file is read and checked.

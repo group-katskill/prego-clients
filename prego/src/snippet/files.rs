@@ -527,6 +527,16 @@ pub fn untar(bytes: &[u8]) -> Result<Vec<File>, String> {
 
 /// Creates the folder, or checks that it is empty. Returns true if it was created.
 pub fn prepare_folder(dir: &Path) -> Result<bool, String> {
+    if check_folder(dir)? {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("cannot make the folder {}: {e}", dir.display()))?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// Checks that the folder is new or empty, without making it. Returns true if it is not there yet.
+pub fn check_folder(dir: &Path) -> Result<bool, String> {
     match std::fs::symlink_metadata(dir) {
         Ok(meta) if meta.file_type().is_symlink() => Err(format!(
             "the folder {} is a symlink. Give a new or empty folder",
@@ -544,11 +554,7 @@ pub fn prepare_folder(dir: &Path) -> Result<bool, String> {
             }
             Ok(false)
         }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            std::fs::create_dir_all(dir)
-                .map_err(|e| format!("cannot make the folder {}: {e}", dir.display()))?;
-            Ok(true)
-        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(true),
         Err(e) => Err(format!("cannot read the folder {}: {e}", dir.display())),
     }
 }

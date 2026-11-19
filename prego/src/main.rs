@@ -131,7 +131,8 @@ Commands:
                                   Each file and the version hash are checked; no file leaves the folder.
                                   --file prints one file on stdout. --tar writes the .tar.gz to the file
                                   <folder> or to stdout. --expect exits with 3 if the version hash is
-                                  different (nothing is written)
+                                  different, and an encryption mode other than none exits with 2
+                                  (nothing is written in both cases)
   snippet ls <tenant>[/<namespace>]
                                   list the snippets that you can read
   snippet log <ref>               list the versions, newest first, with tags (* is the current one)

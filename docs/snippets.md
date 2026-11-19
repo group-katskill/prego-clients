@@ -141,5 +141,6 @@ deploy:
 | `409 conflict` | `--if-current` did not match, or the tag is there already. |
 | `412` / exit code 3 | `--expect` did not match. Nothing was written. |
 | `413 ...` | A file, the version or the upload is too large. |
+| exit code 2: `this snippet uses encryption mode M, which this prego version cannot read` | The snippet uses an encryption mode (a later add-on) that this `prego` cannot read. Nothing was written. |
 | `422 looks_like_secret (file: F, line N)` | A line looks like a credential. The value is never shown. |
 | `400 snippet_invalid (file: F, reason)` | A path or a file breaks the rules above. |

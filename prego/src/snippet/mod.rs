@@ -19,6 +19,40 @@ use files::{Entry, File};
 /// The exit code when `--expect` does not match (the same as `prego env pull`).
 pub const EXIT_EXPECT: i32 = 3;
 
+/// The exit code when a snippet uses an encryption mode that this version cannot read.
+pub const EXIT_ENCRYPTION: i32 = 2;
+
+/// Stops with [`EXIT_ENCRYPTION`] if `mode` is not `none`. Nothing was written yet: every read is checked
+/// before its content is used.
+fn require_plain(mode: Option<&str>) {
+    if let Some(m) = mode.filter(|m| *m != "none") {
+        eprintln!(
+            "prego: this snippet uses encryption mode {m}, which this prego version cannot read"
+        );
+        std::process::exit(EXIT_ENCRYPTION);
+    }
+}
+
+/// The encryption mode of a JSON answer: `encryption.mode` at the top or under `version`. Missing is `none`.
+fn body_mode(v: &Value) -> Option<String> {
+    for e in [&v["encryption"], &v["version"]["encryption"]] {
+        match e {
+            Value::Null => {}
+            Value::String(m) => return Some(m.clone()),
+            other => match &other["mode"] {
+                Value::Null => {}
+                Value::String(m) => return Some(m.clone()),
+                m => return Some(m.to_string()),
+            },
+        }
+    }
+    None
+}
+
+fn require_plain_body(v: &Value) {
+    require_plain(body_mode(v).as_deref());
+}
+
 /// The largest JSON answer that is read (a diff has at most 1 MiB of diff text, escaped).
 const MAX_JSON: u64 = 4 * 1024 * 1024;
 /// The largest tarball that is read: the content, the headers and a gzip that does not compress.
@@ -289,6 +323,10 @@ impl Api {
             .http
             .get_to(&url, &headers, &mut out, max)
             .map_err(|e| format!("prego: {url}: {e}"))?;
+        // Every snippet read carries X-Prego-Encryption; a missing header is `none`.
+        if res.status == 200 {
+            require_plain(res.header("x-prego-encryption").map(str::trim));
+        }
         Ok((res, out))
     }
 
@@ -455,6 +493,7 @@ fn listing(api: &Api, r: &SnipRef, expect: Option<&str>) -> Result<Listing, Stri
     }
     let what = format!("{}@{v}", r.long());
     let (res, answer) = api.get_json(&path, &what)?;
+    require_plain_body(&answer);
     let list = answer["files"]
         .as_array()
         .ok_or_else(|| format!("prego: {what}: the answer has no file list"))?;
@@ -562,27 +601,22 @@ fn get(
             .map_err(|e| format!("prego: stdout: {e}"))?;
         return Ok(());
     }
-    // The folder is checked first; the files are all downloaded and checked before the first is written.
+    // The folder is checked first, but made only after all files are downloaded and checked: a stop on the
+    // way (an error, --expect, an encryption mode) leaves nothing behind.
     let dir = Path::new(folder.unwrap_or(r.name.as_str())).to_path_buf();
+    files::check_folder(&dir).map_err(err)?;
+    let mut got = Vec::with_capacity(l.entries.len());
+    for e in &l.entries {
+        got.push(fetch(api, r, &l, e)?);
+    }
+    files::check_files(&got).map_err(|e| format!("prego: {}@{}: {e}", r.long(), l.number))?;
     let created = files::prepare_folder(&dir).map_err(err)?;
-    let result = (|| {
-        let mut got = Vec::with_capacity(l.entries.len());
-        for e in &l.entries {
-            got.push(fetch(api, r, &l, e)?);
+    if let Err(e) = files::write_all(&dir, &got) {
+        if created {
+            let _ = std::fs::remove_dir_all(&dir);
         }
-        files::check_files(&got).map_err(|e| format!("prego: {}@{}: {e}", r.long(), l.number))?;
-        files::write_all(&dir, &got).map_err(err)?;
-        Ok::<_, String>(got)
-    })();
-    let got = match result {
-        Ok(g) => g,
-        Err(e) => {
-            if created {
-                let _ = std::fs::remove_dir_all(&dir);
-            }
-            return Err(e);
-        }
-    };
+        return Err(err(e));
+    }
     eprintln!("{}@{} {} ({} files)", r.long(), l.number, l.hash, got.len());
     println!("{}", dir.display());
     Ok(())
@@ -696,6 +730,7 @@ fn log(api: &Api, r: &SnipRef) -> Result<(), String> {
     let what = format!("the history of {}", r.long());
     println!("{}", r.long());
     pages(api, &format!("{}/versions", Api::snippet(r)), &what, |v| {
+        require_plain_body(v);
         let mark = if v["current"] == true { "*" } else { " " };
         let tags: Vec<String> = v["tags"]
             .as_array()
@@ -729,6 +764,7 @@ fn diff(api: &Api, r: &SnipRef, from: &str, to: &str) -> Result<(), String> {
         query(&[("from", from.to_string()), ("to", to.to_string())])
     );
     let (_, d) = api.get_json(&path, &what)?;
+    require_plain_body(&d);
     let side = |s: &Value, sel: &str| match s {
         Value::Object(_) => format!("{} ({})", text(&s["number"]), text(&s["hash"])),
         Value::Null => sel.to_string(),
@@ -814,6 +850,25 @@ fn rollback(api: &Api, r: &SnipRef, to: &str, reason: &str) -> Result<(), String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn encryption_mode_of_an_answer() {
+        assert_eq!(body_mode(&json!({"files": []})), None);
+        assert_eq!(
+            body_mode(&json!({"encryption": {"mode": "none"}})).as_deref(),
+            Some("none")
+        );
+        assert_eq!(
+            body_mode(&json!({"encryption": {"mode": "age-v1"}})).as_deref(),
+            Some("age-v1")
+        );
+        assert_eq!(
+            body_mode(&json!({"version": {"encryption": {"mode": "kms"}}})).as_deref(),
+            Some("kms")
+        );
+        assert_eq!(body_mode(&json!({"encryption": "x"})).as_deref(), Some("x"));
+        assert_eq!(body_mode(&json!({"encryption": {}})), None);
+    }
 
     #[test]
     fn url_segments() {
