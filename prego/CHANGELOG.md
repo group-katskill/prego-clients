@@ -20,12 +20,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   each file's size and SHA-256, and writes only to a new or empty folder: no path leaves the folder, mode
   `0644` or `0755` only, and nothing is left behind on an error. `--expect` exits with 3 on a mismatch (local
   or `412`) and writes nothing.
-- `push` checks the files first (100 files, 1 MiB each, 8 MiB together, UTF-8 without NUL, path rules, no
-  symlinks), skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
+- `push` checks the files first (100 files, 1 MiB each, 8 MiB together, UTF-8 without NUL, path rules
+  including no C1 or bidi controls, no two paths equal after Unicode NFC and lowercase, no path that is also a
+  folder of another path, no symlinks), refuses tags that end in `.tar.gz`, skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
   fixed form.
 
 ### Changed
 
+- New direct dependency `icu_normalizer` 2.4 (Unicode NFC of snippet paths). It was in the tree already
+  through `url` and `idna`; `Cargo.lock` gets no new crate.
 - `prego env` and `prego snippet` share the code that gets the control host and the registry token. No change
   in behavior.
 

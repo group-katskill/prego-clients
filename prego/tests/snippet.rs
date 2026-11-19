@@ -338,6 +338,83 @@ fn push_refuses_binary_and_symlinks_before_any_request() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Linux only: the file systems of macOS and Windows cannot hold two names that differ only in case.
+#[cfg(target_os = "linux")]
+#[test]
+fn push_refuses_paths_that_are_the_same_after_folding_before_any_request() {
+    let dir = temp_dir("push-fold");
+    std::fs::create_dir_all(dir.join("f")).unwrap();
+    std::fs::write(dir.join("f/README.md"), "a\n").unwrap();
+    std::fs::write(dir.join("f/readme.md"), "b\n").unwrap();
+    // No server listens here: the push must stop before any request.
+    let r = run_in(
+        &dir,
+        &[
+            "snippet",
+            "push",
+            "f",
+            "acme/x",
+            "--sts-url",
+            "http://127.0.0.1:9/v1/sts/token",
+        ],
+    );
+    assert_eq!(r.code, 1);
+    assert!(
+        r.stderr
+            .contains("the same after Unicode NFC and lowercase"),
+        "{}",
+        r.stderr
+    );
+    let r = run_in(&dir, &["snippet", "hash", "f"]);
+    assert_eq!(r.code, 1);
+    std::fs::remove_file(dir.join("f/readme.md")).unwrap();
+    std::fs::write(dir.join("f/cafe\u{301}.md"), "c\n").unwrap();
+    std::fs::write(dir.join("f/caf\u{e9}.md"), "d\n").unwrap();
+    let r = run_in(&dir, &["snippet", "hash", "f"]);
+    assert_eq!(r.code, 1);
+    assert!(r.stderr.contains("NFC"), "{}", r.stderr);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn push_refuses_a_tarball_with_a_file_that_is_also_a_folder() {
+    let dir = temp_dir("push-dirclash");
+    let mut b = tar::Builder::new(Vec::new());
+    for (path, data) in [("a", &b"x"[..]), ("a/b", &b"y"[..])] {
+        let mut h = tar::Header::new_ustar();
+        h.set_size(data.len() as u64);
+        h.set_mode(0o644);
+        h.set_entry_type(tar::EntryType::Regular);
+        b.append_data(&mut h, path, data).unwrap();
+    }
+    std::fs::write(dir.join("t.tar"), b.into_inner().unwrap()).unwrap();
+    let r = run_in(
+        &dir,
+        &[
+            "snippet",
+            "push",
+            "t.tar",
+            "acme/x",
+            "--tar",
+            "--sts-url",
+            "http://127.0.0.1:9/v1/sts/token",
+        ],
+    );
+    assert_eq!(r.code, 1);
+    assert!(
+        r.stderr.contains("a is a file and also a folder of a/b"),
+        "{}",
+        r.stderr
+    );
+    let r = run_in(
+        &dir,
+        &["snippet", "push", "d", "acme/x", "--tag", "v1.tar.gz"],
+    );
+    assert_eq!(r.code, 1);
+    assert!(r.stderr.contains(".tar.gz"), "{}", r.stderr);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[cfg(unix)]
 #[test]
 fn get_writes_checked_files_with_their_modes() {

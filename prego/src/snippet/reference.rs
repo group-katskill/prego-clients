@@ -56,6 +56,11 @@ pub fn check_tag(s: &str) -> Result<(), String> {
             "bad tag `{s}`: `current` and names that start with `sha256` are kept"
         ));
     }
+    if s.ends_with(".tar.gz") {
+        return Err(format!(
+            "bad tag `{s}`: a tag does not end in .tar.gz (that is the tarball route)"
+        ));
+    }
     Ok(())
 }
 
@@ -166,6 +171,8 @@ mod tests {
         assert_eq!(r.version.as_deref(), Some(h.as_str()));
         assert_eq!(SnipRef::parse("a/b@7").unwrap().selector(), "7");
         assert_eq!(SnipRef::parse("a/b@v1.2+x").unwrap().selector(), "v1.2+x");
+        assert!(SnipRef::parse("a/b@v1.tar.gz").is_err());
+        assert!(check_tag("v1.tar").is_ok() && check_tag("v1.gz").is_ok());
         for bad in [
             "acme",
             "acme/",
@@ -196,6 +203,8 @@ mod tests {
             "sha256x",
             "-a",
             "a/b",
+            "v1.tar.gz",
+            "x.tar.gz",
             &"a".repeat(129),
         ] {
             assert!(check_tag(bad).is_err(), "{bad}");

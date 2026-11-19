@@ -27,6 +27,9 @@ crc32fast = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 # float_roundtrip: exact number parsing, so the RFC 8785 hash of `prego env` equals the registry hash.
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+# `prego snippet`: Unicode NFC of paths, for the check that two paths are not the same after NFC and lowercase.
+# Already in the tree through url/idna; the data is compiled in.
+icu_normalizer = { version = "2.4", default-features = false, features = ["compiled_data"] }
 # `prego oci push`: blob digests, and the docker save tar format.
 sha2 = "0.10"
 tar = { version = "0.4", default-features = false }

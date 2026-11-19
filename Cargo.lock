@@ -1299,6 +1299,7 @@ dependencies = [
  "base64 0.22.1",
  "crc32fast",
  "flate2",
+ "icu_normalizer",
  "prego-auth",
  "serde_json",
  "sha2",

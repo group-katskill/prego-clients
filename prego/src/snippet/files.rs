@@ -134,11 +134,61 @@ pub fn check_path(path: &str) -> Result<(), String> {
     if path.contains('\\') {
         return Err("the path has a `\\` (use `/`)".into());
     }
+    if let Some(c) = path.chars().find(|c| is_c1(*c) || is_bidi_control(*c)) {
+        return Err(format!(
+            "the path has the control character U+{:04X} (C1 and bidi controls are refused)",
+            u32::from(c)
+        ));
+    }
     for seg in path.split('/') {
         match seg {
             "" => return Err("the path has an empty segment".into()),
             "." | ".." => return Err(format!("the path has a `{seg}` segment")),
             _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// C1 control characters, U+0080 to U+009F.
+fn is_c1(c: char) -> bool {
+    ('\u{80}'..='\u{9f}').contains(&c)
+}
+
+/// Bidi embedding, override and isolate controls: U+202A to U+202E and U+2066 to U+2069.
+fn is_bidi_control(c: char) -> bool {
+    ('\u{202a}'..='\u{202e}').contains(&c) || ('\u{2066}'..='\u{2069}').contains(&c)
+}
+
+/// The key under which two paths are the same: Unicode NFC, then lowercase.
+pub fn fold(path: &str) -> String {
+    icu_normalizer::ComposingNormalizerBorrowed::new_nfc()
+        .normalize(path)
+        .to_lowercase()
+}
+
+/// No two paths are the same after NFC and lowercase, and no path is also a folder of another path
+/// (`a` and `a/b`).
+fn check_clashes(files: &[File]) -> Result<(), String> {
+    let mut folded: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
+    for f in files {
+        if let Some(other) = folded.insert(fold(&f.path), &f.path) {
+            return Err(format!(
+                "the paths {other} and {} are the same after Unicode NFC and lowercase",
+                f.path
+            ));
+        }
+    }
+    let paths: std::collections::BTreeSet<&str> = files.iter().map(|f| f.path.as_str()).collect();
+    for f in files {
+        for (i, b) in f.path.bytes().enumerate() {
+            if b == b'/' && paths.contains(&f.path[..i]) {
+                return Err(format!(
+                    "{} is a file and also a folder of {}",
+                    &f.path[..i],
+                    f.path
+                ));
+            }
         }
     }
     Ok(())
@@ -186,6 +236,7 @@ pub fn check_files(files: &[File]) -> Result<(), String> {
         total += size;
         check_text(&f.data).map_err(|e| format!("{}: {e}", f.path))?;
     }
+    check_clashes(files)?;
     if total > MAX_VERSION_BYTES {
         return Err(format!(
             "{total} bytes: the files of a version are at most 8 MiB ({MAX_VERSION_BYTES} bytes) together"
@@ -670,6 +721,59 @@ mod tests {
         ] {
             assert!(check_path(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn control_characters_in_paths() {
+        for bad in [
+            "a\u{85}b",
+            "x/\u{9f}",
+            "evil\u{202e}txt.sh",
+            "a\u{2066}b",
+            "a\u{2069}",
+        ] {
+            assert!(
+                check_path(bad).unwrap_err().contains("control character"),
+                "{bad:?}"
+            );
+        }
+        for ok in ["caf\u{e9}.md", "a\u{a0}b", "a\u{2065}b", "a\u{202f}b"] {
+            assert!(check_path(ok).is_ok(), "{ok:?}");
+        }
+    }
+
+    #[test]
+    fn clashing_paths() {
+        let clash = |paths: &[&str]| {
+            let files: Vec<File> = paths.iter().map(|p| f(p, MODE_FILE, "x")).collect();
+            check_files(&files)
+        };
+        assert!(clash(&["a", "a/b"]).unwrap_err().contains("also a folder"));
+        assert!(clash(&["x/a", "x/a/b/c"])
+            .unwrap_err()
+            .contains("also a folder"));
+        assert!(clash(&["README.md", "readme.md"])
+            .unwrap_err()
+            .contains("NFC and lowercase"));
+        // U+00E9 and U+0065 U+0301 are the same after NFC.
+        assert!(clash(&["caf\u{e9}.md", "cafe\u{301}.md"])
+            .unwrap_err()
+            .contains("NFC"));
+        assert!(clash(&["D/x", "d/y"]).is_ok());
+        assert!(clash(&["a", "ab/c", "a.b/c"]).is_ok());
+        assert_eq!(fold("Caf\u{e9}/X"), fold("cafe\u{301}/x"));
+    }
+
+    #[test]
+    fn untar_refuses_a_name_that_is_not_utf8() {
+        let mut raw = tar(&[f("ok", MODE_FILE, "x")]);
+        raw[0] = 0xff;
+        let mut h = [0u8; BLOCK];
+        h.copy_from_slice(&raw[..BLOCK]);
+        h[148..156].fill(b' ');
+        let sum: u32 = h.iter().map(|b| u32::from(*b)).sum();
+        raw[148..156].copy_from_slice(format!("{sum:06o}\0 ").as_bytes());
+        assert!(untar(&raw).unwrap_err().contains("not UTF-8"));
     }
 
     #[test]
