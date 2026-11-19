@@ -1045,6 +1045,7 @@ mod tests {
     #[test]
     fn shared_vectors_invalid_paths_and_tar_modes() {
         let (_, v) = vectors();
+        assert!(v["invalid_paths"].as_array().unwrap().len() >= 18);
         for p in v["invalid_paths"].as_array().unwrap() {
             let path = p["path"].as_str().unwrap();
             assert!(check_path(path).is_err(), "{path:?} ({})", p["reason"]);
@@ -1067,6 +1068,36 @@ mod tests {
             assert_eq!(files.len(), 1);
             assert_eq!(files[0].path, "x.sh");
             assert_eq!(files[0].mode, want, "tar mode {tar_mode:o}");
+        }
+    }
+
+    /// `clashing_sets` must be refused, `ok_sets` must pass (the path-set rule of the shared vectors).
+    #[test]
+    fn shared_vectors_path_sets() {
+        let (_, v) = vectors();
+        let set = |x: &Value| -> Vec<File> {
+            x["paths"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| f(p.as_str().unwrap(), MODE_FILE, "x"))
+                .collect()
+        };
+        let clashing = v["clashing_sets"].as_array().unwrap();
+        assert!(clashing.len() >= 4);
+        for c in clashing {
+            assert!(
+                check_files(&set(c)).is_err(),
+                "{} ({})",
+                c["paths"],
+                c["reason"]
+            );
+        }
+        let ok = v["ok_sets"].as_array().unwrap();
+        assert!(ok.len() >= 2);
+        for c in ok {
+            let r = check_files(&set(c));
+            assert!(r.is_ok(), "{} ({}): {r:?}", c["paths"], c["reason"]);
         }
     }
 

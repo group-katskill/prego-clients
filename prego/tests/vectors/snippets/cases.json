@@ -148,6 +148,42 @@
     {
       "path": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "reason": "longer than 255 bytes"
+    },
+    {
+      "path": "a\u0001b",
+      "reason": "C0 control U+0001"
+    },
+    {
+      "path": "tab\there",
+      "reason": "C0 control U+0009"
+    },
+    {
+      "path": "delx",
+      "reason": "DEL U+007F"
+    },
+    {
+      "path": "c1\u0085x",
+      "reason": "C1 control U+0085"
+    },
+    {
+      "path": "c1\u009fx",
+      "reason": "C1 control U+009F"
+    },
+    {
+      "path": "bidi\u202ex.sh",
+      "reason": "bidi control U+202E"
+    },
+    {
+      "path": "bidi\u202ax",
+      "reason": "bidi control U+202A"
+    },
+    {
+      "path": "bidi\u2066x",
+      "reason": "bidi control U+2066"
+    },
+    {
+      "path": "bidi\u2069x",
+      "reason": "bidi control U+2069"
     }
   ],
   "tar_modes": [
@@ -175,5 +211,34 @@
       "tar_mode": "0611",
       "mode": "0644"
     }
-  ]
+  ],
+  "clashing_sets": [
+    {
+      "paths": ["é.txt", "e\u0301.txt"],
+      "reason": "the same path after NFC (precomposed and decomposed e acute)"
+    },
+    {
+      "paths": ["A.txt", "a.txt"],
+      "reason": "the same path after lowercase folding"
+    },
+    {
+      "paths": ["a", "a/b"],
+      "reason": "a path is also a folder of another path"
+    },
+    {
+      "paths": ["A", "a/b"],
+      "reason": "a path is also a folder of another path, after folding"
+    }
+  ],
+  "ok_sets": [
+    {
+      "paths": ["a.txt", "a/b.txt"],
+      "reason": "a file and a folder with different names"
+    },
+    {
+      "paths": ["ab", "a/b"],
+      "reason": "no clash"
+    }
+  ],
+  "rules_path_set": "Fold key = lowercase(NFC(path)) (Unicode default lowercasing). Two paths with the same fold key are refused. A path whose fold key is a folder (a prefix up to a '/') of another path's fold key is refused. Paths are stored as sent."
 }

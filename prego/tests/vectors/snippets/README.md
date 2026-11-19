@@ -21,7 +21,13 @@ prego-clients read the same folders and the same `cases.json`. Copy the data, ne
 - `cases.json`:
   - `cases[]`: `name`, `dir`, `files` (path and mode of each file), `canonical` (the canonical JSON text) and `hash`.
     Take the modes from `cases.json`, not from the file system: git keeps only some mode bits.
-  - `invalid_paths[]`: paths that a push refuses (`400 snippet_invalid`).
+  - `invalid_paths[]`: paths that a push refuses (`400 snippet_invalid`): empty, absolute, `.` or `..` segments, empty
+    segments, a backslash, longer than 255 bytes, C0 controls and DEL, C1 controls (U+0080 to U+009F) and bidi
+    controls (U+202A to U+202E, U+2066 to U+2069). Invisible characters are written as `\uXXXX` escapes.
+  - `clashing_sets[]`: sets of paths that a push refuses together (`400 snippet_invalid`). The fold key of a path is
+    lowercase(NFC(path)), Unicode default lowercasing. Two paths with the same fold key clash. A path whose fold key
+    is a folder of another path's fold key clashes ("a" and "a/b", "A" and "a/b"). Paths are stored as sent.
+  - `ok_sets[]`: sets of paths that do not clash.
   - `tar_modes[]`: the mode that a tar mode gives.
 
 A change of this data is a change of the hash contract. It needs an ADR change first.
