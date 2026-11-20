@@ -375,7 +375,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         <div class="wrap">
           <h2 class="section-title display" id="snippets-title">Snippets</h2>
           <p class="section-lede">
-            prego 0.12.0 and later push and get snippets: named sets of text files (scripts, prompts, agent
+            prego 1.0.0 and later push and get snippets: named sets of text files (scripts, prompts, agent
             skills, templates) with versions that do not change. Machines and agents read them with the identity
             they already have. Like a gist, but private and versioned.
           </p>
@@ -401,7 +401,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
         <div class="wrap">
           <h2 class="section-title display" id="adapters-title">Adapters</h2>
           <p class="section-lede">
-            prego 0.10.0 and later push and get AI model adapters: the fine-tuned layers (LoRA) of your AI
+            Preview. prego 0.10.0 and later push and get AI model adapters: the fine-tuned layers (LoRA) of your AI
             models, on the Publisher plan. Your machines and your customers load them with their own identity.
             The base model stays on Hugging Face or in your own storage.
           </p>
@@ -519,7 +519,7 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
             </li>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/snippets.md">Snippets</a></h3>
-              <p>From 0.12.0: <code>prego snippet</code> pushes and gets versioned text files for machines and agents, pinned by hash, with tags, diff and rollback.</p>
+              <p>From 1.0.0: <code>prego snippet</code> pushes and gets versioned text files for machines and agents, pinned by hash, with tags, diff and rollback.</p>
             </li>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a></h3>

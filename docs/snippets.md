@@ -1,6 +1,6 @@
 # Snippets with `prego snippet`
 
-**From prego 0.12.0.** Snippets need `prego` 0.12.0 or later and Prego registry 1.24.0 or later.
+**From prego 1.0.0.** Snippets need `prego` 1.0.0 or later and Prego registry 1.24.0 or later.
 
 A snippet is a named set of text files: scripts, prompts, agent skills, templates and runbooks. Your machines and
 agents read snippets with the identity that they already have. Like a gist, but private and versioned.

@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-11-19
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. From 1.0.0 the commands, flags, exit codes, config file locations, the credential-provider protocols and PROTOCOL.md keep working within 1.x (README section "Stability").
 
 ### Added
 

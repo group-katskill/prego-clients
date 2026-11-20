@@ -6,11 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-11-19
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged. The Rust API of `prego-auth` serves the Prego tools and is not covered by the 1.x stability promise (README section "Stability").
 
 ### Changed
 
-- Release 0.12.0 with `prego` 0.12.0 (Snippets). The test-only mock server (`test-support` feature) serves byte
+- Release 1.0.0 with `prego` 1.0.0 (Snippets). The test-only mock server (`test-support` feature) serves byte
   bodies (`MockResponse::bytes`) and keeps the request body as bytes (`MockRequest::raw`). No change in the
   public API.
 

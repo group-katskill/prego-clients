@@ -3,6 +3,13 @@
 Version 1.13.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
+## Stability
+
+From prego-clients 1.0.0, this document is stable within its major version 1. A change that breaks a client
+written to it (a removed or renamed route, field, header, parameter or error code, or a changed meaning) needs
+version 2.0.0. A 1.x version can add routes, fields, headers, parameters, error codes and sections; a client
+ignores what it does not know. A section marked "preview" can still change in a 1.x minor version.
+
 ## Words
 
 - **Subject token**: what the client brings to the STS. A SPIFFE JWT-SVID, an OIDC ID token, or an API key.
@@ -663,7 +670,7 @@ API version 1.1) and the upload API of twine. It does not copy packages from pyp
 version of the filename must be those in the metadata. A filename can be used one time only, also after a
 delete: `400 File already exists.` Every refusal is `400` with one line of text, as on pypi.org.
 
-## 14. Snippets (registry 1.24.0, prego 0.12.0)
+## 14. Snippets (registry 1.24.0, prego 1.0.0)
 
 A snippet is a named set of UTF-8 text files with immutable numbered versions. The routes are on the control
 host, with the plain path (no edge code) and a registry token from section 1. A normal registry token covers

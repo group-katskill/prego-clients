@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-11-19
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. From 1.0.0 the commands, flags, exit codes, config file locations, the credential-provider protocols and PROTOCOL.md keep working within 1.x (README section "Stability").
 
 ### Added
 
@@ -14,10 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   1.13.0 section 14 (routes, content rules, version hash, fixed tar form, client behavior), the `#snippets`
   section, a nav link and a guide card on the website.
 - `prego/tests/vectors/snippets/`: the shared Snippets hash vectors from the registry, copied as data.
+- A "Stability" section in the README and in PROTOCOL.md (1.13.0): what does not break within 1.x, what is not covered, and the preview features.
 
 ### Changed
 
-- Release 0.12.0: `prego snippet`.
+- Release 1.0.0: `prego snippet`, and the stability promise (README and PROTOCOL.md section "Stability"). `prego adapter` is marked preview.
 - The brand is spelled KatSkill: "Prego by KatSkill" and "KatSkill LLC" in `LICENSE`, `NOTICE`, the READMEs,
   `docs/openapi.yaml`, the website, the Cargo.toml `authors` and `description` fields, the help text of `prego`,
   `cargo-credential-prego` and `docker-credential-prego`, and `tools/publish-prego-cli.sh`. The GitHub org,
