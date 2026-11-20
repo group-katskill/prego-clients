@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   checks the snapshot hash, the file `sha256` and `quick_check`, and then renames it; a database with a `-wal` or
   `-journal` file is not replaced unless `--force`. Exit codes: 2 an unknown encryption mode, 3 an `--expect`
   mismatch, 4 a refused save, 5 a failed check. Needs registry 1.26.0.
+  Written to the registry route shapes: the restore also checks the frame list, `X-Prego-Sqlite-Hash` and
+  `X-Prego-File-Sha256`; a save prints the snapshots that `keep_count` removed (`rotated`); a commit refused with
+  `429` is sent again; a file of 0 bytes is refused before the copy. Tested against the shared vectors of
+  Prego-registry (`tests/vectors/sqlite/`: the hash rule, the frame, snapshot and file hashes, the header
+  values, a restore of each accepted file, and no upload for the refused files).
 - SQLite 3.54.1 is compiled in, through `rusqlite` 0.41.1 with the `bundled` feature. The release binary is
   about 2.1 MiB larger.
 

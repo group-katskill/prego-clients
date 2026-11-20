@@ -409,10 +409,15 @@ fn api_error(res: &FullResponse, what: &str) -> String {
         ),
         _ => format!("prego: {what}: {} {code}: {message}", res.status),
     };
-    for k in ["reason", "field", "hint"] {
+    for k in ["reason", "field", "tag", "hint"] {
         if let Some(v) = err[k].as_str() {
             msg.push_str(&format!(" ({k}: {v})"));
         }
+    }
+    // A commit with frames that did not arrive.
+    if let Some(m) = err["missing"].as_array().filter(|m| !m.is_empty()) {
+        let list: Vec<String> = m.iter().map(text).collect();
+        msg.push_str(&format!(" (missing frames: {})", list.join(", ")));
     }
     if let Some(s) = res.header("retry-after") {
         msg.push_str(&format!(" (retry after {s} s)"));
@@ -580,7 +585,14 @@ fn session_save(
             }
             frame_size(&body, what)?;
             let fw = format!("{what}: frame {} of {}", i + 1, h.frames.len());
-            let a = send_frame(api, &format!("{base}/frames/{i}"), &body, &fw)?;
+            let a = send_retry(
+                api,
+                &format!("{base}/frames/{i}"),
+                "application/gzip",
+                &body,
+                &fw,
+            )?
+            .0;
             if let Some(got) = a["hash"].as_str() {
                 if got != want {
                     return Err(format!(
@@ -606,14 +618,14 @@ fn session_save(
         if let Some(t) = o.tag {
             commit["tag"] = json!(t);
         }
-        let s = commit.to_string();
-        let res = api.send(
-            "POST",
+        // A commit refused for a rate (429) keeps the session open, so it is sent again.
+        send_retry(
+            api,
             &format!("{base}/commit"),
-            &[("Content-Type", "application/json")],
-            Body::Bytes(s.as_bytes()),
-        )?;
-        Ok((answer(&res, what)?, res.status))
+            "application/json",
+            commit.to_string().as_bytes(),
+            what,
+        )
     })();
     if result.is_err() {
         // Best effort: an open session holds storage until it expires.
@@ -622,14 +634,26 @@ fn session_save(
     result
 }
 
-/// Sends one frame. A network failure, a `5xx` or a `429` is tried again, at most [`FRAME_ATTEMPTS`] times.
-fn send_frame(api: &Api, path: &str, body: &[u8], what: &str) -> Result<Value, String> {
+/// Sends a frame (`PUT`) or a commit (`POST`). A network failure, a `5xx` or a `429` is tried again, at most
+/// [`FRAME_ATTEMPTS`] times, after `Retry-After` (at most 60 s).
+fn send_retry(
+    api: &Api,
+    path: &str,
+    content_type: &str,
+    body: &[u8],
+    what: &str,
+) -> Result<(Value, u16), String> {
+    let method = if path.ends_with("/commit") {
+        "POST"
+    } else {
+        "PUT"
+    };
     let mut last = String::new();
     for attempt in 1..=FRAME_ATTEMPTS {
         let wait = match api.send(
-            "PUT",
+            method,
             path,
-            &[("Content-Type", "application/gzip")],
+            &[("Content-Type", content_type)],
             Body::Bytes(body),
         ) {
             Ok(res) if res.status == 429 || res.status >= 500 => {
@@ -639,7 +663,7 @@ fn send_frame(api: &Api, path: &str, body: &[u8], what: &str) -> Result<Value, S
                     .unwrap_or(2 * u64::from(attempt))
                     .min(60)
             }
-            Ok(res) => return answer(&res, what),
+            Ok(res) => return Ok((answer(&res, what)?, res.status)),
             Err(e) => {
                 last = e;
                 2 * u64::from(attempt)
@@ -680,6 +704,20 @@ fn report(r: &DbRef, h: &Hashes, a: &Value, status: u16, tag: Option<&str>) {
     }
     if let Some(t) = tag {
         println!("{}: tag {t} -> snapshot {seq}", r.long());
+    }
+    let rotated: Vec<String> = a["rotated"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(text)
+        .collect();
+    if !rotated.is_empty() {
+        println!(
+            "{}: removed snapshot{} {}, the oldest without a tag (keep_count)",
+            r.long(),
+            plural(rotated.len()),
+            rotated.join(", ")
+        );
     }
 }
 
@@ -756,7 +794,18 @@ fn restore_inner(
             return Err(Failure::Exit(EXIT_EXPECT));
         }
     }
-    let file_sha = field(&meta, "file_sha256").as_str().map(str::to_string);
+    for (name, server) in [("X-Prego-Sqlite-Hash", res.header("x-prego-sqlite-hash"))] {
+        if let Some(v) = server.map(str::trim).filter(|v| *v != hash) {
+            return Err(format!(
+                "prego: {what}: {name} ({v}) is not the snapshot hash in the answer ({hash})"
+            )
+            .into());
+        }
+    }
+    let file_sha = field(&meta, "file_sha256")
+        .as_str()
+        .or(res.header("x-prego-file-sha256"))
+        .map(|s| s.trim().to_string());
     if let Some(s) = &file_sha {
         if !is_hex64(s) {
             return Err(
@@ -764,7 +813,22 @@ fn restore_inner(
             );
         }
     }
-    let size = field(&meta, "size").as_u64();
+    let size = field(&meta, "file_bytes").as_u64();
+    // The frame hashes, when the answer lists them: they must give the snapshot hash.
+    let listed: Option<Vec<String>> = meta["frames"].as_array().map(|fs| {
+        let mut fs: Vec<&Value> = fs.iter().collect();
+        fs.sort_by_key(|f| f["index"].as_u64());
+        fs.iter().map(|f| text(&f["hash"])).collect()
+    });
+    if let Some(l) = &listed {
+        let from_list = frames::snapshot_hash(l);
+        if from_list != hash {
+            return Err(format!(
+                "prego: {what}: the frame list gives the snapshot hash {from_list}, not {hash}"
+            )
+            .into());
+        }
+    }
     let seq = text(field(&meta, "seq"));
 
     if let Some(dir) = target.parent().filter(|d| !d.as_os_str().is_empty()) {
@@ -808,6 +872,24 @@ fn restore_inner(
         return Err(api_error(&res, &what).into());
     }
     require_plain(res.header("x-prego-encryption").map(str::trim)).map_err(Failure::Exit)?;
+    for (name, value, want) in [
+        (
+            "X-Prego-Sqlite-Hash",
+            res.header("x-prego-sqlite-hash"),
+            Some(hash.as_str()),
+        ),
+        (
+            "X-Prego-File-Sha256",
+            res.header("x-prego-file-sha256"),
+            file_sha.as_deref(),
+        ),
+    ] {
+        if let (Some(v), Some(w)) = (value.map(str::trim), want) {
+            if v != w {
+                return Err(format!("prego: {what}: the content has {name} {v}, not {w}").into());
+            }
+        }
+    }
     let hasher = gz
         .finish()
         .map_err(|e| format!("prego: {what}: the content is not valid gzip: {e}"))?;
@@ -830,6 +912,14 @@ fn restore_inner(
             return Err(format!(
                 "prego: {what}: the content has the file sha256 {}, not {s}",
                 got.file
+            )
+            .into());
+        }
+    }
+    if let Some(l) = &listed {
+        if &got.frames != l {
+            return Err(format!(
+                "prego: {what}: the content frames are not the frames of the snapshot"
             )
             .into());
         }
@@ -932,8 +1022,13 @@ fn pages(api: &Api, base: &str, what: &str, mut each: impl FnMut(&Value)) -> Res
             .as_array()
             .ok_or_else(|| format!("prego: {what}: the answer has no items list"))?;
         items.iter().for_each(&mut each);
-        match answer["next"].as_str().filter(|s| !s.is_empty()) {
-            Some(n) if !items.is_empty() => after = Some(n.to_string()),
+        // `next` is a name or a seq (a string or a number); null at the end.
+        let next = match &answer["next"] {
+            Value::Null => None,
+            v => Some(text(v)).filter(|n| !n.is_empty()),
+        };
+        match next {
+            Some(n) if !items.is_empty() => after = Some(n),
             _ => return Ok(()),
         }
     }
@@ -994,11 +1089,12 @@ fn log(api: &Api, r: &DbRef) -> Result<(), String> {
             _ => "-".into(),
         };
         println!(
-            "{mark}{:>6}  {}  {}  {:>12} B  {:>8} pages  user_version {}  {}  agent {}{tags}  {}",
+            "{mark}{:>6}  {}  {}  {:>12} B ({} stored)  {:>8} pages  user_version {}  {}  agent {}{tags}  {}",
             text(&s["seq"]),
             text(&s["hash"]),
             text(&s["created_at"]),
-            text(&s["size"]),
+            text(&s["file_bytes"]),
+            text(&s["stored_bytes"]),
             text(&s["page_count"]),
             text(&s["user_version"]),
             check,
@@ -1061,13 +1157,17 @@ fn rm(api: &Api, r: &DbRef, yes: bool) -> Result<(), String> {
     match &r.sel {
         Some(sel) => {
             let what = format!("remove {}@{sel}", r.long());
-            api.call(
+            let a = api.call(
                 "DELETE",
                 &format!("{}/at/{}", Api::db(r), seg(sel)),
                 None,
                 &what,
             )?;
-            println!("{}: removed snapshot {sel}", r.long());
+            let purge = a["purge_after"]
+                .as_str()
+                .map(|p| format!(" (an admin can restore it until {p})"))
+                .unwrap_or_default();
+            println!("{}: removed snapshot {sel}{purge}", r.long());
         }
         None => {
             if !yes
@@ -1082,7 +1182,7 @@ fn rm(api: &Api, r: &DbRef, yes: bool) -> Result<(), String> {
             let a = api.call("DELETE", &Api::db(r), None, &what)?;
             let purge = a["purge_after"]
                 .as_str()
-                .map(|p| format!(" (it can be restored until {p})"))
+                .map(|p| format!(" (an admin can restore it until {p})"))
                 .unwrap_or_default();
             println!("{}: removed the database{purge}", r.long());
         }

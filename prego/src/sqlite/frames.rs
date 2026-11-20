@@ -190,6 +190,45 @@ mod tests {
         assert!(back == data);
     }
 
+    /// The shared vectors of Prego-registry (`tests/vectors/sqlite/cases.json`): the hash rule, and the frame,
+    /// snapshot and file hashes of each file.
+    #[test]
+    fn shared_vectors() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/sqlite");
+        let v: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("cases.json")).unwrap())
+                .unwrap();
+        assert_eq!(v["frame_bytes"].as_u64(), Some(FRAME));
+        let strings = |a: &serde_json::Value| -> Vec<String> {
+            a.as_array()
+                .unwrap()
+                .iter()
+                .map(|x| x.as_str().unwrap().to_string())
+                .collect()
+        };
+        let rules = v["hash_rule_cases"].as_array().unwrap();
+        assert_eq!(rules.len(), 3);
+        for c in rules {
+            assert_eq!(
+                snapshot_hash(&strings(&c["frame_hashes"])),
+                c["snapshot_hash"].as_str().unwrap()
+            );
+        }
+        let files = v["files"].as_array().unwrap();
+        assert!(files.len() >= 17);
+        for f in files {
+            let name = f["file"].as_str().unwrap();
+            let data = std::fs::read(dir.join(name)).unwrap();
+            let h = hash_reader(&mut &data[..]).unwrap();
+            assert_eq!(h.size, f["file_bytes"].as_u64().unwrap(), "{name}");
+            assert_eq!(h.file, f["file_sha256"].as_str().unwrap(), "{name}");
+            if f["expect"] == "accept" {
+                assert_eq!(h.frames, strings(&f["frame_hashes"]), "{name}");
+                assert_eq!(h.snapshot, f["snapshot_hash"].as_str().unwrap(), "{name}");
+            }
+        }
+    }
+
     #[test]
     fn exactly_one_frame_has_no_empty_second_frame() {
         let data = vec![7u8; FRAME as usize];

@@ -59,6 +59,8 @@ prego sqlite save ./app.db acme/fleet/lookup --message "Daily build"
 - `--label key=value` (at most 16, as in Context), `--message <text>` (at most 200 characters) and
   `--tag <tag>` add metadata. Label keys that start with `prego.` are kept for Prego.
 - If the snapshot has the same hash as the latest snapshot, Prego does not make a new snapshot.
+- When a save takes the database over its `keep_count`, Prego removes the oldest snapshot without a tag, and
+  `prego` prints its number.
 - If Prego refuses the save, `prego` shows the error and the exit code is 4.
 
 The command needs free disk space for one copy of the database, in the temporary folder (`TMPDIR`). It removes
@@ -141,6 +143,7 @@ prego sqlite rm acme/fleet/lookup                                 # the database
 | --- | --- |
 | `not found, or you have no grant for it` | Check the reference, and that a grant for "SQLite snapshots" matches the database. |
 | `... is not a database, or it is encrypted` | The file is not a SQLite database, or it is encrypted. Prego does not accept encrypted databases. |
+| `the file is empty (0 bytes)` | There is no database to save. |
 | `400 sqlite_invalid (reason: ...)` | Prego checked the file and refused it. |
 | `403 plan_limit` | Your plan does not have SQLite snapshots, or a limit is full (storage, databases or snapshots). |
 | `413 database_too_large` | The database is larger than your plan allows. |

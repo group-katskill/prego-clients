@@ -142,6 +142,13 @@ pub fn copy(source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
     if !meta.is_file() {
         return Err(format!("{}: not a file", source.display()));
     }
+    // SQLite opens a file of 0 bytes as an empty database; Prego refuses it as not a database.
+    if meta.len() == 0 {
+        return Err(format!(
+            "{}: the file is empty (0 bytes): it is not a SQLite database",
+            source.display()
+        ));
+    }
     let src = Connection::open_with_flags(
         source,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -217,6 +224,7 @@ pub fn check(path: &Path, check: Check) -> Result<Option<Vec<String>>, String> {
 pub struct Header {
     pub page_size: u32,
     pub page_count: u32,
+    pub text_encoding: u32,
     pub user_version: u32,
     pub application_id: u32,
 }
@@ -236,6 +244,7 @@ pub fn header(path: &Path) -> Result<Header, String> {
     Ok(Header {
         page_size: if raw == 1 { 65_536 } else { u32::from(raw) },
         page_count: be(28),
+        text_encoding: be(56),
         user_version: be(60),
         application_id: be(68),
     })
@@ -347,6 +356,65 @@ pub mod tests {
         std::fs::write(&p, &b).unwrap();
         assert!(check(&p, Check::Quick).unwrap().is_some());
         assert_eq!(check(&p, Check::None).unwrap(), None);
+    }
+
+    /// The shared vectors: the header values of the accepted files, and what a save does with the refused
+    /// files. SQLite refuses most of them when it opens them. It reads `truncated.db` and `padded.db` as
+    /// valid databases, so the copy that a save sends is a valid file, not the refused bytes.
+    #[test]
+    fn shared_vectors() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/sqlite");
+        let v: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("cases.json")).unwrap())
+                .unwrap();
+        let t = TempDir::new().unwrap();
+        for f in v["files"].as_array().unwrap() {
+            let name = f["file"].as_str().unwrap();
+            let path = dir.join(name);
+            let dest = t.path().join(format!("{name}.copy"));
+            let u = |k: &str| f[k].as_u64().unwrap() as u32;
+            if f["expect"] == "accept" {
+                let h = header(&path).unwrap();
+                assert_eq!(
+                    (
+                        h.page_size,
+                        h.page_count,
+                        h.text_encoding,
+                        h.user_version,
+                        h.application_id
+                    ),
+                    (
+                        u("page_size"),
+                        u("page_count"),
+                        u("text_encoding"),
+                        u("user_version"),
+                        u("application_id")
+                    ),
+                    "{name}"
+                );
+                assert_eq!(check(&path, Check::Quick).unwrap(), None, "{name}");
+                copy_is_valid(&path, &dest, name);
+                continue;
+            }
+            match name {
+                "truncated.db" | "padded.db" => copy_is_valid(&path, &dest, name),
+                _ => assert!(copy(&path, &dest, false).is_err(), "{name} was copied"),
+            }
+        }
+    }
+
+    /// A copy (as a save makes it) that the server checks of ADR-0059 item 5 accept: the length is the header
+    /// page count times the page size, and quick_check passes.
+    fn copy_is_valid(path: &Path, dest: &Path, name: &str) {
+        copy(path, dest, false).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let h = header(dest).unwrap();
+        let len = std::fs::metadata(dest).unwrap().len();
+        assert_eq!(
+            len,
+            u64::from(h.page_count) * u64::from(h.page_size),
+            "{name}"
+        );
+        assert_eq!(check(dest, Check::Quick).unwrap(), None, "{name}");
     }
 
     #[test]

@@ -839,35 +839,46 @@ tag or `sha256:<hex>`.
 
 | Method and path | Grant | Purpose |
 | --- | --- | --- |
-| `PUT <d>?message=&tag=`, body one gzip frame (`application/gzip`), with `X-Prego-File-Sha256: <hex>`, `X-Prego-Snapshot-Hash: sha256:<hex>` and the labels in `X-Prego-Labels` | publish | Save a snapshot of one frame. `201` for a new snapshot, `200` when the hash is the hash of the latest snapshot. The answer is the snapshot metadata plus `created`. |
+| `PUT <d>?message=&tag=`, body one gzip frame (`application/gzip`), with `Content-Length` (required), `X-Prego-File-Sha256: <hex>`, `X-Prego-Snapshot-Hash: sha256:<hex>` and the labels in `X-Prego-Labels` (an ASCII JSON object) | publish | Save a snapshot of one frame. `201` for a new snapshot, `200` when the hash is the hash of the latest snapshot. The answer is the snapshot plus `created` and `rotated: [seq, ...]` (the snapshots that `keep_count` removed; `[]` for no change). |
 | `POST <d>/uploads` `{"frames": n, "file_sha256": "<hex>", "snapshot_hash": "sha256:<hex>"}` | publish | Open an upload session for more than one frame: `{id, expires_at}`. |
-| `PUT <d>/uploads/<id>/frames/<i>`, body one gzip frame | publish | Send frame `i` (from 0): `{index, hash}`. |
-| `POST <d>/uploads/<id>/commit` `{"message", "labels", "tag"}` | publish | Check the frames and make the snapshot. The answer is the snapshot metadata plus `created`. |
-| `DELETE <d>/uploads/<id>` | publish | Cancel a session. |
-| `GET /v1/sqlite/<tenant>/<namespace>?limit=&after=` | read | `{items: [database], next}`: the databases your grants match. |
-| `GET <d>` | read | The database: latest seq and hash, snapshot count, stored bytes, `keep_count`, `keep_days`, tags. |
-| `GET <d>/snapshots?agent=&limit=&after=` | read | `{items: [snapshot metadata], next}`, newest first, at most 1,000 per page. |
-| `GET <d>/at/<sel>?expect=` | read | The metadata of one snapshot. `ETag` is the snapshot hash. |
-| `GET <d>/at/<sel>.db.gz?expect=` | read | The snapshot: the frames in order, which together are a valid `.gz` of the database file. |
-| `PUT <d>/tags/<tag>` `{"snapshot": <sel>}` | publish | Create a tag (written one time only). |
-| `PATCH <d>` `{"keep_count": <n>, "keep_days": <n>}` | publish | Change rotation. |
-| `DELETE <d>/at/<sel>` | delete | Remove one snapshot. |
-| `DELETE <d>` | delete | Remove the database and all its snapshots. |
+| `PUT <d>/uploads/<id>/frames/<i>`, body one gzip frame, `Content-Length` required | publish | Send frame `i` (from 0): `{index, hash}`. A frame sent again replaces the one before. |
+| `POST <d>/uploads/<id>/commit` `{"message", "labels", "tag"}` (all optional) | publish | Check the frames and make the snapshot: the same answer as the one-frame `PUT`. After a refusal for a plan or rate reason the session stays open, so the commit can be sent again; after a refusal for a file or hash reason the session is removed. |
+| `DELETE <d>/uploads/<id>` | publish | Cancel a session: `{ok: true}`. |
+| `GET /v1/sqlite/<tenant>/<namespace>?limit=&after=` | read | `{items: [{name, latest_seq, latest_hash, snapshot_count, stored_bytes, updated_at}], next}`: the databases your grants match. `next` is a name, or null. |
+| `GET <d>` | read | The database: `{id, namespace, name, latest_seq, latest_hash, snapshot_count, stored_bytes, keep_count, keep_days, last_save_at, created_at, updated_at, updated_by, tags: [{tag, seq}]}`. |
+| `GET <d>/snapshots?agent=&limit=&after=` | read | `{items: [snapshot], next}`, newest first, `limit` 1 to 1,000 (default 100). `next` is a seq, or null. |
+| `GET <d>/at/<sel>?expect=` | read | The snapshot plus `labels`, `tables`, `indexes`, `names_complete` and `frames: [{index, hash, bytes, stored}]`. |
+| `GET <d>/at/<sel>.db.gz?expect=` | read | The snapshot (`application/gzip`): the gzip members of the frames in order, which together are a valid `.gz` of the database file. |
+| `PUT <d>/tags/<tag>` `{"snapshot": <sel>}` | publish | Create a tag: `201 {tag, seq, hash}`. `200` when the tag already names that snapshot; `409 conflict` when it names another one. |
+| `PATCH <d>` `{"keep_count": <n>, "keep_days": <n>}` (one or both) | publish | Change rotation: the database. |
+| `DELETE <d>/at/<sel>` | delete | Remove one snapshot: `{ok, deleted, purge_after}` (the delete grace). |
+| `DELETE <d>` | delete | Remove the database and all its snapshots: `{ok, purge_after}` (the delete grace). |
 
+- A snapshot: `{seq, hash, created_at, file_bytes, stored_bytes, frame_count, file_sha256, page_size, page_count,
+  text_encoding, user_version, application_id, client_check, agent, message, tags, latest, encryption}`. A
+  snapshot or database pending deletion also has `deleted_at`, `deleted_by` and `purge_after`.
 - Metadata: `agent` (the principal of the token; a client cannot set it), a message (at most 200 characters), at
   most 16 labels (key at most 64 characters, value at most 256, 2 KiB together; keys that start with `prego.` are
-  kept), and the values from the database header: page size, page count, text encoding, `user_version`,
-  `application_id`, and table and index names when they fit on page 1.
+  kept), and the values from the database header: page size, page count, text encoding (1, 2 or 3; 0 only for an
+  empty database), `user_version`, `application_id`, and the table and index names on page 1 (`names_complete`
+  is false when page 1 does not hold them all).
 - The client check: the reserved label `prego.check`, with `quick_check:ok`, `integrity_check:ok` or `none`. It
   is the client's statement, shown as `client_check`; it does not count toward the label limits.
-- Snapshot metadata has `"encryption": {"mode": "none"}`, and every read with content has
-  `X-Prego-Encryption: none` (reserved for customer-held keys). A missing header or field is `none`. A client
+- `GET <d>/at/<sel>` and `.db.gz` have `ETag: "<snapshot hash>"`, `X-Prego-Sqlite-Seq`, `X-Prego-Sqlite-Hash`,
+  `X-Prego-File-Sha256` and `Cache-Control: private, no-store`.
+- Snapshot metadata has `"encryption": {"mode": "none"}`, and every read has `X-Prego-Encryption: none`
+  (reserved for customer-held keys). A missing header or field is `none`. A client
   that sees any other mode stops and writes nothing.
-- `expect=sha256:<hex>` gives `412 hash_mismatch` when the selected snapshot has another hash.
-- No grant or no such database: `404`. Read but no publish: `403`. Other errors: `400 sqlite_invalid` (with
-  `reason`; encrypted databases are refused), `400 invalid_field` (also with `reason: snapshot_hash_mismatch`),
-  `403 plan_limit`, `409 conflict`, `413 database_too_large`, `413 frame_too_large`, `429 rate_limited` (at most
-  one save per minute for each database, with `Retry-After`).
+- `expect=sha256:<hex>` gives `412 hash_mismatch` (with `expected`, `hash` and `seq`) when the selected snapshot
+  has another hash.
+- No grant or no such database: `404`. Read but no publish: `403 forbidden`. Other errors:
+  - `400 sqlite_invalid` with `reason`: `not_sqlite` (also an encrypted database or a file of 0 bytes),
+    `bad_page_size`, `bad_header`, `bad_length`, `bad_page_count` or `bad_gzip`.
+  - `400 invalid_field` with `field`, and `reason: snapshot_hash_mismatch` or `file_sha256_mismatch`, or
+    `missing: [i, ...]` on a commit with frames that did not arrive.
+  - `403 plan_limit`, `409 conflict` (with `tag`), `411 length_required`, `413 database_too_large`,
+    `413 frame_too_large`, and `429 rate_limited` (a second save of a database within 60 s, or 10 open upload
+    sessions; with `Retry-After`).
 - A database name follows the snippet name rule; a tag follows the snippet tag rule (14.1), is not `latest` and
   does not end in `.db.gz`.
 - Rotation: when a save takes a database over `keep_count` (default 20), the oldest snapshot without a tag is
@@ -882,6 +893,8 @@ tag or `sha256:<hex>`.
 - The snapshot hash is the `sha256` of one UTF-8 line `sha256:<64 lowercase hex>\n` for each frame, in frame
   order, written `sha256:<hex>`.
 - The file hash is the `sha256` of the whole file, as 64 lowercase hex characters.
+- The shared test vectors (files, their hashes and header values, and the files that are refused) are in
+  `prego/tests/vectors/sqlite/`.
 - Two copies that SQLite makes of the same, unchanged database are the same bytes, with the online backup API
   and with `VACUUM INTO`. So a save of an unchanged database gives the same snapshot hash, and Prego makes no new
   snapshot.
@@ -893,12 +906,14 @@ tag or `sha256:<hex>`.
   folder. It never reads the database file bytes directly. It removes the copy at the end.
 - It runs `PRAGMA quick_check` on the copy (`--check full`: `integrity_check`; `--check none`: no check), opened
   read-only as immutable. A failed check exits with code 5 and sends nothing.
-- One frame: one `PUT`. More frames: an upload session; a frame that fails with a network error, a `5xx` or a
-  `429` is sent again (at most 3 times). On any other failure the client cancels the session.
+- It refuses a file of 0 bytes (SQLite would open it as an empty database).
+- One frame: one `PUT`. More frames: an upload session; a frame or a commit that fails with a network error, a
+  `5xx` or a `429` is sent again (at most 3 times, after `Retry-After`, at most 60 s). On any other failure the
+  client cancels the session.
 - A save that Prego refuses, or that cannot be sent, exits with code 4.
 - `prego sqlite restore` reads the metadata, then `<d>/at/sha256:<hash>.db.gz`, and writes it to
-  `<target>.prego-tmp`. It checks the snapshot hash, the file hash and the size against the metadata and the
-  `ETag`, and runs `PRAGMA quick_check` on the new file (opened as immutable). Then it renames the file to the
+  `<target>.prego-tmp`. It checks the frame hashes, the snapshot hash, the file hash and the size against the
+  metadata, the `ETag` and the `X-Prego-Sqlite-Hash` and `X-Prego-File-Sha256` headers, and runs `PRAGMA quick_check` on the new file (opened as immutable). Then it renames the file to the
   target. If a check fails, the new file is removed and the target does not change (`quick_check`: exit code 5).
 - It refuses to replace a database with a `-wal` or `-journal` file next to it, unless `--force`, which also
   removes the `-wal`, `-shm` and `-journal` files so that SQLite does not apply them to the new file.

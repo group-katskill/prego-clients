@@ -135,7 +135,7 @@ fn count(path: &Path) -> i64 {
 
 fn meta(data: &[u8], seq: u64) -> Value {
     json!({
-        "seq": seq, "hash": snapshot_hash(data), "file_sha256": hex(data), "size": data.len(),
+        "seq": seq, "hash": snapshot_hash(data), "file_sha256": hex(data), "file_bytes": data.len(),
         "stored_bytes": 100, "page_count": data.len() / 4096, "user_version": 42,
         "encryption": {"mode": "none"}, "tags": [], "latest": true
     })
@@ -348,7 +348,13 @@ fn save_of_more_than_one_frame_uses_an_upload_session() {
         MockResponse::json(503, &json!({"error": {"code": "unavailable"}}).to_string())
             .with_header("Retry-After", "0"),
         MockResponse::json(200, &json!({"index": 1}).to_string()),
-        MockResponse::json(201, &json!({"created": true, "seq": 1}).to_string()),
+        // A commit refused for the rate keeps the session open: it is sent again.
+        MockResponse::json(429, &json!({"error": {"code": "rate_limited"}}).to_string())
+            .with_header("Retry-After", "0"),
+        MockResponse::json(
+            201,
+            &json!({"created": true, "seq": 21, "rotated": [1, 2]}).to_string(),
+        ),
     ]);
     let r = d.run(&[
         "sqlite",
@@ -378,6 +384,15 @@ fn save_of_more_than_one_frame_uses_an_upload_session() {
     assert_eq!(
         reqs[5].target,
         "/v1/sqlite/acme/fleet/big/uploads/squ_1/commit"
+    );
+    assert_eq!(reqs[6].target, reqs[5].target);
+    assert_eq!(reqs[6].raw, reqs[5].raw);
+    assert!(
+        r.stdout.contains(
+            "acme/fleet/big: removed snapshots 1, 2, the oldest without a tag (keep_count)"
+        ),
+        "{}",
+        r.stdout
     );
     let f0 = gunzip(&reqs[2].raw);
     let f1 = gunzip(&reqs[4].raw);
@@ -490,6 +505,94 @@ fn restore_writes_a_checked_file_and_renames_it() {
     assert!(!d.p("data/lookup.db-wal").exists());
     assert_eq!(r.stdout.trim(), "data/lookup.db");
     assert!(r.stderr.contains("acme/fleet/lookup@7 "), "{}", r.stderr);
+}
+
+/// Restores each accepted file of the shared vectors, with the metadata (hashes, size and frames) that
+/// Prego-registry computed for it: the restored file is the vector file.
+#[test]
+fn restore_of_the_shared_vectors() {
+    let vdir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/sqlite");
+    let v: Value =
+        serde_json::from_str(&std::fs::read_to_string(vdir.join("cases.json")).unwrap()).unwrap();
+    let d = Dir::new("vectors");
+    let mut n = 0;
+    for f in v["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["expect"] == "accept")
+    {
+        let name = f["file"].as_str().unwrap();
+        let data = std::fs::read(vdir.join(name)).unwrap();
+        let frames: Vec<Value> = f["frame_hashes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .map(|(i, h)| json!({"index": i, "hash": h, "bytes": data.len(), "stored": 1}))
+            .collect();
+        let m = json!({
+            "seq": 1, "hash": f["snapshot_hash"], "file_sha256": f["file_sha256"],
+            "file_bytes": f["file_bytes"], "frame_count": frames.len(), "frames": frames,
+            "encryption": {"mode": "none"}
+        });
+        let h = f["snapshot_hash"].as_str().unwrap();
+        let server = MockServer::start(vec![
+            sts_ok(),
+            MockResponse::json(200, &m.to_string())
+                .with_header("ETag", &format!("\"{h}\""))
+                .with_header("X-Prego-Sqlite-Hash", h),
+            MockResponse::bytes(200, "application/gzip", gzip(&data))
+                .with_header("X-Prego-Sqlite-Hash", h)
+                .with_header("X-Prego-File-Sha256", f["file_sha256"].as_str().unwrap())
+                .with_header("X-Prego-Encryption", "none"),
+        ]);
+        let out = format!("{name}.restored");
+        let r = d.run(&[
+            "sqlite",
+            "restore",
+            "acme/vectors",
+            &out,
+            "--sts-url",
+            &sts(&server),
+            "--expect",
+            h,
+        ]);
+        assert_eq!(r.code, 0, "{name}: {}", r.stderr);
+        assert!(std::fs::read(d.p(&out)).unwrap() == data, "{name}");
+        n += 1;
+    }
+    assert_eq!(n, 7);
+}
+
+#[test]
+fn save_of_a_refused_vector_sends_nothing() {
+    let vdir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/sqlite");
+    let d = Dir::new("refused-vectors");
+    for name in [
+        "random.bin",
+        "encrypted-like.db",
+        "empty-file.bin",
+        "duckdb-like.db",
+        "bad-fractions.db",
+        "bad-page-size.db",
+        "bad-page-count.db",
+        "index-page-one.db",
+    ] {
+        let server = MockServer::start(vec![sts_ok()]);
+        let src = vdir.join(name);
+        let r = d.run(&[
+            "sqlite",
+            "save",
+            src.to_str().unwrap(),
+            "acme/x",
+            "--sts-url",
+            &sts(&server),
+        ]);
+        assert_eq!(r.code, 1, "{name}: {}", r.stderr);
+        assert!(server.requests().is_empty(), "{name}");
+        d.assert_tmp_clean();
+    }
 }
 
 #[test]
@@ -797,7 +900,7 @@ fn tag_set_log_and_ls() {
         sts_ok(),
         MockResponse::json(
             200,
-            &json!({"items": [{"seq": 2, "hash": "sha256:h2", "latest": true, "size": 8192,
+            &json!({"items": [{"seq": 2, "hash": "sha256:h2", "latest": true, "file_bytes": 8192,
                 "page_count": 2, "user_version": 42, "client_check": "quick_check:ok",
                 "agent": "prn_1", "tags": ["v1"], "message": "m", "encryption": {"mode": "none"}}],
                 "next": null})
