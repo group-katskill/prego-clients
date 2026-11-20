@@ -17,7 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Release 1.1.0: `prego context`.
+- Release 1.1.0: `prego context`, stable after the staging e2e passed (registry 1.25.0). The README Stability
+  section lists exit code 4 (a refused context save).
 
 ## [1.0.0] - 2026-11-20
 

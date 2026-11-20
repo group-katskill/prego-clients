@@ -1,8 +1,5 @@
 # Agent context with `prego context`
 
-**Preview** until the staging tests pass: the `prego context` commands and flags can still change before 1.1.0
-is tagged (see [Stability](../README.md#stability)).
-
 **From prego 1.1.0.** Context needs `prego` 1.1.0 or later and Prego registry 1.25.0 or later.
 
 Context is agent context that you save in Prego. An agent saves its context before it compacts or stops:

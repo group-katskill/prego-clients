@@ -746,9 +746,7 @@ tarball.
   mode <m>, which this prego version cannot read`. Nothing is written: `get` makes its folder only after every
   file is read and checked.
 
-## 15. Context (registry 1.25.0, prego 1.1.0) (preview)
-
-Preview until the staging tests pass; then this section is stable like the others.
+## 15. Context (registry 1.25.0, prego 1.1.0)
 
 Agent context: a *context* is a named place in a namespace that holds *checkpoints*. A checkpoint is a set of
 UTF-8 text files saved at one time, with metadata. Checkpoints do not change and are numbered (`seq`, never

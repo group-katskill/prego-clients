@@ -10,7 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
-- `prego context` (ADR-0058, preview until the staging tests pass): agent context. Checkpoints of text files (memory, notes, plans, transcripts)
+- `prego context` (ADR-0058): agent context. Checkpoints of text files (memory, notes, plans, transcripts)
   that agents save and restore with their own identity. `save <folder> <ref> [--session S] [--parent H]
   [--trigger compact|stop|manual|schedule] [--label k=v]... [--message M] [--tag T] [--no-redact]`,
   `restore <ref>[@<checkpoint>] <folder> [--session S] [--expect H]`, `ls <tenant>[/<namespace>]`,

@@ -368,9 +368,6 @@ The [Snippets guide](docs/snippets.md) has references, the file rules, the hash,
 
 ## Context
 
-**Preview** until the staging tests pass: the `prego context` commands and flags can still change before 1.1.0 is
-tagged (see [Stability](#stability)).
-
 From prego 1.1.0 and registry 1.25.0. Context is agent context that you save in Prego: memory files, notes,
 plans, task lists and transcripts. An agent saves a checkpoint before it compacts or stops; later the same agent
 or another agent restores it. Agents use the identity they already have; they do not keep a key.
@@ -611,7 +608,8 @@ break:
 - The command names and subcommands of `prego`, `cargo-credential-prego` and `docker-credential-prego`.
 - The flags and options, their environment variables (`PREGO_*`) and their meaning.
 - The exit codes: `0` success, `1` error, `2` an encryption mode that this version cannot read, `3` an
-  `--expect` hash that does not match. `prego exec` exits with the code of the command it runs.
+  `--expect` hash that does not match, `4` a refused `prego context save` (from 1.1.0; the checkpoint is kept).
+  `prego exec` exits with the code of the command it runs.
 - The config file locations and their keys: `~/.config/prego/config.toml` (or
   `$XDG_CONFIG_HOME/prego/config.toml`), the login session in the OS keychain, and the files that `prego setup`
   writes.
@@ -628,8 +626,7 @@ Not covered:
   hash that the `hash` commands print.
 - The Rust API of the `prego-auth` crate. It serves the Prego tools.
 - Preview features, marked "preview" in this README, the guides and `prego --help`. They can change in a 1.x
-  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`, and
-  `prego context` with its exit code `4` (a refused save) until the staging tests pass.
+  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`.
 
 ## Security
 
