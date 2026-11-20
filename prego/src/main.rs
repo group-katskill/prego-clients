@@ -186,12 +186,12 @@ Commands:
                                   hash (--expect) and grant read only to agents you trust.
   sqlite save <file.db> <ref> [--compact] [--check quick|full|none] [--label k=v]... [--message <text>]
               [--tag <tag>]
-                                  (preview) save a snapshot of a SQLite database. SQLite makes the copy (--compact
-                                  uses VACUUM INTO, without free pages); the file is never copied as it
-                                  is, so a program can keep using the database. Then
-                                  PRAGMA quick_check runs on the copy (--check full: integrity_check;
-                                  --check none: no check); if it fails, nothing is sent and the exit code
-                                  is 5. <ref> is <tenant>/<database> or <tenant>/<namespace>/<database>.
+                                  save a snapshot of a SQLite database. SQLite makes the copy (--compact uses
+                                  VACUUM INTO, without free pages); the file is never copied as it is, so a
+                                  program can keep using the database. Then PRAGMA quick_check runs on the
+                                  copy (--check full: integrity_check; --check none: no check); if it fails,
+                                  nothing is sent and the exit code is 5. <ref> is <tenant>/<database> or
+                                  <tenant>/<namespace>/<database>.
                                   The same snapshot hash as the latest snapshot gives no new snapshot.
                                   Needs free disk space for one copy (in TMPDIR). If Prego refuses the
                                   save, the exit code is 4. Needs publish

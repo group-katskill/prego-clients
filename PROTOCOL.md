@@ -821,10 +821,7 @@ a tag or `sha256:<hex>`; `latest` takes `session=<s>` for the latest checkpoint 
   `enc_mode`), exits with code 2 and the message `this checkpoint uses encryption mode <m>, which this prego
   version cannot read`. Nothing is written.
 
-## 16. SQLite snapshots (registry 1.26.0, prego 1.2.0, preview)
-
-**Preview** until the staging test of registry 1.26.0 passes: this section can still change in a 1.x minor
-version.
+## 16. SQLite snapshots (registry 1.26.0, prego 1.2.0)
 
 A *database* is a named place in a namespace that holds *snapshots*. A snapshot is one SQLite database file,
 saved at one time, with metadata. Snapshots do not change and are numbered (`seq`, never used again). Prego is

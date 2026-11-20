@@ -1,7 +1,6 @@
 # SQLite snapshots with `prego sqlite`
 
-**Preview, from prego 1.2.0.** SQLite snapshots need `prego` 1.2.0 or later and Prego registry 1.26.0 or later.
-The commands and flags can still change in a 1.x minor release (see [Stability](../README.md#stability)).
+From prego 1.2.0. SQLite snapshots need `prego` 1.2.0 or later and Prego registry 1.26.0 or later.
 
 Use SQLite snapshots to share a SQLite database with your machines, your agents and other developers. Save a
 snapshot from one machine. Restore it on many machines. Many machines can also save their databases to one

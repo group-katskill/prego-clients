@@ -6,9 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-20
+
 ### Added
 
-- `prego sqlite` (ADR-0059, preview): SQLite snapshots. `save <file.db> <ref> [--compact] [--check quick|full|none]
+- `prego sqlite` (ADR-0059): SQLite snapshots. `save <file.db> <ref> [--compact] [--check quick|full|none]
   [--label k=v]... [--message M] [--tag T]`, `restore <ref>[@<snapshot>] <file.db> [--expect H] [--force]`,
   `ls <tenant>[/<namespace>]`, `log <ref>`, `tag <ref>@<snapshot> <tag>`, `rm <ref>[@<snapshot>] [--yes]`,
   `prune <ref> [--keep N] [--older-than <n>h|<n>d|<n>w] [--yes]`, `set <ref> [--keep-count N] [--keep-days D]` and

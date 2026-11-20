@@ -6,11 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-20
+
+### Changed
+
+- Release 1.2.0: `prego sqlite` (SQLite snapshots), no longer preview after the staging test of registry 1.26.0
+  passed. All crates are at 1.2.0.
+
 ### Added
 
-- SQLite snapshots (ADR-0059, `prego sqlite`, preview): `docs/sqlite.md`, a README section "Share a SQLite
+- SQLite snapshots (ADR-0059, `prego sqlite`): `docs/sqlite.md`, a README section "Share a SQLite
   database" with a CI example and a fleet example, and PROTOCOL.md 1.15.0 section 16 (routes, frames, snapshot
-  hash, client behavior, exit codes). README Stability: exit code 5, and `prego sqlite` in the preview list.
+  hash, client behavior, exit codes). README Stability: exit code 5.
 - `NOTICE`: SQLite, public domain, compiled into the `prego` binary.
 - `prego/tests/vectors/sqlite/`: the shared SQLite snapshot vectors from the registry, copied as data.
 - "Supported types": a table of the ten Prego types (Crates, Go modules, npm, Python, Containers and OCI artifacts,

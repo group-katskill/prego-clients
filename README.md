@@ -430,7 +430,7 @@ The [Context guide](docs/context.md) has references, restore, tags, retention, t
 
 ## Share a SQLite database
 
-**Preview, from prego 1.2.0 and registry 1.26.0.** SQLite snapshots share a SQLite database with your machines,
+From prego 1.2.0 and registry 1.26.0. SQLite snapshots share a SQLite database with your machines,
 your agents and other developers: save a snapshot from one machine, restore it on many. They use the identity
 they already have; they do not keep a key.
 
@@ -513,8 +513,8 @@ prego snippet push ./skill acme/agent-skill     # push a new version of a snippe
 prego snippet get acme/agent-skill@stable --expect sha256:...   # get a pinned snippet (1.0.0)
 prego context save ./.agent-memory acme/agents/a1 --trigger compact   # save agent context (1.1.0)
 prego context restore acme/agents/a1 ./.agent-memory --expect sha256:...   # restore a pinned checkpoint (1.1.0)
-prego sqlite save ./app.db acme/fleet/lookup        # save a SQLite snapshot (1.2.0, preview)
-prego sqlite restore acme/fleet/lookup ./lookup.db --expect sha256:...   # restore a pinned snapshot (1.2.0, preview)
+prego sqlite save ./app.db acme/fleet/lookup        # save a SQLite snapshot (1.2.0)
+prego sqlite restore acme/fleet/lookup ./lookup.db --expect sha256:...   # restore a pinned snapshot (1.2.0)
 ```
 
 `prego oci push <input> <image>`:
@@ -699,8 +699,7 @@ Not covered:
   hash that the `hash` commands print.
 - The Rust API of the `prego-auth` crate. It serves the Prego tools.
 - Preview features, marked "preview" in this README, the guides and `prego --help`. They can change in a 1.x
-  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`, and
-  `prego sqlite` (until the staging test of registry 1.26.0 passes).
+  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`.
 
 ## Security
 
