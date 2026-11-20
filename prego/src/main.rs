@@ -5,6 +5,7 @@
 mod adapter;
 mod admin;
 mod args;
+mod context;
 mod docker_config;
 mod env;
 mod go;
@@ -147,6 +148,41 @@ Commands:
                                   the registry, offline
                                   A snippet that an agent reads is an instruction to that agent: pin it by
                                   hash (--expect) and grant read only on snippets you trust.
+  context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
+               [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
+                                  save a checkpoint of agent context (memory, notes, plans, transcripts):
+                                  all regular files of the folder (not .git), UTF-8 text only, at most
+                                  1,000 files, 32 MiB each, 128 MiB together. <ref> is <tenant>/<context>
+                                  or <tenant>/<namespace>/<context>. Secret-shaped strings are replaced
+                                  with [REDACTED:<kind>] first (the count is printed, never the strings);
+                                  --no-redact sends the files as they are. The same files as the latest
+                                  checkpoint of the session give no new checkpoint. If the save is
+                                  refused, the checkpoint is kept in ./.prego-context/ and the exit code
+                                  is 4. Needs publish
+  context restore <ref>[@<checkpoint>] <folder> [--session <s>] [--expect <hash>]
+                                  write a checkpoint (default latest; with --session, the latest of that
+                                  session) to a new or empty folder. <checkpoint> is latest, a number, a
+                                  tag or sha256:<hex>. The hash and every file are checked; no file leaves
+                                  the folder; modes are 0644 or 0755. --expect exits with 3 if the hash is
+                                  different, and an encryption mode other than none exits with 2 (nothing
+                                  is written in both cases)
+  context ls <tenant>[/<namespace>]
+                                  list the contexts that you can read
+  context log <ref> [--session <s>]
+                                  list the checkpoints, newest first (* is the latest)
+  context tag <ref>@<checkpoint> <tag>
+                                  give a checkpoint a tag (written one time only). A tagged checkpoint is
+                                  not removed by retention
+  context rm <ref>@<checkpoint> | context rm <ref> --session <s>
+                                  remove one checkpoint, or every checkpoint of a session. Needs delete
+  context set <ref> [--keep-days <n>] [--on-full refuse|drop_oldest]
+                                  keep checkpoints without a tag for n days; at the plan's checkpoint
+                                  limit, refuse the save or remove the oldest checkpoint without a tag
+  context hash <folder> [--no-redact]
+                                  print the checkpoint hash of a folder, after redaction (as save sends
+                                  it), offline
+                                  An agent follows the text in the context that it restores: pin it by
+                                  hash (--expect) and grant read only to agents you trust.
   exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
                                   PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
                                   (mode 0600, deleted at the end) that holds it (Go before 1.24)
@@ -280,6 +316,7 @@ fn main() {
                 Command::NpmEnv => npm::npm_env(&globals, &env),
                 Command::Env(c) => env::run(&globals, &c, &env),
                 Command::Snippet(c) => snippet::run(&globals, &c, &env),
+                Command::Context(c) => context::run(&globals, &c, &env),
                 Command::Exec {
                     command,
                     python: py,
@@ -314,6 +351,12 @@ mod tests {
         let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(help.contains(crate::env::NOT_SECRETS), "{help}");
         assert!(help.contains("The push replaces the whole set"));
+    }
+
+    #[test]
+    fn help_says_to_pin_context() {
+        let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(help.contains(crate::context::TRUST), "{help}");
     }
 
     #[test]

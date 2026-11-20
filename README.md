@@ -364,6 +364,45 @@ prego snippet hash ./deploy-scripts                                            #
 The [Snippets guide](docs/snippets.md) has references, the file rules, the hash, CI and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 14 has the client contract.
 
+## Context
+
+From prego 0.13.0 and registry 1.25.0. Context is agent context that you save in Prego: memory files, notes,
+plans, task lists and transcripts. An agent saves a checkpoint before it compacts or stops; later the same agent
+or another agent restores it. Agents use the identity they already have; they do not keep a key.
+
+```sh
+prego context save ./.agent-memory acme/agents/billing-agent --session 2026-11-20-a --trigger compact
+prego context restore acme/agents/billing-agent ./.agent-memory --session 2026-11-20-a
+prego context restore acme/agents/billing-agent@handoff ./.agent-memory --expect sha256:...   # exit 3 if it changed
+prego context log acme/agents/billing-agent --session 2026-11-20-a
+prego context tag acme/agents/billing-agent@42 handoff
+prego context set acme/agents/billing-agent --keep-days 30 --on-full drop_oldest
+```
+
+Before the upload, `prego` replaces strings that look like keys or tokens with `[REDACTED:<kind>]` and prints how
+many it replaced (`--no-redact` turns this off). If the registry refuses a save, `prego` keeps the checkpoint in
+`./.prego-context/`, prints the path and exits with 4: the context is not lost.
+
+**An agent follows the text in the context that it restores. Pin the hash with `--expect`, and grant `read` only
+to agents you trust.**
+
+### Save context before compaction
+
+Run `prego context save` from the hook that your agent tool runs before it compacts its context. For example, a
+pre-compaction hook command:
+
+```sh
+prego context save "$HOME/.agent-memory" acme/agents/billing-agent \
+  --session "${AGENT_SESSION_ID:-$(date -u +%Y-%m-%d)}" --trigger compact --message "before compaction"
+```
+
+The same files as the latest checkpoint of the session make no new checkpoint, so the hook can run often. A
+refused save exits with 4 and keeps the checkpoint in `./.prego-context/`; make the hook report that exit code
+instead of failing the agent.
+
+The [Context guide](docs/context.md) has references, restore, tags, retention, the file rules and the errors.
+[PROTOCOL.md](PROTOCOL.md) section 15 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -401,6 +440,8 @@ prego adapter push ./out/bot acme/ml/bot:v1     # push an AI model adapter (0.10
 prego adapter get acme/ml/bot:v1 ./adapters/bot # write an adapter to a folder (0.10.0)
 prego snippet push ./skill acme/agent-skill     # push a new version of a snippet (0.12.0)
 prego snippet get acme/agent-skill@stable --expect sha256:...   # get a pinned snippet (0.12.0)
+prego context save ./.agent-memory acme/agents/a1 --trigger compact   # save agent context (0.13.0)
+prego context restore acme/agents/a1 ./.agent-memory --expect sha256:...   # restore a pinned checkpoint (0.13.0)
 ```
 
 `prego oci push <input> <image>`:

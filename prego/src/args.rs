@@ -104,6 +104,8 @@ pub enum Command {
     Env(crate::env::EnvCommand),
     /// `prego snippet ...`.
     Snippet(crate::snippet::SnippetCommand),
+    /// `prego context ...`.
+    Context(Box<crate::context::ContextCommand>),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -113,7 +115,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 27] = [
+const WITH_VALUE: [&str; 33] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -141,9 +143,15 @@ const WITH_VALUE: [&str; 27] = [
     "--url",
     "--license",
     "--base-revision",
+    "--session",
+    "--parent",
+    "--trigger",
+    "--label",
+    "--keep-days",
+    "--on-full",
 ];
 /// Options without a value.
-const FLAGS: [&str; 10] = [
+const FLAGS: [&str; 11] = [
     "--write",
     "--print",
     "--dry-run",
@@ -154,6 +162,7 @@ const FLAGS: [&str; 10] = [
     "--python",
     "--pip",
     "--tar",
+    "--no-redact",
 ];
 
 /// Parses the arguments after the program name.
@@ -444,6 +453,7 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         }
         ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
         ["snippet", rest @ ..] => Command::Snippet(parse_snippet(rest, &opts, &flag, &allow)?),
+        ["context", rest @ ..] => Command::Context(Box::new(parse_context(rest, &opts, &flag, &allow)?)),
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };
@@ -703,6 +713,161 @@ fn parse_snippet(
             SnippetCommand::Hash {
                 source: source.to_string(),
                 tar: flag("--tar"),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
+}
+
+fn parse_context(
+    words: &[&str],
+    opts: &[(&str, String)],
+    flag: &dyn Fn(&str) -> bool,
+    allow: &Allow<'_>,
+) -> Result<crate::context::ContextCommand, String> {
+    use crate::context::{self, reference, ContextCommand};
+    use crate::env::jcs;
+    let take = |name: &str| -> Vec<String> {
+        opts.iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .collect()
+    };
+    let one = |name: &str| -> Result<Option<String>, String> {
+        let mut v = take(name);
+        if v.len() > 1 {
+            return Err(format!("{name} can be given one time only"));
+        }
+        Ok(v.pop())
+    };
+    let hash = |name: &str| -> Result<Option<String>, String> {
+        match one(name)? {
+            Some(h) if !jcs::is_hash(&h) => Err(format!(
+                "{name} `{h}` is not a hash: use sha256:<64 lowercase hex>"
+            )),
+            h => Ok(h),
+        }
+    };
+    let session = || -> Result<Option<String>, String> {
+        let s = one("--session")?;
+        if let Some(s) = &s {
+            reference::check_session(s)?;
+        }
+        Ok(s)
+    };
+    let usage = "usage: prego context save|restore|ls|log|tag|rm|set|hash ... (see prego --help)";
+    Ok(match words {
+        ["save", folder, r] => {
+            allow(
+                &[
+                    "--session",
+                    "--parent",
+                    "--trigger",
+                    "--label",
+                    "--message",
+                    "--tag",
+                ],
+                &["--no-redact"],
+            )?;
+            let tag = one("--tag")?;
+            if let Some(t) = &tag {
+                reference::check_tag(t)?;
+            }
+            let trigger = one("--trigger")?;
+            if let Some(t) = &trigger {
+                context::check_trigger(t)?;
+            }
+            let message = one("--message")?;
+            if message.as_ref().is_some_and(|m| m.chars().count() > 200) {
+                return Err("--message is at most 200 characters".into());
+            }
+            let mut labels = Vec::new();
+            for l in take("--label") {
+                let (k, v) = l
+                    .split_once('=')
+                    .ok_or_else(|| format!("bad --label `{l}`: use key=value"))?;
+                labels.push((k.to_string(), v.to_string()));
+            }
+            context::check_labels(&labels)?;
+            ContextCommand::Save {
+                folder: folder.to_string(),
+                reference: r.to_string(),
+                session: session()?,
+                parent: hash("--parent")?,
+                trigger,
+                labels,
+                message,
+                tag,
+                redact: !flag("--no-redact"),
+            }
+        }
+        ["restore", r, folder] => {
+            allow(&["--session", "--expect"], &[])?;
+            ContextCommand::Restore {
+                reference: r.to_string(),
+                folder: folder.to_string(),
+                session: session()?,
+                expect: hash("--expect")?,
+            }
+        }
+        ["ls", scope] => {
+            allow(&[], &[])?;
+            ContextCommand::Ls {
+                scope: scope.to_string(),
+            }
+        }
+        ["log", r] => {
+            allow(&["--session"], &[])?;
+            ContextCommand::Log {
+                reference: r.to_string(),
+                session: session()?,
+            }
+        }
+        ["tag", r, tag] => {
+            allow(&[], &[])?;
+            ContextCommand::Tag {
+                reference: r.to_string(),
+                tag: tag.to_string(),
+            }
+        }
+        ["rm", r] => {
+            allow(&["--session"], &[])?;
+            ContextCommand::Rm {
+                reference: r.to_string(),
+                session: session()?,
+            }
+        }
+        ["set", r] => {
+            allow(&["--keep-days", "--on-full"], &[])?;
+            let keep_days = match one("--keep-days")? {
+                Some(d) => Some(
+                    d.parse::<u32>()
+                        .ok()
+                        .filter(|n| (1..=400).contains(n))
+                        .ok_or_else(|| {
+                            format!("bad --keep-days `{d}`: a number of days from 1 to 400")
+                        })?,
+                ),
+                None => None,
+            };
+            let on_full = one("--on-full")?;
+            if let Some(o) = &on_full {
+                context::check_on_full(o)?;
+            }
+            if keep_days.is_none() && on_full.is_none() {
+                return Err("give --keep-days <n>, --on-full refuse|drop_oldest, or both".into());
+            }
+            ContextCommand::Set {
+                reference: r.to_string(),
+                keep_days,
+                on_full,
+            }
+        }
+        ["hash", folder] => {
+            allow(&[], &["--no-redact"])?;
+            ContextCommand::Hash {
+                folder: folder.to_string(),
+                redact: !flag("--no-redact"),
             }
         }
         _ => return Err(usage.into()),
@@ -1261,5 +1426,83 @@ mod tests {
         }
         let long = "m".repeat(201);
         assert!(p(&["env", "push", "a/p@1", "--set", "A=1", "--message", &long]).is_err());
+    }
+
+    #[test]
+    fn context_commands() {
+        use crate::context::ContextCommand;
+        let cx = |args: &[&str]| match p(args) {
+            Ok(Parsed::Run {
+                command: Command::Context(c),
+                ..
+            }) => *c,
+            other => panic!("{other:?}"),
+        };
+        let h = format!("sha256:{}", "a".repeat(64));
+        assert_eq!(
+            cx(&[
+                "context",
+                "save",
+                "mem",
+                "acme/a1",
+                "--session",
+                "s1",
+                "--label",
+                "a=1",
+                "--label",
+                "b=x=y",
+                "--trigger",
+                "stop",
+                "--parent",
+                &h,
+                "--no-redact"
+            ]),
+            ContextCommand::Save {
+                folder: "mem".into(),
+                reference: "acme/a1".into(),
+                session: Some("s1".into()),
+                parent: Some(h.clone()),
+                trigger: Some("stop".into()),
+                labels: vec![("a".into(), "1".into()), ("b".into(), "x=y".into())],
+                message: None,
+                tag: None,
+                redact: false,
+            }
+        );
+        assert_eq!(
+            cx(&["context", "restore", "acme/a1@7", "out", "--expect", &h]),
+            ContextCommand::Restore {
+                reference: "acme/a1@7".into(),
+                folder: "out".into(),
+                session: None,
+                expect: Some(h.clone()),
+            }
+        );
+        assert_eq!(
+            cx(&["context", "set", "acme/a1", "--keep-days", "400"]),
+            ContextCommand::Set {
+                reference: "acme/a1".into(),
+                keep_days: Some(400),
+                on_full: None,
+            }
+        );
+        assert_eq!(
+            cx(&["context", "hash", "mem"]),
+            ContextCommand::Hash {
+                folder: "mem".into(),
+                redact: true,
+            }
+        );
+        for bad in [
+            &["context", "save", "mem"][..],
+            &["context", "restore", "acme/a1"],
+            &["context", "save", "m", "acme/a1", "--parent", "abc"],
+            &["context", "save", "m", "acme/a1", "--session", "a/b"],
+            &["context", "save", "m", "acme/a1", "--tar"],
+            &["context", "restore", "acme/a1", "o", "--no-redact"],
+            &["context", "log", "acme/a1", "--expect", &h],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
     }
 }

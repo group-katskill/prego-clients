@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.13.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.14.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Words
@@ -738,3 +738,72 @@ tarball.
   of the file list, the diff or a history item, exits with code 2 and the message `this snippet uses encryption
   mode <m>, which this prego version cannot read`. Nothing is written: `get` makes its folder only after every
   file is read and checked.
+
+## 15. Context (registry 1.25.0, prego 0.13.0)
+
+Agent context: a *context* is a named place in a namespace that holds *checkpoints*. A checkpoint is a set of
+UTF-8 text files saved at one time, with metadata. Checkpoints do not change and are numbered (`seq`, never
+used again, also after a removal). The routes are on the control host, with the plain path and a registry token
+from section 1; the grants decide (`context` or `any` ecosystem, `package_glob` on the context name; `read`,
+`publish` and `delete`).
+
+### 15.1 Requests
+
+`<c>` is `/v1/context/<tenant>/<namespace>/<context>`. `<sel>` is `latest` (the default), a checkpoint number,
+a tag or `sha256:<hex>`; `latest` takes `session=<s>` for the latest checkpoint of one session.
+
+| Method and path | Grant | Purpose |
+| --- | --- | --- |
+| `PUT <c>?session=&parent=&trigger=&message=&tag=`, body `.tar.gz` (`application/gzip`) or `.tar`, labels in `X-Prego-Labels` (a JSON object) | publish | Save. `201` for a new checkpoint, `200` when the hash is the hash of the latest checkpoint of the same session. The answer has the seq, the hash, the size and the file count. |
+| `GET <c>` | read | The latest seq and hash, the checkpoint count, `keep_days`, `on_full` and the tags. |
+| `GET <c>/checkpoints?session=&agent=&trigger=&limit=&after=` | read | Checkpoints, newest first, at most 1,000 per page, with a `next` cursor. |
+| `GET <c>/at/<sel>?session=&expect=` | read | The metadata and the file list `[{path, mode, size, sha256}]`. `ETag` is the hash. |
+| `GET <c>/at/<sel>/content?session=&expect=` | read | The checkpoint as it was saved (`.tar.gz` or `.tar`). |
+| `PUT <c>/tags/<tag>` `{"checkpoint": <sel>}` | publish | Create a tag. A second write of the same tag is `409 conflict`. |
+| `PATCH <c>` `{"keep_days": <n>, "on_full": "refuse" \| "drop_oldest"}` | publish | Change the settings. |
+| `DELETE <c>/at/<sel>` | delete | Remove one checkpoint. |
+| `DELETE <c>/sessions/<s>` | delete | Remove every checkpoint of one session. |
+
+- Metadata: `agent` (the principal of the token; a client cannot set it), `session` (at most 128 characters),
+  `parent` (a hash), `trigger` (`compact`, `stop`, `manual` or `schedule`), a message (at most 200
+  characters) and at most 16 labels (key at most 64 characters, value at most 256, 2 KiB together).
+- Every read with content has `X-Prego-Context-Seq`, `X-Prego-Context-Hash` and `X-Prego-Encryption: none`,
+  and checkpoint metadata has `"encryption": {"mode": "none"}` (reserved for a later add-on). A missing header
+  or field is `none`. A client that sees any other mode stops and uses none of the content.
+- `expect=sha256:<hex>` gives `412 hash_mismatch` when the selected checkpoint has another hash.
+- No grant or no such context: `404`. Read but no publish: `403`. Other errors: `400 checkpoint_invalid` (with
+  `path` and reason), `400 invalid_field`, `403 plan_limit`, `409 conflict`, `413 file_too_large`,
+  `413 checkpoint_too_large`, `413 upload_too_large`, `422 looks_like_secret` (with `path` and `line`, never the
+  value), `429 rate_limited`.
+- A context name follows the snippet name rule; a tag follows the snippet tag rule (14.1). `prego` also refuses
+  the tag `latest`.
+- Retention: checkpoints without a tag are removed after `keep_days`, except the newest checkpoint of the
+  context. At the plan's checkpoint limit, `on_full = refuse` refuses the save with `403 plan_limit`;
+  `drop_oldest` removes the oldest checkpoint without a tag and saves.
+
+### 15.2 Content and the checkpoint hash
+
+- At most 1,000 files, each at most 32 MiB, together at most 128 MiB; an upload is at most 32 MiB. Every file is
+  UTF-8 with no NUL byte. Binary files are refused with `400 checkpoint_invalid`.
+- The path and entry rules, the mode and the fixed tar form are those of Snippets (14.2, 14.3).
+- The checkpoint hash is the version hash of 14.2 over the stored files. `prego context hash` computes it
+  offline, after redaction (15.3), so it is the hash that a save of the same folder gives.
+
+### 15.3 Client behavior
+
+- Redaction, on by default: before the upload, `prego context save` replaces strings shaped like a Prego API
+  key (`prk_`), a PEM private key, an AWS access key ID (`AKIA`, `ASIA`), a GitHub token (`ghp_`,
+  `github_pat_`), a GitLab token (`glpat-`), a Slack token (`xox?-`), a Stripe live key (`sk_live_`) or a JWT
+  with `[REDACTED:<kind>]`, and prints how many strings it replaced, never the strings. `--no-redact` turns it
+  off. The registry checks every file again and refuses a match with `422 looks_like_secret`.
+- A refused save (an error from the registry or the token exchange, or an upload over the limit) is kept in
+  `./.prego-context/<context>-<YYYYMMDDTHHMMSSZ>.tar.gz` (mode `0600`). `prego` prints the path and the error and
+  exits with code 4.
+- `prego context restore` reads the file list, computes the hash from it and refuses an answer whose hash or
+  `X-Prego-Context-Hash` differs. It then reads `<c>/at/sha256:<hash>/content`, unpacks it in memory and checks
+  that its files give the same hash. With `--expect`, a mismatch (local or `412`) exits with code 3. It writes
+  to a new or empty folder only, refuses a path that leaves the folder, never overwrites, and sets mode `0644`
+  or `0755`.
+- An encryption mode other than `none`, in `X-Prego-Encryption` or in the metadata (`encryption.mode` or
+  `enc_mode`), exits with code 2 and the message `this checkpoint uses encryption mode <m>, which this prego
+  version cannot read`. Nothing is written.

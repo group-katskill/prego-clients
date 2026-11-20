@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-20
+
+### Added
+
+- Context (ADR-0058, `prego context`): `docs/context.md`, a README section "Save context before compaction"
+  with a hook example, and PROTOCOL.md 1.14.0 section 15 (routes, content rules, checkpoint hash, client
+  redaction, exit codes).
+
+### Changed
+
+- Release 0.13.0: `prego context`.
+
 ## [0.12.0] - 2026-11-19
 
 ### Added
