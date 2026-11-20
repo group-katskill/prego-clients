@@ -251,3 +251,5 @@ npm shows a `401` as "Unable to authenticate". Prego's own message, from the tab
 - npm provenance and signatures.
 - `npm audit` (npm sends it to registry.npmjs.org, not to a scope registry), and search (empty).
 - `npm access`, `owner`, `team` and `org`. Grants in the console replace them.
+
+Full docs, with examples: <https://docs.prego.k8skill.com/npm> (sign in with your Prego account; open from the console's Docs link).

@@ -198,3 +198,5 @@ proves its identity. But the two systems make different promises about the value
 Use Release Variables for settings that belong to a release: API URLs, feature flags, schema versions, region lists.
 Keep passwords, tokens and keys in a secrets manager. In Release Variables, store only the name or the path that
 points to the secret.
+
+Full docs, with examples: <https://docs.prego.k8skill.com/release-variables> (sign in with your Prego account; open from the console's Docs link).

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Links to the docs site https://docs.prego.k8skill.com (sign in with a Prego account): a "Full documentation"
+  section in the README, a last line in each quickstart and in `docs/release-variables.md`, `docs/snippets.md` and
+  `docs/context.md` that links to the matching page (crates, go, npm, python, oci, adapters, release-variables,
+  snippets, context), and a "Docs" link in the website's top and footer navigation and the Guides section.
+
 ## [1.1.0] - 2026-11-20
 
 ### Added

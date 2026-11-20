@@ -129,3 +129,5 @@ GitHub Actions works the same with `permissions: id-token: write`. See the [CI g
 | `Python packages need the Org or Publisher plan.` | The tenant is on Indie. | Change to Org or Publisher. |
 | `401` | No token, or the token expired. | Run the command with `prego exec`, or run `prego whoami`. |
 | `is not a Prego Python URL` | `prego token --python --url` got another host. | Give the Prego index URL. A token never goes to another host. |
+
+Full docs, with examples: <https://docs.prego.k8skill.com/python> (sign in with your Prego account; open from the console's Docs link).

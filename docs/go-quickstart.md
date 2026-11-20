@@ -205,3 +205,5 @@ Do not put `proxy.golang.org` first: then every private path name goes to it fir
 - A checksum database for private modules (`GOSUMDB`).
 - Pseudo-versions, `+incompatible` versions, modules without `go.mod`.
 - Vanity import pages (`?go-get=1`).
+
+Full docs, with examples: <https://docs.prego.k8skill.com/go> (sign in with your Prego account; open from the console's Docs link).
