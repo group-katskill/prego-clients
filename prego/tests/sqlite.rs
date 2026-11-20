@@ -168,6 +168,8 @@ fn save_one_frame_sends_a_checked_gzip_with_both_hashes() {
         &sts(&server),
         "--label",
         "build=42",
+        "--label",
+        "note=café",
         "--message",
         "Daily build",
         "--tag",
@@ -191,7 +193,7 @@ fn save_one_frame_sends_a_checked_gzip_with_both_hashes() {
     assert_eq!(put.header("x-prego-snapshot-hash").unwrap(), want);
     assert_eq!(
         put.header("x-prego-labels").unwrap(),
-        r#"{"build":"42","prego.check":"quick_check:ok"}"#
+        r#"{"build":"42","note":"caf\u00e9","prego.check":"quick_check:ok"}"#
     );
     // The snapshot has the row that was only in the WAL file: SQLite made the copy.
     std::fs::write(d.p("got.db"), &data).unwrap();
