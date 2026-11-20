@@ -143,3 +143,5 @@ the console.
 - [ci.md](ci.md): connect GitLab CI, GitHub Actions, SPIFFE or cloud workloads without an API key.
 - [../PROTOCOL.md](../PROTOCOL.md): the STS contract, if you want to write your own client.
 - [openapi.yaml](openapi.yaml): the public API.
+
+Full docs, with examples: <https://docs.prego.k8skill.com/crates> (sign in with your Prego account; open from the console's Docs link).

@@ -158,3 +158,5 @@ limits page.
 | `400 checkpoint_invalid (file: F, reason)` | A path or a file breaks the rules above. |
 
 [PROTOCOL.md](../PROTOCOL.md) section 15 has the routes and the full client contract.
+
+Full docs, with examples: <https://docs.prego.k8skill.com/context> (sign in with your Prego account; open from the console's Docs link).

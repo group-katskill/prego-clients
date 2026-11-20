@@ -444,7 +444,7 @@ the working directory, with the file rules of `golang.org/x/mod/zip`. If a modul
   the client gets a new token (for `resource` = the namespace base URL) if the current one has less than
   the margin left (section 6), so short tokens do not expire between parts.
 - Limits: the zip is at most 300 MiB, compressed and uncompressed (Go itself allows 500 MiB). `go.mod` is at
-  most 1 MiB, and the zip has at most 65535 files. The registry refuses a bigger zip. From prego 0.5.0, the
+  most 64 KiB, and the zip has at most 65535 files. The registry refuses a bigger zip. From prego 0.5.0, the
   client refuses it before any request.
 - The module path and the version in the URL are case-encoded (`A` becomes `!a`).
 - Success is `201 {"module", "version", "h1", "mod_h1"}`. The client fails if the registry's `h1` differs
