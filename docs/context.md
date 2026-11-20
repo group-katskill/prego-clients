@@ -152,7 +152,7 @@ limits page.
 | `not found, or you have no grant for it` | No context, no checkpoint, or no grant (`404`). |
 | `403 ...` | You can read the context but you have no grant for this, or the plan does not allow it. |
 | `403 plan_limit` | The plan's checkpoint count or storage pool is full. Restores, tags, settings and deletes still work. |
-| `409 conflict` | The tag is there already. |
+| `409 conflict` | The tag already names another checkpoint. |
 | `412` / exit code 3 | `--expect` did not match. Nothing was written. |
 | `413 ...` | A file, the checkpoint or the upload is too large. |
 | exit code 2: `this checkpoint uses encryption mode M, which this prego version cannot read` | The checkpoint uses an encryption mode (a later add-on) that this `prego` cannot read. Nothing was written. |

@@ -23,6 +23,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - A refused save (any error from the registry or the token exchange, or an upload that is too large) keeps the
   checkpoint in `./.prego-context/<context>-<utc time>.tar.gz` (mode `0600`), prints the path and the error,
   and exits with 4.
+- A save that removed the oldest checkpoint without a tag (`on_full = drop_oldest`) says which one. A
+  `422 looks_like_secret` lists every match (file and line, never the value).
 - `restore` checks the hash of the file list, reads the content by that hash, checks it against the file list,
   and writes only to a new or empty folder: no path leaves the folder, mode `0644` or `0755` only. `--expect`
   exits with 3 on a mismatch, and an encryption mode other than `none` exits with 2; nothing is written in

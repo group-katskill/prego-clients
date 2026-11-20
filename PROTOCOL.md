@@ -763,29 +763,33 @@ a tag or `sha256:<hex>`; `latest` takes `session=<s>` for the latest checkpoint 
 
 | Method and path | Grant | Purpose |
 | --- | --- | --- |
-| `PUT <c>?session=&parent=&trigger=&message=&tag=`, body `.tar.gz` (`application/gzip`) or `.tar`, labels in `X-Prego-Labels` (a JSON object) | publish | Save. `201` for a new checkpoint, `200` when the hash is the hash of the latest checkpoint of the same session. The answer has the seq, the hash, the size and the file count. |
-| `GET <c>` | read | The latest seq and hash, the checkpoint count, `keep_days`, `on_full` and the tags. |
-| `GET <c>/checkpoints?session=&agent=&trigger=&limit=&after=` | read | Checkpoints, newest first, at most 1,000 per page, with a `next` cursor. |
-| `GET <c>/at/<sel>?session=&expect=` | read | The metadata and the file list `[{path, mode, size, sha256}]`. `ETag` is the hash. |
+| `PUT <c>?session=&parent=&trigger=&message=&tag=`, body `.tar.gz` (`application/gzip`) or `.tar`, labels in `X-Prego-Labels` (a JSON object) | publish | Save. `201` for a new checkpoint, `200` when the hash is the hash of the latest checkpoint of the same session. The answer is the checkpoint item plus `created`, and `dropped: {seq}` when `drop_oldest` removed a checkpoint. `Content-Length` is required (`411 length_required`). |
+| `GET /v1/context/<tenant>/<namespace>?limit=&after=` | read | `{items: [{name, latest_seq, latest_hash, checkpoint_count, updated_at, ...}], next}`. Only the contexts your grants match; no grant gives an empty list. |
+| `GET <c>` | read | `{name, latest_seq, latest_hash, checkpoint_count, keep_days, on_full, tags: [{tag, seq}], created_at, updated_at}`. |
+| `GET <c>/checkpoints?session=&agent=&trigger=&limit=&after=` | read | `{items: [checkpoint item], next}`, newest first, at most 1,000 per page. |
+| `GET <c>/at/<sel>?session=&expect=` | read | The checkpoint item and `files: [{path, mode, size, sha256}]`. `ETag` is the hash. |
+| `GET <c>/at/<sel>/files/<path>?session=&expect=` | read | One file, `text/plain; charset=utf-8`, with `X-Prego-Context-File-Mode` and `X-Prego-Context-File-Sha256`. |
 | `GET <c>/at/<sel>/content?session=&expect=` | read | The checkpoint as it was saved (`.tar.gz` or `.tar`). |
-| `PUT <c>/tags/<tag>` `{"checkpoint": <sel>}` | publish | Create a tag. A second write of the same tag is `409 conflict`. |
+| `PUT <c>/tags/<tag>` `{"checkpoint": <sel>}` | publish | Create a tag: `201`. `200` when the tag already names that checkpoint; `409 conflict` when it names another one. |
 | `PATCH <c>` `{"keep_days": <n>, "on_full": "refuse" \| "drop_oldest"}` | publish | Change the settings. |
 | `DELETE <c>/at/<sel>` | delete | Remove one checkpoint. |
-| `DELETE <c>/sessions/<s>` | delete | Remove every checkpoint of one session. |
+| `DELETE <c>/sessions/<s>` | delete | Remove every checkpoint of one session. `404` when the session has no checkpoint. |
 
+- A checkpoint item: `{seq, hash, created_at, size, file_count, trigger, session, agent, tags, message, latest, parent,
+  stored_bytes, format, encryption}` (`format` is `tar.gz` or `tar`).
 - Metadata: `agent` (the principal of the token; a client cannot set it), `session` (at most 128 characters),
   `parent` (a hash), `trigger` (`compact`, `stop`, `manual` or `schedule`), a message (at most 200
   characters) and at most 16 labels (key at most 64 characters, value at most 256, 2 KiB together).
 - Every read with content has `X-Prego-Context-Seq`, `X-Prego-Context-Hash` and `X-Prego-Encryption: none`,
   and checkpoint metadata has `"encryption": {"mode": "none"}` (reserved for a later add-on). A missing header
   or field is `none`. A client that sees any other mode stops and uses none of the content.
-- `expect=sha256:<hex>` gives `412 hash_mismatch` when the selected checkpoint has another hash.
+- `expect=sha256:<hex>` gives `412 hash_mismatch` (with `expected`, `hash` and `seq`) when the selected checkpoint
+  has another hash.
 - No grant or no such context: `404`. Read but no publish: `403`. Other errors: `400 checkpoint_invalid` (with
   `path` and reason), `400 invalid_field`, `403 plan_limit`, `409 conflict`, `413 file_too_large`,
-  `413 checkpoint_too_large`, `413 upload_too_large`, `422 looks_like_secret` (with `path` and `line`, never the
-  value), `429 rate_limited`.
-- A context name follows the snippet name rule; a tag follows the snippet tag rule (14.1). `prego` also refuses
-  the tag `latest`.
+  `413 checkpoint_too_large`, `413 upload_too_large`, `422 looks_like_secret` (with `path` and `line` of the first
+  match and `secrets: [{path, line}]` for all, never the value), `429 rate_limited`.
+- A context name follows the snippet name rule; a tag follows the snippet tag rule (14.1) and is not `latest`.
 - Retention: checkpoints without a tag are removed after `keep_days`, except the newest checkpoint of the
   context. At the plan's checkpoint limit, `on_full = refuse` refuses the save with `403 plan_limit`;
   `drop_oldest` removes the oldest checkpoint without a tag and saves.

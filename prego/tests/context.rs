@@ -139,8 +139,8 @@ fn file_list(files: &[(String, u32, Vec<u8>)]) -> Value {
 
 fn meta_answer(c: &Case, seq: u64) -> Value {
     json!({
-        "checkpoint": {"seq": seq, "hash": c.hash, "session": "s1", "encryption": {"mode": "none"}},
-        "files": file_list(&c.files)
+        "seq": seq, "hash": c.hash, "session": "s1", "size": 100, "file_count": c.files.len(),
+        "format": "tar.gz", "encryption": {"mode": "none"}, "files": file_list(&c.files)
     })
 }
 
@@ -253,8 +253,10 @@ fn save_redacts_and_sends_the_fixed_tarball_with_its_metadata() {
         sts_ok(),
         MockResponse::json(
             201,
-            &json!({"created": true, "checkpoint": {"seq": 7, "hash": "sha256:x", "file_count": 2}})
-                .to_string(),
+            &json!({"created": true, "seq": 7, "hash": "sha256:x", "file_count": 2, "size": 120,
+                "session": "2026-11-20-a", "trigger": "compact", "dropped": {"seq": 2},
+                "encryption": {"mode": "none"}})
+            .to_string(),
         ),
     ]);
     let r = run_in(
@@ -294,6 +296,9 @@ fn save_redacts_and_sends_the_fixed_tarball_with_its_metadata() {
         "acme/agents/billing-agent: checkpoint 7 (sha256:x), 2 files, session 2026-11-20-a\n"
     ));
     assert!(r.out().contains("tag handoff -> checkpoint 7"));
+    assert!(r.out().contains(
+        "acme/agents/billing-agent: removed checkpoint 2, the oldest without a tag (on_full drop_oldest)\n"
+    ));
     let reqs = server.requests();
     assert_eq!(reqs[1].method, "PUT");
     assert_eq!(
@@ -377,7 +382,7 @@ fn a_refused_save_keeps_the_checkpoint_and_exits_4() {
         sts_ok(),
         MockResponse::json(
             422,
-            r#"{"error":{"code":"looks_like_secret","message":"a file looks like it holds a secret","path":"notes.md","line":2,"request_id":"r1"}}"#,
+            r#"{"error":{"code":"looks_like_secret","message":"a file looks like it holds a secret","path":"notes.md","line":2,"secrets":[{"path":"notes.md","line":2},{"path":"notes.md","line":9}],"request_id":"r1"}}"#,
         ),
         // The plan is full.
         sts_ok(),
@@ -391,7 +396,7 @@ fn a_refused_save_keeps_the_checkpoint_and_exits_4() {
     let s = sts(&server);
     let mut bodies = Vec::new();
     for (i, want) in [
-        "422 looks_like_secret: a file looks like it holds a secret (file: notes.md, line 2) (request r1)",
+        "422 looks_like_secret: a file looks like it holds a secret (file: notes.md, line 2) (2 matches: notes.md:2, notes.md:9) (request r1)",
         "403 plan_limit: the checkpoint limit of the plan is reached",
         "401",
     ]
@@ -615,13 +620,11 @@ fn an_encryption_mode_other_than_none_exits_2_and_writes_nothing() {
     let c = case("basic");
     let dir = temp_dir("encryption");
     let mut sealed = meta_answer(&c, 3);
-    sealed["checkpoint"]["encryption"] = json!({"mode": "envelope_v1"});
+    sealed["encryption"] = json!({"mode": "envelope_v1"});
+    // The older nested form: `checkpoint.enc_mode`.
     let mut enc_mode = meta_answer(&c, 3);
-    enc_mode["checkpoint"]["enc_mode"] = json!("envelope_v1");
-    enc_mode["checkpoint"]
-        .as_object_mut()
-        .unwrap()
-        .remove("encryption");
+    enc_mode.as_object_mut().unwrap().remove("encryption");
+    enc_mode["checkpoint"] = json!({"enc_mode": "envelope_v1"});
     let server = MockServer::start(vec![
         sts_ok(),
         MockResponse::json(200, &sealed.to_string()),

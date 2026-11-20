@@ -361,6 +361,7 @@ fn expect_exit(res: &FullResponse, what: &str) {
         let body: Value = serde_json::from_str(&res.body).unwrap_or(Value::Null);
         let hash = body["error"]["hash"]
             .as_str()
+            .or(body["hash"].as_str())
             .map(|h| format!(" (the hash is {h})"))
             .unwrap_or_default();
         eprintln!("prego: {what}: the checkpoint hash is not the expected one{hash}");
@@ -401,6 +402,14 @@ fn api_error(res: &FullResponse, what: &str) -> String {
             msg.push_str(&format!(", {r}"));
         }
         msg.push(')');
+    }
+    // `looks_like_secret` lists every match in `secrets`; the first is also in `path` and `line`.
+    if let Some(more) = err["secrets"].as_array().filter(|a| a.len() > 1) {
+        let list: Vec<String> = more
+            .iter()
+            .map(|m| format!("{}:{}", text(&m["path"]), text(&m["line"])))
+            .collect();
+        msg.push_str(&format!(" ({} matches: {})", list.len(), list.join(", ")));
     }
     if let Some(f) = err["field"].as_str() {
         msg.push_str(&format!(" (field: {f})"));
@@ -569,6 +578,12 @@ fn send_save(
     } else {
         println!(
             "{}: no change, checkpoint {seq} is the latest{session} ({hash})",
+            r.long()
+        );
+    }
+    if let Some(d) = answer["dropped"]["seq"].as_u64() {
+        println!(
+            "{}: removed checkpoint {d}, the oldest without a tag (on_full drop_oldest)",
             r.long()
         );
     }
