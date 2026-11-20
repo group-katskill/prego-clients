@@ -19,7 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   (offline). The checkpoint hash and the tar form are the Snippets ones, checked against the shared vectors.
 - Client redaction, on by default: strings shaped like a Prego API key, a PEM private key, an AWS access key
   ID, a GitHub, GitLab or Slack token, a Stripe live key or a JWT are replaced with `[REDACTED:<kind>]` before
-  the upload. `prego` prints how many strings it replaced, never the strings. `--no-redact` turns it off.
+  the upload. `prego` prints how many strings it replaced, never the strings. `--no-redact` turns it off. The
+  kinds (`prego_api_key`, `private_key`, `aws_access_key_id`, `github_token`, `github_pat`, `gitlab_token`,
+  `slack_token`, `stripe_live_key`, `jwt`) and the test cases are the registry's shared secret-shape vectors
+  (`tests/vectors/secrets/`, data only).
 - A refused save (any error from the registry or the token exchange, or an upload that is too large) keeps the
   checkpoint in `./.prego-context/<context>-<utc time>.tar.gz` (mode `0600`), prints the path and the error,
   and exits with 4.

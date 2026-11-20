@@ -807,7 +807,9 @@ a tag or `sha256:<hex>`; `latest` takes `session=<s>` for the latest checkpoint 
 - Redaction, on by default: before the upload, `prego context save` replaces strings shaped like a Prego API
   key (`prk_`), a PEM private key, an AWS access key ID (`AKIA`, `ASIA`), a GitHub token (`ghp_`,
   `github_pat_`), a GitLab token (`glpat-`), a Slack token (`xox?-`), a Stripe live key (`sk_live_`) or a JWT
-  with `[REDACTED:<kind>]`, and prints how many strings it replaced, never the strings. `--no-redact` turns it
+  with `[REDACTED:<kind>]`, and prints how many strings it replaced, never the strings. The kinds are
+  `prego_api_key`, `private_key`, `aws_access_key_id`, `github_token`, `github_pat`, `gitlab_token`, `slack_token`,
+  `stripe_live_key` and `jwt`; the shared test cases are in `prego/tests/vectors/secrets/`. `--no-redact` turns it
   off. The registry checks every file again and refuses a match with `422 looks_like_secret`.
 - A refused save (an error from the registry or the token exchange, or an upload over the limit) is kept in
   `./.prego-context/<context>-<YYYYMMDDTHHMMSSZ>.tar.gz` (mode `0600`). `prego` prints the path and the error and

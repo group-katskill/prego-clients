@@ -1,4 +1,5 @@
-//! Client redaction of secret-shaped strings before a context save (ADR-0058 item 12). The shapes are the
+//! Client redaction of secret-shaped strings before a context save (ADR-0058 item 12). The kind names and the
+//! test cases come from the shared secret-shape vectors (`tests/vectors/secrets/`, data only). The shapes are the
 //! ones that the registry refuses (ADR-0035 section 9): Prego API keys (`prk_`), PEM private keys, AWS
 //! access key IDs (`AKIA`, `ASIA`), GitHub tokens (`ghp_`, `github_pat_`), GitLab tokens (`glpat-`), Slack
 //! tokens (`xox?-`), Stripe live keys (`sk_live_`) and JWT-shaped strings. Each match is replaced with
@@ -77,15 +78,15 @@ fn match_at(b: &[u8], i: usize) -> Option<(usize, &'static str)> {
         return None;
     }
     let found = match c {
-        b'p' => prefixed(b, i, b"prk_", 8, is_b64url).map(|l| (l, "prego_api_key")),
-        b'A' => aws(b, i).map(|l| (l, "aws_access_key")),
+        b'p' => prefixed(b, i, b"prk_", 20, is_b64url).map(|l| (l, "prego_api_key")),
+        b'A' => aws(b, i).map(|l| (l, "aws_access_key_id")),
         b'g' => prefixed(b, i, b"ghp_", 36, |c| c.is_ascii_alphanumeric())
-            .or_else(|| prefixed(b, i, b"github_pat_", 22, is_word))
             .map(|l| (l, "github_token"))
+            .or_else(|| prefixed(b, i, b"github_pat_", 22, is_word).map(|l| (l, "github_pat")))
             .or_else(|| prefixed(b, i, b"glpat-", 20, is_b64url).map(|l| (l, "gitlab_token"))),
         b'x' => slack(b, i).map(|l| (l, "slack_token")),
         b's' => prefixed(b, i, b"sk_live_", 16, |c| c.is_ascii_alphanumeric())
-            .map(|l| (l, "stripe_key")),
+            .map(|l| (l, "stripe_live_key")),
         b'e' => jwt(b, i).map(|l| (l, "jwt")),
         _ => None,
     }?;
@@ -102,12 +103,13 @@ fn aws(b: &[u8], i: usize) -> Option<usize> {
     (tail == 16 && b.get(end).is_none_or(|c| !c.is_ascii_alphanumeric())).then_some(20)
 }
 
-/// `xox` and one letter or digit, `-`, then at least 10 letters, digits or `-`.
+/// `xox` and one Slack token letter (`a`, `b`, `e`, `o`, `p`, `r`, `s`), `-`, then at least 10 letters, digits
+/// or `-`.
 fn slack(b: &[u8], i: usize) -> Option<usize> {
     if !b[i..].starts_with(b"xox") || b.len() < i + 5 {
         return None;
     }
-    if !b[i + 3].is_ascii_alphanumeric() || b[i + 4] != b'-' {
+    if !matches!(b[i + 3], b'a' | b'b' | b'e' | b'o' | b'p' | b'r' | b's') || b[i + 4] != b'-' {
         return None;
     }
     let tail = run(b, i + 5, |c| c.is_ascii_alphanumeric() || c == b'-');
@@ -192,17 +194,17 @@ mod tests {
 
     #[test]
     fn each_shape() {
-        one(&k("prk", "_live_0123456789abcdef"), "prego_api_key");
-        one(&k("AK", "IAABCDEFGHIJKLMNOP"), "aws_access_key");
-        one(&k("AS", "IA0123456789ABCDEF"), "aws_access_key");
+        one(&k("prk", "_live_0123456789abcdefgh"), "prego_api_key");
+        one(&k("AK", "IAABCDEFGHIJKLMNOP"), "aws_access_key_id");
+        one(&k("AS", "IA0123456789ABCDEF"), "aws_access_key_id");
         one(&k("gh", &format!("p_{}", "a1".repeat(18))), "github_token");
         one(
             &k("github", &format!("_pat_{}", "B2_".repeat(10))),
-            "github_token",
+            "github_pat",
         );
         one(&k("gl", "pat-abcdefghij0123456789"), "gitlab_token");
         one(&k("xo", "xb-1234567890-abcdefghij"), "slack_token");
-        one(&k("sk", "_live_0123456789abcdefXYZ"), "stripe_key");
+        one(&k("sk", "_live_0123456789abcdefXYZ"), "stripe_live_key");
         one(
             &k(
                 "ey",
@@ -220,7 +222,7 @@ mod tests {
         assert_eq!(n, 2);
         assert_eq!(
             out,
-            "é line one\nAWS_KEY=[REDACTED:aws_access_key] # ü\n[REDACTED:aws_access_key]\n"
+            "é line one\nAWS_KEY=[REDACTED:aws_access_key_id] # ü\n[REDACTED:aws_access_key_id]\n"
         );
     }
 
@@ -274,13 +276,64 @@ mod tests {
             "{} {} {}",
             k("gl", "pat-abcdefghij0123456789"),
             k("sk", "_live_0123456789abcdefXYZ"),
-            k("prk", "_0123456789")
+            k("prk", "_0123456789abcdefghij")
         );
         let (out, n) = redact(&text);
         assert_eq!(n, 3);
         assert_eq!(
             out,
-            "[REDACTED:gitlab_token] [REDACTED:stripe_key] [REDACTED:prego_api_key]"
+            "[REDACTED:gitlab_token] [REDACTED:stripe_live_key] [REDACTED:prego_api_key]"
         );
+    }
+
+    /// The shared secret-shape vectors: every positive case is one `[REDACTED:<kind>]` of that kind, every
+    /// negative case is kept as it is, and every kind of the list is used.
+    #[test]
+    fn shared_vectors() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/vectors/secrets/cases.json"
+        );
+        let v: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let kinds: Vec<&str> = v["kinds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|k| k.as_str().unwrap())
+            .collect();
+        let mut seen = std::collections::BTreeSet::new();
+        let cases = v["cases"].as_array().unwrap();
+        assert!(cases.len() >= 33);
+        for c in cases {
+            let (name, input) = (c["name"].as_str().unwrap(), c["input"].as_str().unwrap());
+            let (out, n) = redact(input);
+            match c["kind"].as_str() {
+                Some(kind) => {
+                    assert!(kinds.contains(&kind), "{name}");
+                    assert_eq!(n, 1, "{name}: {out}");
+                    assert!(out.contains(&format!("[REDACTED:{kind}]")), "{name}: {out}");
+                    seen.insert(kind);
+                }
+                None => assert_eq!((out.as_str(), n), (input, 0), "{name}"),
+            }
+        }
+        assert_eq!(seen.len(), kinds.len(), "a kind of the list has no case");
+    }
+
+    /// A JWT longer than 4 KiB inside a very long line (1 MiB) is one match, and the rest of the line is kept.
+    #[test]
+    fn long_jwt_in_a_long_line() {
+        let payload = "A".repeat(5000);
+        let token = format!(
+            "{}.{payload}.c2lnbmF0dXJlMDA",
+            k("ey", "JhbGciOiJIUzI1NiJ9")
+        );
+        assert!(token.len() > 4096);
+        let pad = "word ".repeat(100_000);
+        let line = format!("{pad}Bearer {token} {pad}\n");
+        let (out, n) = redact(&line);
+        assert_eq!(n, 1);
+        assert_eq!(out, format!("{pad}Bearer [REDACTED:jwt] {pad}\n"));
     }
 }

@@ -214,7 +214,7 @@ fn hash_of_a_folder_is_the_shared_vector_hash() {
 fn hash_is_of_the_redacted_files_unless_no_redact() {
     let dir = temp_dir("hash-redact");
     std::fs::write(dir.join("notes.md"), format!("key {}\n", aws_like())).unwrap();
-    let redacted = "key [REDACTED:aws_access_key]\n";
+    let redacted = "key [REDACTED:aws_access_key_id]\n";
     let r = run_in(&dir, &["context", "hash", "."]);
     assert_eq!(r.code, 0, "{}", r.stderr);
     let want = |text: &str| {
@@ -321,7 +321,7 @@ fn save_redacts_and_sends_the_fixed_tarball_with_its_metadata() {
             (
                 "notes/today.md".to_string(),
                 0o644,
-                b"AWS [REDACTED:aws_access_key]\nagain [REDACTED:aws_access_key]\n".to_vec()
+                b"AWS [REDACTED:aws_access_key_id]\nagain [REDACTED:aws_access_key_id]\n".to_vec()
             ),
         ]
     );

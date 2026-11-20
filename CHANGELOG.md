@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Context (ADR-0058, `prego context`): `docs/context.md`, a README section "Save context before compaction"
   with a hook example, and PROTOCOL.md 1.14.0 section 15 (routes, content rules, checkpoint hash, client
   redaction, exit codes).
+- `prego/tests/vectors/secrets/`: the shared secret-shape vectors from the registry, copied as data.
 
 ### Changed
 
