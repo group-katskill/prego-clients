@@ -49,8 +49,15 @@ hash (`@sha256:<hex>`).
 prego sqlite save ./app.db acme/fleet/lookup --message "Daily build"
 ```
 
-- `prego` makes the snapshot with SQLite. It does not copy the database file. Your application can continue to
-  use the database while the command runs.
+- `prego` makes the snapshot with SQLite. It does not copy the database file: it saves SQLite's own copy. Your
+  application can continue to use the database while the command runs. A file that SQLite can read but that is
+  damaged at the end (cut short, or with extra bytes) is saved in the form that SQLite reads, which is a valid
+  database. A file of 0 bytes is not saved.
+- `prego` opens the database read-only. A WAL-mode database that no program has open (no `-wal` and no `-shm`
+  file) is opened with write access instead, so that SQLite removes the `-wal` and `-shm` files that it makes.
+  When the command closes the database, SQLite checkpoints the WAL into the database file, as any SQLite client
+  does. The data does not change. If `prego` cannot open the database with write access, it opens it
+  read-only.
 - Then `prego` runs `PRAGMA quick_check` on the snapshot. If the check fails, nothing is sent and the exit code
   is 5. `--check full` runs `PRAGMA integrity_check` (slower, more complete). `--check none` does no check.
   Prego shows the result with the snapshot.

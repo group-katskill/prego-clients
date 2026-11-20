@@ -135,36 +135,62 @@ fn source_error(path: &Path, e: rusqlite::Error) -> String {
     }
 }
 
-/// The flags that open the source: read-only, except for a WAL database that no program has open (no `-wal`
-/// and no `-shm` file). A read-only connection cannot remove the `-wal` and `-shm` files that it makes, and a
-/// `-wal` file left next to the database stops a later `prego sqlite restore` to that path. Opened read-write
-/// (never created), the connection writes nothing, and SQLite removes the two files when it closes the
-/// database as the last connection. Only the 100-byte header is read here, to find the journal mode.
-fn source_flags(source: &Path) -> OpenFlags {
+/// The `-wal` and `-shm` files next to `source` that exist.
+fn wal_files(source: &Path) -> Vec<PathBuf> {
+    ["-wal", "-shm"]
+        .iter()
+        .map(|s| {
+            let mut p = source.as_os_str().to_owned();
+            p.push(s);
+            PathBuf::from(p)
+        })
+        .filter(|p| std::fs::symlink_metadata(p).is_ok())
+        .collect()
+}
+
+/// True for a WAL database that no connection holds.
+///
+/// Every connection to a WAL database keeps the `-shm` file (the shared WAL index) while it is open, and SQLite
+/// removes `-wal` and `-shm` only when the last connection closes. So no `-wal` and no `-shm` file means that no
+/// connection holds the database. The one exception, a connection in `locking_mode=EXCLUSIVE`, holds an
+/// exclusive lock, and the copy then waits and stops after the busy time.
+///
+/// A program can open the database after this test. That is safe: SQLite checkpoints and removes the files
+/// at close only when it gets an exclusive lock, that is, only when no other connection is open.
+///
+/// Only the 100-byte header is read here, to find the journal mode (bytes 18 and 19 are 2 in WAL mode).
+fn idle_wal(source: &Path) -> bool {
     use std::io::Read;
-    let ro = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let mut h = [0u8; 20];
-    let wal = File::open(source)
+    File::open(source)
         .and_then(|mut f| f.read_exact(&mut h))
         .is_ok()
         && &h[..16] == b"SQLite format 3\0"
         && h[18] == 2
-        && h[19] == 2;
-    let side = |s: &str| {
-        let mut p = source.as_os_str().to_owned();
-        p.push(s);
-        std::fs::symlink_metadata(PathBuf::from(p)).is_ok()
-    };
-    if wal && !side("-wal") && !side("-shm") {
-        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX
-    } else {
-        ro
-    }
+        && h[19] == 2
+        && wal_files(source).is_empty()
+}
+
+/// Opens the source and reads its schema, so a file that is not a database fails here.
+fn open_source(source: &Path, flags: OpenFlags) -> rusqlite::Result<Connection> {
+    let c = Connection::open_with_flags(source, flags | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
+    c.busy_timeout(BUSY)?;
+    c.query_row("SELECT count(*) FROM sqlite_schema", [], |r| {
+        r.get::<_, i64>(0)
+    })?;
+    Ok(c)
 }
 
 /// Copies the database `source` to the new file `dest` with the online backup API (the page layout stays),
 /// or with `VACUUM INTO` when `compact` is true (no free pages). The copy is consistent: one read
 /// transaction, so a program can keep using the source.
+///
+/// The source is opened read-only. A WAL database that no connection holds ([`idle_wal`]) is opened
+/// read-write instead (never created; nothing is written), because a read-only connection makes `-wal` and
+/// `-shm` files that it cannot remove, and a `-wal` file next to the database stops a later
+/// `prego sqlite restore` to that path. At close, SQLite then checkpoints the (empty) WAL and removes the
+/// files, as any SQLite client does. If the read-write open fails, the read-only open is used; if that fails
+/// too (a folder that this user cannot write), the idle file is read as immutable.
 pub fn copy(source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
     let meta = std::fs::metadata(source).map_err(|e| format!("{}: {e}", source.display()))?;
     if !meta.is_file() {
@@ -177,15 +203,52 @@ pub fn copy(source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
             source.display()
         ));
     }
-    let src = Connection::open_with_flags(source, source_flags(source))
-        .map_err(|e| source_error(source, e))?;
-    src.busy_timeout(BUSY)
-        .map_err(|e| source_error(source, e))?;
-    // Reads the schema, so a file that is not a database fails here with a clear message.
-    src.query_row("SELECT count(*) FROM sqlite_schema", [], |r| {
-        r.get::<_, i64>(0)
-    })
+    let idle = idle_wal(source);
+    let src = match idle {
+        true => open_source(source, OpenFlags::SQLITE_OPEN_READ_WRITE)
+            .or_else(|_| open_source(source, OpenFlags::SQLITE_OPEN_READ_ONLY))
+            .or_else(|e| {
+                // A folder that this user cannot write: SQLite cannot make the -shm file, so even the read-only
+                // open fails. The database is idle (no -wal: all data is in the file; no -shm: no WAL
+                // connection), and no WAL connection can start without a -shm file, so the file is read as
+                // immutable. quick_check still runs on the copy.
+                Connection::open_with_flags(
+                    immutable_uri(source).map_err(|_| e)?,
+                    OpenFlags::SQLITE_OPEN_READ_ONLY
+                        | OpenFlags::SQLITE_OPEN_URI
+                        | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+                )
+                .and_then(|c| {
+                    c.query_row("SELECT count(*) FROM sqlite_schema", [], |r| {
+                        r.get::<_, i64>(0)
+                    })?;
+                    Ok(c)
+                })
+            }),
+        false => open_source(source, OpenFlags::SQLITE_OPEN_READ_ONLY),
+    }
     .map_err(|e| source_error(source, e))?;
+    let result = copy_from(&src, source, dest, compact);
+    drop(src);
+    if idle {
+        let left = wal_files(source);
+        if !left.is_empty() {
+            let names: Vec<String> = left.iter().map(|p| p.display().to_string()).collect();
+            eprintln!(
+                "prego: hint: SQLite left {} next to {} (the database is read-only for this user). When no \
+                 program uses the database, open it once with SQLite and write access (for example \
+                 sqlite3 {} 'PRAGMA wal_checkpoint(TRUNCATE)') so that SQLite removes them; do not delete a \
+                 -wal file by hand. A -wal file stops prego sqlite restore to this path",
+                names.join(" and "),
+                source.display(),
+                source.display()
+            );
+        }
+    }
+    result
+}
+
+fn copy_from(src: &Connection, source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
     if compact {
         let d = dest
             .to_str()
@@ -196,7 +259,7 @@ pub fn copy(source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
     }
     let mut dst = Connection::open(dest).map_err(|e| format!("{}: {e}", dest.display()))?;
     {
-        let b = Backup::new(&src, &mut dst).map_err(|e| source_error(source, e))?;
+        let b = Backup::new(src, &mut dst).map_err(|e| source_error(source, e))?;
         let start = Instant::now();
         loop {
             // -1: all pages in one step, in one read transaction on the source.
@@ -373,6 +436,66 @@ pub mod tests {
             assert!(std::fs::symlink_metadata(format!("{}-shm", src.display())).is_err());
             assert_eq!(check(&dest, Check::Quick).unwrap(), None);
         }
+    }
+
+    /// (b): a WAL database that this user cannot write is still saved.
+    #[cfg(unix)]
+    #[test]
+    fn a_write_protected_wal_database_is_saved() {
+        use std::os::unix::fs::PermissionsExt;
+        let t = TempDir::new().unwrap();
+        let src = t.path().join("ro.db");
+        make_db(&src, 30, true);
+        std::fs::set_permissions(&src, std::fs::Permissions::from_mode(0o444)).unwrap();
+        // As root, permissions do not stop a write: nothing to test.
+        if std::fs::OpenOptions::new().append(true).open(&src).is_ok() {
+            return;
+        }
+        let dest = t.path().join("copy");
+        copy(&src, &dest, false).unwrap();
+        assert_eq!(check(&dest, Check::Quick).unwrap(), None);
+        // SQLite opened it read-only and left its files (the save prints a hint).
+        assert_eq!(wal_files(&src).len(), 2);
+
+        // A folder that this user cannot write: the idle file is read as immutable.
+        let dir = t.path().join("ro-dir");
+        std::fs::create_dir(&dir).unwrap();
+        let src2 = dir.join("w.db");
+        make_db(&src2, 30, true);
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let dest2 = t.path().join("copy2");
+        let r = copy(&src2, &dest2, true);
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        r.unwrap();
+        assert_eq!(check(&dest2, Check::Quick).unwrap(), None);
+        assert!(wal_files(&src2).is_empty());
+    }
+
+    /// (a): a WAL database that a program holds open is opened read-only, and the files of that program stay.
+    #[test]
+    fn a_held_wal_database_is_read_only_and_keeps_its_files() {
+        let t = TempDir::new().unwrap();
+        let src = t.path().join("held.db");
+        make_db(&src, 30, true);
+        assert!(idle_wal(&src));
+        let app = Connection::open(&src).unwrap();
+        app.execute("INSERT INTO t(v) VALUES ('only in the wal')", [])
+            .unwrap();
+        assert!(!idle_wal(&src));
+        let dest = t.path().join("copy");
+        copy(&src, &dest, false).unwrap();
+        assert_eq!(wal_files(&src).len(), 2);
+        let n: i64 = Connection::open(&dest)
+            .unwrap()
+            .query_row(
+                "SELECT count(*) FROM t WHERE v = 'only in the wal'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(n, 1);
+        drop(app);
+        assert!(wal_files(&src).is_empty());
     }
 
     #[test]
