@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `docs/context.md` that links to the matching page (crates, go, npm, python, oci, adapters, release-variables,
   snippets, context), and a "Docs" link in the website's top and footer navigation and the Guides section.
 
+### Fixed
+
+- `docs/go-quickstart.md` and PROTOCOL.md section 9: `go.mod` is at most 64 KiB (the registry limit), not 1 MiB.
+
 ## [1.1.0] - 2026-11-20
 
 ### Added
