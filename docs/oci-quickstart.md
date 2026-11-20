@@ -218,3 +218,5 @@ Prego registry 1.0.0 does not have these. Plan around them:
 - Vulnerability scanning, or a signature policy. Signatures are stored, not checked.
 - Webhooks and replication.
 - A kubelet credential provider. Use an `imagePullSecret`.
+
+Full docs, with examples: <https://docs.prego.k8skill.com/oci> (sign in with your Prego account; open from the console's Docs link).

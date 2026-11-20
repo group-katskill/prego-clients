@@ -117,3 +117,5 @@ build:
 | `... is a pickle file` | A `.bin`, `.pt` or `.ckpt` file is in the folder. | Move it out of the folder. |
 | `the folder ... is not empty` | `prego adapter get` writes to a new or empty folder only. | Give another folder. |
 | `HTTP 404 ... NAME_UNKNOWN` | No grant for this repository, or the name is wrong. | Check the grants in the console. |
+
+Full docs, with examples: <https://docs.prego.k8skill.com/adapters> (sign in with your Prego account; open from the console's Docs link).

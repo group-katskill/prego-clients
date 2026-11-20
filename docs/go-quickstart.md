@@ -86,7 +86,7 @@ prego go publish                    # prints: go get go.acme.com/core@v1.4.0
 - Versions are immutable. A second publish of the same version gets `409`, also after a delete. To withdraw a
   version, add a `retract` line to `go.mod` and publish a new version.
 - A zip can be up to 300 MiB, compressed and uncompressed (Go itself allows 500 MiB). `go.mod` can be up to
-  1 MiB. A zip above 95 MiB is sent in parts. From 0.5.0, `prego go publish` refuses a bigger module before it
+  64 KiB. A zip above 95 MiB is sent in parts. From 0.5.0, `prego go publish` refuses a bigger module before it
   sends anything. Move large files out of the module, for example into an OCI artifact.
 - The file rules are Go's own: no vendored packages, no files of nested modules, no symlinks. If a module in
   a subdirectory has no `LICENSE`, the root `LICENSE` is added, as the go command does.
@@ -205,3 +205,5 @@ Do not put `proxy.golang.org` first: then every private path name goes to it fir
 - A checksum database for private modules (`GOSUMDB`).
 - Pseudo-versions, `+incompatible` versions, modules without `go.mod`.
 - Vanity import pages (`?go-get=1`).
+
+Full docs, with examples: <https://docs.prego.k8skill.com/go> (sign in with your Prego account; open from the console's Docs link).

@@ -35,6 +35,11 @@ License: `Apache-2.0`. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Version 0.1.
 `MIT OR Apache-2.0`; from 0.1.1 on, the license is Apache-2.0 only.
 The code is open. The "Prego" name and logo are not licensed for reuse.
 
+## Full documentation
+
+Full docs for each package type, with examples, are at https://docs.prego.k8skill.com (sign in with your Prego
+account; open from the console's Docs link).
+
 ## Quick start on a laptop
 
 From prego 0.7.0. Log in with your own console account. No key is stored in a file.

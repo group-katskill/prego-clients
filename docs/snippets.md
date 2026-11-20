@@ -144,3 +144,5 @@ deploy:
 | exit code 2: `this snippet uses encryption mode M, which this prego version cannot read` | The snippet uses an encryption mode (a later add-on) that this `prego` cannot read. Nothing was written. |
 | `422 looks_like_secret (file: F, line N)` | A line looks like a credential. The value is never shown. |
 | `400 snippet_invalid (file: F, reason)` | A path or a file breaks the rules above. |
+
+Full docs, with examples: <https://docs.prego.k8skill.com/snippets> (sign in with your Prego account; open from the console's Docs link).
