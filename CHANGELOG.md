@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-20
+
+### Changed
+
+- Release 1.1.1: `prego go publish` refuses a `go.mod` larger than 64 KiB, the registry limit (it took up to
+  1 MiB). All crates are at 1.1.1.
+
 ### Added
 
 - Links to the docs site https://docs.prego.k8skill.com (sign in with a Prego account): a "Full documentation"

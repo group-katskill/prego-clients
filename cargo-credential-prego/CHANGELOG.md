@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-20
+
+### Changed
+
+- Release 1.1.1 with `prego-auth` 1.1.1. No change in `cargo-credential-prego`.
+
 ## [1.1.0] - 2026-11-20
 
 ### Changed
