@@ -2,6 +2,7 @@
 //! or `VACUUM INTO`, and `PRAGMA quick_check` or `integrity_check`. The source file bytes are never read
 //! directly.
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -134,6 +135,33 @@ fn source_error(path: &Path, e: rusqlite::Error) -> String {
     }
 }
 
+/// The flags that open the source: read-only, except for a WAL database that no program has open (no `-wal`
+/// and no `-shm` file). A read-only connection cannot remove the `-wal` and `-shm` files that it makes, and a
+/// `-wal` file left next to the database stops a later `prego sqlite restore` to that path. Opened read-write
+/// (never created), the connection writes nothing, and SQLite removes the two files when it closes the
+/// database as the last connection. Only the 100-byte header is read here, to find the journal mode.
+fn source_flags(source: &Path) -> OpenFlags {
+    use std::io::Read;
+    let ro = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let mut h = [0u8; 20];
+    let wal = File::open(source)
+        .and_then(|mut f| f.read_exact(&mut h))
+        .is_ok()
+        && &h[..16] == b"SQLite format 3\0"
+        && h[18] == 2
+        && h[19] == 2;
+    let side = |s: &str| {
+        let mut p = source.as_os_str().to_owned();
+        p.push(s);
+        std::fs::symlink_metadata(PathBuf::from(p)).is_ok()
+    };
+    if wal && !side("-wal") && !side("-shm") {
+        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX
+    } else {
+        ro
+    }
+}
+
 /// Copies the database `source` to the new file `dest` with the online backup API (the page layout stays),
 /// or with `VACUUM INTO` when `compact` is true (no free pages). The copy is consistent: one read
 /// transaction, so a program can keep using the source.
@@ -149,11 +177,8 @@ pub fn copy(source: &Path, dest: &Path, compact: bool) -> Result<(), String> {
             source.display()
         ));
     }
-    let src = Connection::open_with_flags(
-        source,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    )
-    .map_err(|e| source_error(source, e))?;
+    let src = Connection::open_with_flags(source, source_flags(source))
+        .map_err(|e| source_error(source, e))?;
     src.busy_timeout(BUSY)
         .map_err(|e| source_error(source, e))?;
     // Reads the schema, so a file that is not a database fails here with a clear message.
@@ -332,6 +357,24 @@ pub mod tests {
         }
     }
 
+    /// A save of a WAL database that no program has open leaves no -wal or -shm file next to it, so that a
+    /// later restore to the same path is not refused.
+    #[test]
+    fn a_closed_wal_database_gets_no_side_files() {
+        let t = TempDir::new().unwrap();
+        let src = t.path().join("w.db");
+        make_db(&src, 50, true);
+        // make_db closed the database: SQLite removed its -wal and -shm files.
+        assert!(side_files(&src).is_empty());
+        for compact in [false, true] {
+            let dest = t.path().join(format!("copy-{compact}"));
+            copy(&src, &dest, compact).unwrap();
+            assert!(side_files(&src).is_empty(), "compact {compact}");
+            assert!(std::fs::symlink_metadata(format!("{}-shm", src.display())).is_err());
+            assert_eq!(check(&dest, Check::Quick).unwrap(), None);
+        }
+    }
+
     #[test]
     fn refuses_a_file_that_is_not_a_database() {
         let t = TempDir::new().unwrap();
@@ -370,7 +413,9 @@ pub mod tests {
         let t = TempDir::new().unwrap();
         for f in v["files"].as_array().unwrap() {
             let name = f["file"].as_str().unwrap();
-            let path = dir.join(name);
+            // A copy of the vector: SQLite makes -wal and -shm files next to a WAL database that it opens.
+            let path = t.path().join(name);
+            std::fs::copy(dir.join(name), &path).unwrap();
             let dest = t.path().join(format!("{name}.copy"));
             let u = |k: &str| f[k].as_u64().unwrap() as u32;
             if f["expect"] == "accept" {

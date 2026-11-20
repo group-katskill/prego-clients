@@ -21,7 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   mismatch, 4 a refused save, 5 a failed check. Needs registry 1.26.0.
   Written to the registry route shapes: the restore also checks the frame list, `X-Prego-Sqlite-Hash` and
   `X-Prego-File-Sha256`; a save prints the snapshots that `keep_count` removed (`rotated`); a commit refused with
-  `429` is sent again; a file of 0 bytes is refused before the copy. Tested against the shared vectors of
+  `429` is sent again; a file of 0 bytes is refused before the copy; a save of a WAL database that no program
+  has open leaves no `-wal` or `-shm` file next to it. Tested against the shared vectors of
   Prego-registry (`tests/vectors/sqlite/`: the hash rule, the frame, snapshot and file hashes, the header
   values, a restore of each accepted file, and no upload for the refused files).
 - SQLite 3.54.1 is compiled in, through `rusqlite` 0.41.1 with the `bundled` feature. The release binary is
