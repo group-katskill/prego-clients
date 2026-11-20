@@ -906,7 +906,8 @@ tag or `sha256:<hex>`.
   and removes the `-wal` and `-shm` files at close; if that open fails it is opened read-only, and in a folder
   that the user cannot write, as immutable. It copies it with the online backup API (all
   pages in one read transaction), or with `VACUUM INTO` (`--compact`), into a private folder in the temporary
-  folder. It never reads the database file bytes directly. It removes the copy at the end.
+  folder. It reads no database bytes directly, except the first 20 bytes of the header (to find the journal
+  mode). It removes the copy at the end.
 - It runs `PRAGMA quick_check` on the copy (`--check full`: `integrity_check`; `--check none`: no check), opened
   read-only as immutable. A failed check exits with code 5 and sends nothing.
 - It refuses a file of 0 bytes (SQLite would open it as an empty database).
