@@ -11,8 +11,7 @@
 [![MSRV: 1.91](https://img.shields.io/badge/MSRV-1.91-orange)](Cargo.toml)
 
 Open source client tools for **Prego by KatSkill**, a private package registry with federated machine identity.
-They serve four package types: Rust **crates** (Cargo), **OCI images** (Docker, Podman, Helm and others), **Go
-modules** (from 0.4.0), and scoped **npm packages** (npm, pnpm, Yarn, Bun; from 0.6.0).
+They serve every Prego type: see [Supported types](#supported-types).
 
 | Crate | Kind | What it does |
 | --- | --- | --- |
@@ -34,6 +33,25 @@ and the public API as [OpenAPI](docs/openapi.yaml).
 License: `Apache-2.0`. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Version 0.1.0 was released under
 `MIT OR Apache-2.0`; from 0.1.1 on, the license is Apache-2.0 only.
 The code is open. The "Prego" name and logo are not licensed for reuse.
+
+## Supported types
+
+Prego hosts these types. The `prego` tools work with all of them.
+
+| Type | What it holds | Here | Docs |
+| --- | --- | --- | --- |
+| Crates (Cargo) | Private Rust crates for Cargo, with the credential provider `cargo-credential-prego`. | [Section](#configure-cargo) | [crates](https://docs.prego.k8skill.com/crates) |
+| Go modules | Private Go modules through `GOPROXY`, with `prego go-auth` and `prego go publish`. | [Section](#go-modules) | [go](https://docs.prego.k8skill.com/go) |
+| npm | Scoped npm packages, and trusted publishing from CI. | [Section](#npm-packages) | [npm](https://docs.prego.k8skill.com/npm) |
+| Python | Private Python packages for uv, pip and Poetry. | [Section](#python-packages) | [python](https://docs.prego.k8skill.com/python) |
+| Containers and OCI artifacts | Container images and other OCI artifacts, for example Helm charts and `.deb` files. | [Section](#push-and-pull-images) | [oci](https://docs.prego.k8skill.com/oci) |
+| Adapters | AI model adapters (LoRA and other peft adapters) as safetensors. | [Section](#adapters) | [adapters](https://docs.prego.k8skill.com/adapters) |
+| Release Variables | Versioned sets of release settings, pinned by hash. | [Section](#release-variables) | [release-variables](https://docs.prego.k8skill.com/release-variables) |
+| Snippets | Versioned sets of text files: scripts, prompts, agent skills and templates. | [Section](#snippets) | [snippets](https://docs.prego.k8skill.com/snippets) |
+| Context | Agent context that agents save before they compact or stop, and restore later. | [Section](#context) | [context](https://docs.prego.k8skill.com/context) |
+| SQLite snapshots | Share a SQLite database with your machines, agents and developers. We are not your backup. We are for sharing. | [Section](#share-a-sqlite-database) | [sqlite-snapshots](https://docs.prego.k8skill.com/sqlite-snapshots) |
+
+The plans that include each type are on the [plan limits page](https://docs.prego.k8skill.com/limits). The docs site needs a sign-in with your Prego account.
 
 ## Full documentation
 

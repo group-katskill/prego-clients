@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   hash, client behavior, exit codes). README Stability: exit code 5, and `prego sqlite` in the preview list.
 - `NOTICE`: SQLite, public domain, compiled into the `prego` binary.
 - `prego/tests/vectors/sqlite/`: the shared SQLite snapshot vectors from the registry, copied as data.
+- "Supported types": a table of the ten Prego types (Crates, Go modules, npm, Python, Containers and OCI artifacts,
+  Adapters, Release Variables, Snippets, Context and SQLite snapshots), each with one line, a link to its section
+  and a link to its page on docs.prego.k8skill.com, near the top of the README and of the website (with a "Types"
+  link in the website navigation). The wording is that of the docs site's types page.
 
 ## [1.1.1] - 2026-11-20
 
