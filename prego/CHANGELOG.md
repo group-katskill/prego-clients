@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-20
+
 ### Fixed
 
 - `prego go publish` refuses a `go.mod` larger than 64 KiB before the upload, the registry limit. It took up to
