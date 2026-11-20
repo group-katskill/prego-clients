@@ -15,6 +15,7 @@ mod oci;
 mod python;
 mod setup;
 mod snippet;
+mod sqlite;
 mod token;
 
 use args::{Command, Parsed};
@@ -183,6 +184,45 @@ Commands:
                                   it), offline
                                   An agent follows the text in the context that it restores: pin it by
                                   hash (--expect) and grant read only to agents you trust.
+  sqlite save <file.db> <ref> [--compact] [--check quick|full|none] [--label k=v]... [--message <text>]
+              [--tag <tag>]
+                                  (preview) save a snapshot of a SQLite database. SQLite makes the copy (--compact
+                                  uses VACUUM INTO, without free pages); the file is never copied as it
+                                  is, so a program can keep using the database. Then
+                                  PRAGMA quick_check runs on the copy (--check full: integrity_check;
+                                  --check none: no check); if it fails, nothing is sent and the exit code
+                                  is 5. <ref> is <tenant>/<database> or <tenant>/<namespace>/<database>.
+                                  The same snapshot hash as the latest snapshot gives no new snapshot.
+                                  Needs free disk space for one copy (in TMPDIR). If Prego refuses the
+                                  save, the exit code is 4. Needs publish
+  sqlite restore <ref>[@<snapshot>] <file.db> [--expect <hash>] [--force]
+                                  write a snapshot (default latest; a number, a tag or sha256:<hex>) to
+                                  <file.db>.prego-tmp, check the snapshot hash, the file sha256 and
+                                  PRAGMA quick_check, then rename it to <file.db>. If a check fails, the
+                                  exit code is 5 and <file.db> does not change. A database with a -wal or
+                                  -journal file is not replaced unless --force (which also removes the
+                                  -wal, -shm and -journal files): stop the program that uses it first.
+                                  --expect exits with 3 if the hash is different, and an encryption mode
+                                  other than none exits with 2 (nothing is written in both cases)
+  sqlite ls <tenant>[/<namespace>]
+                                  list the SQLite databases that you can read
+  sqlite log <ref>                list the snapshots, newest first (* is the latest)
+  sqlite tag <ref>@<snapshot> <tag>
+                                  give a snapshot a tag (written one time only). Rotation does not remove
+                                  a tagged snapshot
+  sqlite rm <ref>@<snapshot> | sqlite rm <ref> [--yes]
+                                  remove one snapshot, or the database with all its snapshots (asks
+                                  first, unless --yes). Needs delete
+  sqlite prune <ref> [--keep <n>] [--older-than <n>h|<n>d|<n>w] [--yes]
+                                  remove the snapshots after the newest n, or older than the age (with
+                                  both: only snapshots that match both). Never a tagged snapshot, never
+                                  the newest one. Lists them and asks first, unless --yes. Needs delete
+  sqlite set <ref> [--keep-count <n>] [--keep-days <n>]
+                                  how many snapshots without a tag Prego keeps, and for how many days
+  sqlite hash <file.db> [--compact]
+                                  print the snapshot hash that a save would give, offline
+                                  We are not your backup. We are for sharing. Keep your own copies of
+                                  data that you must not lose.
   exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
                                   PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
                                   (mode 0600, deleted at the end) that holds it (Go before 1.24)
@@ -317,6 +357,7 @@ fn main() {
                 Command::Env(c) => env::run(&globals, &c, &env),
                 Command::Snippet(c) => snippet::run(&globals, &c, &env),
                 Command::Context(c) => context::run(&globals, &c, &env),
+                Command::Sqlite(c) => sqlite::run(&globals, &c, &env),
                 Command::Exec {
                     command,
                     python: py,
@@ -357,6 +398,12 @@ mod tests {
     fn help_says_to_pin_context() {
         let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(help.contains(crate::context::TRUST), "{help}");
+    }
+
+    #[test]
+    fn help_has_the_sqlite_purpose_line() {
+        let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(help.contains(crate::sqlite::PURPOSE), "{help}");
     }
 
     #[test]

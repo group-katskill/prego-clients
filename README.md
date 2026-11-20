@@ -410,6 +410,52 @@ instead of failing the agent.
 The [Context guide](docs/context.md) has references, restore, tags, retention, the file rules and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 15 has the client contract.
 
+## Share a SQLite database
+
+**Preview, from prego 1.2.0 and registry 1.26.0.** SQLite snapshots share a SQLite database with your machines,
+your agents and other developers: save a snapshot from one machine, restore it on many. They use the identity
+they already have; they do not keep a key.
+
+**We are not your backup. We are for sharing.** Prego does not give point-in-time recovery. Keep your own backups
+of data that you must not lose.
+
+`prego sqlite save` makes the snapshot with SQLite, never by copying the file, so the application can keep using
+the database. It runs `PRAGMA quick_check` on the snapshot first; if the check fails, nothing is sent and the exit
+code is 5. A restore writes a new file, checks the hashes and `quick_check`, and only then replaces the target.
+
+Save after a build in CI (GitLab CI here; the job uses its OIDC identity, see [GitLab CI](#gitlab-ci)):
+
+```yaml
+build-lookup:
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  script:
+    - ./build-lookup-db.sh lookup.db
+    - prego sqlite save lookup.db acme/fleet/lookup --message "build $CI_COMMIT_SHORT_SHA" --label commit=$CI_COMMIT_SHA
+```
+
+Restore at start-up on each machine of a fleet, pinned by hash, before the application opens the database:
+
+```sh
+prego sqlite restore acme/fleet/lookup@2026-11-20 /var/lib/app/lookup.db \
+  --expect sha256:<hash from prego sqlite log>
+exec /usr/local/bin/app --db /var/lib/app/lookup.db
+```
+
+A different hash exits with 3 and writes nothing. A database with a `-wal` or `-journal` file next to it is not
+replaced unless `--force`: stop the application first.
+
+```sh
+prego sqlite log acme/fleet/lookup                     # snapshots, newest first
+prego sqlite tag acme/fleet/lookup@42 2026-11-20       # keep a snapshot
+prego sqlite prune acme/fleet/lookup --older-than 7d   # remove old snapshots (asks first; --yes in scripts)
+prego sqlite set acme/fleet/lookup --keep-count 10 --keep-days 14
+```
+
+The [SQLite snapshots guide](docs/sqlite.md) has references, restore, rotation, the exit codes and the errors.
+[PROTOCOL.md](PROTOCOL.md) section 16 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -449,6 +495,8 @@ prego snippet push ./skill acme/agent-skill     # push a new version of a snippe
 prego snippet get acme/agent-skill@stable --expect sha256:...   # get a pinned snippet (1.0.0)
 prego context save ./.agent-memory acme/agents/a1 --trigger compact   # save agent context (1.1.0)
 prego context restore acme/agents/a1 ./.agent-memory --expect sha256:...   # restore a pinned checkpoint (1.1.0)
+prego sqlite save ./app.db acme/fleet/lookup        # save a SQLite snapshot (1.2.0, preview)
+prego sqlite restore acme/fleet/lookup ./lookup.db --expect sha256:...   # restore a pinned snapshot (1.2.0, preview)
 ```
 
 `prego oci push <input> <image>`:
@@ -613,7 +661,9 @@ break:
 - The command names and subcommands of `prego`, `cargo-credential-prego` and `docker-credential-prego`.
 - The flags and options, their environment variables (`PREGO_*`) and their meaning.
 - The exit codes: `0` success, `1` error, `2` an encryption mode that this version cannot read, `3` an
-  `--expect` hash that does not match, `4` a refused `prego context save` (from 1.1.0; the checkpoint is kept).
+  `--expect` hash that does not match, `4` a refused `prego context save` (from 1.1.0; the checkpoint is kept) or
+  `prego sqlite save` (from 1.2.0), `5` a failed `PRAGMA quick_check` or `integrity_check` in `prego sqlite`
+  (from 1.2.0).
   `prego exec` exits with the code of the command it runs.
 - The config file locations and their keys: `~/.config/prego/config.toml` (or
   `$XDG_CONFIG_HOME/prego/config.toml`), the login session in the OS keychain, and the files that `prego setup`
@@ -631,7 +681,8 @@ Not covered:
   hash that the `hash` commands print.
 - The Rust API of the `prego-auth` crate. It serves the Prego tools.
 - Preview features, marked "preview" in this README, the guides and `prego --help`. They can change in a 1.x
-  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`.
+  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`, and
+  `prego sqlite` (until the staging test of registry 1.26.0 passes).
 
 ## Security
 

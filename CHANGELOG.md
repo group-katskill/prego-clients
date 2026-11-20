@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- SQLite snapshots (ADR-0059, `prego sqlite`, preview): `docs/sqlite.md`, a README section "Share a SQLite
+  database" with a CI example and a fleet example, and PROTOCOL.md 1.15.0 section 16 (routes, frames, snapshot
+  hash, client behavior, exit codes). README Stability: exit code 5, and `prego sqlite` in the preview list.
+- `NOTICE`: SQLite, public domain, compiled into the `prego` binary.
+
 ## [1.1.1] - 2026-11-20
 
 ### Changed

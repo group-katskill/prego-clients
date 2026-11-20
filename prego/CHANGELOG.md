@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `prego sqlite` (ADR-0059, preview): SQLite snapshots. `save <file.db> <ref> [--compact] [--check quick|full|none]
+  [--label k=v]... [--message M] [--tag T]`, `restore <ref>[@<snapshot>] <file.db> [--expect H] [--force]`,
+  `ls <tenant>[/<namespace>]`, `log <ref>`, `tag <ref>@<snapshot> <tag>`, `rm <ref>[@<snapshot>] [--yes]`,
+  `prune <ref> [--keep N] [--older-than <n>h|<n>d|<n>w] [--yes]`, `set <ref> [--keep-count N] [--keep-days D]` and
+  `hash <file.db> [--compact]` (offline). The save makes the copy with SQLite (the online backup API, or
+  `VACUUM INTO` with `--compact`), never by copying the file, runs `PRAGMA quick_check` (or `integrity_check`) on
+  the copy, and sends it in 64 MiB gzip frames: one `PUT`, or an upload session for more frames. The snapshot
+  hash is the `sha256` of the frame hash lines (PROTOCOL.md 16.2). The restore writes `<target>.prego-tmp`,
+  checks the snapshot hash, the file `sha256` and `quick_check`, and then renames it; a database with a `-wal` or
+  `-journal` file is not replaced unless `--force`. Exit codes: 2 an unknown encryption mode, 3 an `--expect`
+  mismatch, 4 a refused save, 5 a failed check. Needs registry 1.26.0.
+- SQLite 3.54.1 is compiled in, through `rusqlite` 0.41.1 with the `bundled` feature. The release binary is
+  about 2.1 MiB larger.
+
 ## [1.1.1] - 2026-11-20
 
 ### Fixed
