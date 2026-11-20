@@ -904,7 +904,9 @@ tag or `sha256:<hex>`.
 - `prego sqlite save` opens the database read-only with SQLite. A WAL database that no connection holds (no
   `-wal` and no `-shm` file) is opened read-write instead, with no write, so that SQLite checkpoints the empty WAL
   and removes the `-wal` and `-shm` files at close; if that open fails it is opened read-only, and in a folder
-  that the user cannot write, as immutable. It copies it with the online backup API (all
+  that the user cannot write, as immutable. The immutable read assumes that no other user with write access to
+  the folder starts a WAL connection during the copy; if one does, the `quick_check` on the copy is the guard,
+  and a failed check exits with code 5. It copies it with the online backup API (all
   pages in one read transaction), or with `VACUUM INTO` (`--compact`), into a private folder in the temporary
   folder. It reads no database bytes directly, except the first 20 bytes of the header (to find the journal
   mode). It removes the copy at the end.
