@@ -30,8 +30,8 @@ pub fn check_zip_size(size: u64) -> Result<(), String> {
     }
     Ok(())
 }
-/// Largest `go.mod` that Prego takes (Go allows 16 MiB).
-pub const MAX_GO_MOD_BYTES: u64 = 1 << 20;
+/// Largest `go.mod` that Prego takes: 64 KiB, the registry limit (Go allows 16 MiB).
+pub const MAX_GO_MOD_BYTES: u64 = 64 << 10;
 /// Largest `LICENSE` (`x/mod/zip` `MaxLICENSE`).
 pub const MAX_LICENSE_BYTES: u64 = 16 << 20;
 /// Largest number of entries (no zip64).
@@ -515,9 +515,15 @@ mod tests {
         assert!(e.contains("Windows"), "{e}");
         let e = select(vec![cand("a.go", Mode::Regular)]).unwrap_err();
         assert!(e.contains("no go.mod"), "{e}");
+        // The registry limit: 64 KiB is taken, one byte more is refused before any upload.
+        assert_eq!(MAX_GO_MOD_BYTES, 65_536);
+        let mut at_limit = cand("go.mod", Mode::Regular);
+        at_limit.size = MAX_GO_MOD_BYTES;
+        assert!(select(vec![at_limit]).is_ok());
         let mut big = cand("go.mod", Mode::Regular);
         big.size = MAX_GO_MOD_BYTES + 1;
-        assert!(select(vec![big]).is_err());
+        let e = select(vec![big]).unwrap_err();
+        assert!(e.contains("65536"), "{e}");
     }
 
     #[test]
