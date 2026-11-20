@@ -49,7 +49,7 @@ Prego hosts these types. The `prego` tools work with all of them.
 | Release Variables | Versioned sets of release settings, pinned by hash. | [Section](#release-variables) | [release-variables](https://docs.prego.k8skill.com/release-variables) |
 | Snippets | Versioned sets of text files: scripts, prompts, agent skills and templates. | [Section](#snippets) | [snippets](https://docs.prego.k8skill.com/snippets) |
 | Context | Agent context that agents save before they compact or stop, and restore later. | [Section](#context) | [context](https://docs.prego.k8skill.com/context) |
-| SQLite snapshots | Share a SQLite database with your machines, agents and developers. We are not your backup. We are for sharing. | [Section](#share-a-sqlite-database) | [sqlite-snapshots](https://docs.prego.k8skill.com/sqlite-snapshots) |
+| SQLite snapshots | Snapshots of SQLite database files that machines, agents and developers share. We are not your backup. We are for sharing. | [Section](#share-a-sqlite-database) | [sqlite-snapshots](https://docs.prego.k8skill.com/sqlite-snapshots) |
 
 The plans that include each type are on the [plan limits page](https://docs.prego.k8skill.com/limits). The docs site needs a sign-in with your Prego account.
 
