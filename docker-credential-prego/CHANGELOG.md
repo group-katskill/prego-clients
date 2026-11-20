@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. The credential-provider protocol of this tool does not break within 1.x (README section "Stability").
+
+### Changed
+
+- Release 1.0.0 with `prego-auth` 1.0.0. No change in `docker-credential-prego`.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed

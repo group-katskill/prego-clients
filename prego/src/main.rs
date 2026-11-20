@@ -13,6 +13,7 @@ mod npm;
 mod oci;
 mod python;
 mod setup;
+mod snippet;
 mod token;
 
 use args::{Command, Parsed};
@@ -55,15 +56,15 @@ Commands:
                                   [host/]<tenant>/<namespace>/<repo>[:tag]. --from mounts blobs that are
                                   already in another repository of the tenant
   adapter push <folder> <repo>:<version> [--license <id>] [--base-revision <rev>]
-                                  push an AI model adapter (LoRA and the other peft methods; Publisher and
-                                  Trial plans). The folder has adapter_config.json, one .safetensors file
+                                  (preview) push an AI model adapter (LoRA and the other peft methods;
+                                  Publisher and Trial plans). The folder has adapter_config.json, one .safetensors file
                                   and at most 8 text files (README.md, tokenizer files). prego checks them
                                   first, with the rules of the registry. The license comes from --license,
                                   or from license: in the README.md front matter. A version is written one
                                   time only. <repo> is [host/]<tenant>/<namespace>/<repo>
   adapter get <repo>:<version> <folder>
-                                  write the files of an adapter to a new or empty folder, and check their
-                                  SHA-256. Load it with peft (PeftModel.from_pretrained) or vLLM
+                                  (preview) write the files of an adapter to a new or empty folder, and
+                                  check their SHA-256. Load it with peft (PeftModel.from_pretrained) or vLLM
                                   (--lora-modules name=<folder>)
   go publish [<module dir>] [<tag>] [--namespace <ns>] [--dry-run] [--json]
                                   build the module zip from the git tree of the tag (not from the working
@@ -115,6 +116,37 @@ Commands:
                                   canonical form), the same as the registry, offline
                                   Release Variables are plain text, readable by everyone who can pull the
                                   release. Do not store passwords, tokens or keys here.
+  snippet push <folder|file> <ref> [--tag <tag>] [--message <text>] [--if-current <hash>] [--tar]
+                                  push a new version of a snippet: a named set of text files (scripts,
+                                  prompts, agent skills, templates). <ref> is <tenant>/<snippet> (namespace
+                                  default) or <tenant>/<namespace>/<snippet>. A folder gives all its regular
+                                  files (not .git); a file gives a snippet of one file. With --tar, the file
+                                  is a .tar.gz or .tar that is sent as it is. At most 100 files, 1 MiB each,
+                                  8 MiB together, UTF-8 text only; the mode is 0644, or 0755 when the owner
+                                  can run the file. The same files give no new version. --if-current refuses
+                                  the push if the current hash is different. Needs publish
+  snippet get <ref>[@<version>] [<folder>] [--file <path>] [--tar] [--expect <hash>]
+                                  write the files of a version (default current) to a new or empty folder
+                                  (default ./<snippet>). <version> is a number, a tag, sha256:<hex> or current.
+                                  Each file and the version hash are checked; no file leaves the folder.
+                                  --file prints one file on stdout. --tar writes the .tar.gz to the file
+                                  <folder> or to stdout. --expect exits with 3 if the version hash is
+                                  different, and an encryption mode other than none exits with 2
+                                  (nothing is written in both cases)
+  snippet ls <tenant>[/<namespace>]
+                                  list the snippets that you can read
+  snippet log <ref>               list the versions, newest first, with tags (* is the current one)
+  snippet diff <ref> <version> <version>
+                                  show the files added, removed and changed, and a unified diff
+  snippet tag <ref>@<version> <tag>
+                                  give a version a tag. A tag is written one time only
+  snippet rollback <ref> --to <version> --reason <text>
+                                  make an older (or newer) version the current one (no new version is made)
+  snippet hash <folder|file> [--tar]
+                                  print the version hash (sha256 of the canonical file list), the same as
+                                  the registry, offline
+                                  A snippet that an agent reads is an instruction to that agent: pin it by
+                                  hash (--expect) and grant read only on snippets you trust.
   exec -- <command> [args]        run a command with a fresh registry token in PREGO_NPM_TOKEN and
                                   PREGO_TOKEN (npm, pnpm, Yarn, Bun), and NETRC set to a temporary file
                                   (mode 0600, deleted at the end) that holds it (Go before 1.24)
@@ -247,6 +279,7 @@ fn main() {
                 Command::SetupNpm(opts) => npm::setup(&globals, &opts, &env),
                 Command::NpmEnv => npm::npm_env(&globals, &env),
                 Command::Env(c) => env::run(&globals, &c, &env),
+                Command::Snippet(c) => snippet::run(&globals, &c, &env),
                 Command::Exec {
                     command,
                     python: py,
@@ -281,5 +314,11 @@ mod tests {
         let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(help.contains(crate::env::NOT_SECRETS), "{help}");
         assert!(help.contains("The push replaces the whole set"));
+    }
+
+    #[test]
+    fn help_says_to_pin_snippets() {
+        let help: String = super::HELP.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(help.contains(crate::snippet::TRUST), "{help}");
     }
 }

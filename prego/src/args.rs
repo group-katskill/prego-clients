@@ -102,6 +102,8 @@ pub enum Command {
     Status,
     /// `prego env ...`.
     Env(crate::env::EnvCommand),
+    /// `prego snippet ...`.
+    Snippet(crate::snippet::SnippetCommand),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -141,7 +143,7 @@ const WITH_VALUE: [&str; 27] = [
     "--base-revision",
 ];
 /// Options without a value.
-const FLAGS: [&str; 9] = [
+const FLAGS: [&str; 10] = [
     "--write",
     "--print",
     "--dry-run",
@@ -151,6 +153,7 @@ const FLAGS: [&str; 9] = [
     "--no-browser",
     "--python",
     "--pip",
+    "--tar",
 ];
 
 /// Parses the arguments after the program name.
@@ -440,6 +443,7 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
             }
         }
         ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
+        ["snippet", rest @ ..] => Command::Snippet(parse_snippet(rest, &opts, &flag, &allow)?),
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };
@@ -577,6 +581,128 @@ fn parse_env(
             allow(&[], &[])?;
             EnvCommand::Hash {
                 file: f.to_string(),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
+}
+
+/// `prego snippet <subcommand>`.
+fn parse_snippet(
+    words: &[&str],
+    opts: &[(&str, String)],
+    flag: &dyn Fn(&str) -> bool,
+    allow: &Allow<'_>,
+) -> Result<crate::snippet::SnippetCommand, String> {
+    use crate::env::jcs;
+    use crate::snippet::SnippetCommand;
+    let take = |name: &str| -> Vec<String> {
+        opts.iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .collect()
+    };
+    let one = |name: &str| -> Result<Option<String>, String> {
+        let mut v = take(name);
+        if v.len() > 1 {
+            return Err(format!("{name} can be given one time only"));
+        }
+        Ok(v.pop())
+    };
+    let hash = |name: &str| -> Result<Option<String>, String> {
+        match one(name)? {
+            Some(h) if !jcs::is_hash(&h) => Err(format!(
+                "{name} `{h}` is not a hash: use sha256:<64 lowercase hex>"
+            )),
+            h => Ok(h),
+        }
+    };
+    let text = |name: &str, max: usize| -> Result<Option<String>, String> {
+        match one(name)? {
+            Some(m) if m.chars().count() > max => {
+                Err(format!("{name} is at most {max} characters"))
+            }
+            m => Ok(m),
+        }
+    };
+    let usage =
+        "usage: prego snippet push|get|ls|log|diff|tag|rollback|hash ... (see prego --help)";
+    Ok(match words {
+        ["push", source, r] => {
+            allow(&["--tag", "--message", "--if-current"], &["--tar"])?;
+            let tag = one("--tag")?;
+            if let Some(t) = &tag {
+                crate::snippet::reference::check_tag(t)?;
+            }
+            SnippetCommand::Push {
+                source: source.to_string(),
+                reference: r.to_string(),
+                tag,
+                message: text("--message", 200)?,
+                if_current: hash("--if-current")?,
+                tar: flag("--tar"),
+            }
+        }
+        ["get", r] | ["get", r, _] => {
+            allow(&["--file", "--expect"], &["--tar"])?;
+            let file = one("--file")?;
+            let tar = flag("--tar");
+            let folder = words.get(2).map(|s| s.to_string());
+            if file.is_some() && (tar || folder.is_some()) {
+                return Err("--file prints one file on stdout: give no folder and no --tar".into());
+            }
+            SnippetCommand::Get {
+                reference: r.to_string(),
+                folder,
+                file,
+                tar,
+                expect: hash("--expect")?,
+            }
+        }
+        ["ls", scope] => {
+            allow(&[], &[])?;
+            SnippetCommand::Ls {
+                scope: scope.to_string(),
+            }
+        }
+        ["log", r] => {
+            allow(&[], &[])?;
+            SnippetCommand::Log {
+                reference: r.to_string(),
+            }
+        }
+        ["diff", r, from, to] => {
+            allow(&[], &[])?;
+            SnippetCommand::Diff {
+                reference: r.to_string(),
+                from: from.to_string(),
+                to: to.to_string(),
+            }
+        }
+        ["tag", r, tag] => {
+            allow(&[], &[])?;
+            SnippetCommand::Tag {
+                reference: r.to_string(),
+                tag: tag.to_string(),
+            }
+        }
+        ["rollback", r] => {
+            allow(&["--to", "--reason"], &[])?;
+            let to = one("--to")?.ok_or("--to <version> is required")?;
+            let reason = text("--reason", 200)?
+                .filter(|s| !s.trim().is_empty())
+                .ok_or("--reason <text> is required")?;
+            SnippetCommand::Rollback {
+                reference: r.to_string(),
+                to,
+                reason,
+            }
+        }
+        ["hash", source] => {
+            allow(&[], &["--tar"])?;
+            SnippetCommand::Hash {
+                source: source.to_string(),
+                tar: flag("--tar"),
             }
         }
         _ => return Err(usage.into()),
@@ -929,6 +1055,98 @@ mod tests {
             &["exec", "--"],
             &["token", "--", "x"],
             &["go-auth", "a", "b"],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn snippet_commands() {
+        use crate::snippet::SnippetCommand;
+        let sn = |a: &[&str]| match p(a).unwrap() {
+            Parsed::Run {
+                command: Command::Snippet(c),
+                ..
+            } => c,
+            other => panic!("{other:?}"),
+        };
+        let h = format!("sha256:{}", "a".repeat(64));
+        assert_eq!(
+            sn(&[
+                "snippet",
+                "push",
+                "./skill",
+                "acme/agent-skill",
+                "--tag",
+                "v1",
+                "--message",
+                "m",
+                "--if-current",
+                &h
+            ]),
+            SnippetCommand::Push {
+                source: "./skill".into(),
+                reference: "acme/agent-skill".into(),
+                tag: Some("v1".into()),
+                message: Some("m".into()),
+                if_current: Some(h.clone()),
+                tar: false,
+            }
+        );
+        assert_eq!(
+            sn(&["snippet", "get", "acme/x@3", "out", "--expect", &h]),
+            SnippetCommand::Get {
+                reference: "acme/x@3".into(),
+                folder: Some("out".into()),
+                file: None,
+                tar: false,
+                expect: Some(h.clone()),
+            }
+        );
+        assert_eq!(
+            sn(&["snippet", "get", "acme/x", "--file", "a/b.md"]),
+            SnippetCommand::Get {
+                reference: "acme/x".into(),
+                folder: None,
+                file: Some("a/b.md".into()),
+                tar: false,
+                expect: None,
+            }
+        );
+        assert_eq!(
+            sn(&["snippet", "rollback", "acme/x", "--to", "prod", "--reason", "bad"]),
+            SnippetCommand::Rollback {
+                reference: "acme/x".into(),
+                to: "prod".into(),
+                reason: "bad".into(),
+            }
+        );
+        assert_eq!(
+            sn(&["snippet", "diff", "acme/x", "1", "v2"]),
+            SnippetCommand::Diff {
+                reference: "acme/x".into(),
+                from: "1".into(),
+                to: "v2".into(),
+            }
+        );
+        assert_eq!(
+            sn(&["snippet", "hash", "f.tar.gz", "--tar"]),
+            SnippetCommand::Hash {
+                source: "f.tar.gz".into(),
+                tar: true,
+            }
+        );
+        for bad in [
+            &["snippet"][..],
+            &["snippet", "push", "d"],
+            &["snippet", "push", "d", "a/x", "--tag", "123"],
+            &["snippet", "push", "d", "a/x", "--expect", &h],
+            &["snippet", "get", "a/x", "--expect", "sha256:abc"],
+            &["snippet", "get", "a/x", "out", "--file", "f"],
+            &["snippet", "get", "a/x", "--tar", "--file", "f"],
+            &["snippet", "rollback", "a/x", "--to", "1"],
+            &["snippet", "ls", "a", "--tar"],
+            &["snippet", "diff", "a/x", "1"],
         ] {
             assert!(p(bad).is_err(), "{bad:?}");
         }

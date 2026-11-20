@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "rules": "ADR-0057 item 6: sha256 of the RFC 8785 JSON {\"files\":[{\"path\",\"mode\",\"size\",\"sha256\"}]}, files sorted by UTF-8 path bytes; mode \"0644\" or \"0755\"; sha256 is bare lowercase hex of the file bytes; the version hash is \"sha256:<hex>\".",
+  "cases": [
+    {
+      "name": "basic",
+      "dir": "files/basic",
+      "note": "a script with mode 0755 and a README",
+      "files": [
+        {
+          "path": "README.md",
+          "mode": "0644"
+        },
+        {
+          "path": "run.sh",
+          "mode": "0755"
+        }
+      ],
+      "canonical": "{\"files\":[{\"mode\":\"0644\",\"path\":\"README.md\",\"sha256\":\"d5404e3170c8e427ad7499d36b4e9e9669cb2a7cab081f8d116b395b11b07878\",\"size\":20},{\"mode\":\"0755\",\"path\":\"run.sh\",\"sha256\":\"bfdeaeb08cffb6a36438bcd12dda25417e3cdd36f1e7e482a2849d539225288b\",\"size\":21}]}",
+      "hash": "sha256:edfcb956f9ed66a4f198142e32f2b3ddf68016a7157a4cd1c196008b606300e4"
+    },
+    {
+      "name": "basic-mode",
+      "dir": "files/basic-mode",
+      "note": "the same files as basic, with run.sh mode 0644: another hash",
+      "files": [
+        {
+          "path": "README.md",
+          "mode": "0644"
+        },
+        {
+          "path": "run.sh",
+          "mode": "0644"
+        }
+      ],
+      "canonical": "{\"files\":[{\"mode\":\"0644\",\"path\":\"README.md\",\"sha256\":\"d5404e3170c8e427ad7499d36b4e9e9669cb2a7cab081f8d116b395b11b07878\",\"size\":20},{\"mode\":\"0644\",\"path\":\"run.sh\",\"sha256\":\"bfdeaeb08cffb6a36438bcd12dda25417e3cdd36f1e7e482a2849d539225288b\",\"size\":21}]}",
+      "hash": "sha256:3f0849375327b7579ee96659dbf8963509f690bb71b6a0910aab58e6bd1e2f22"
+    },
+    {
+      "name": "order",
+      "dir": "files/order",
+      "note": "sort by UTF-8 path bytes: 'B' < '_' < 'a', 'dir-a.txt' < 'dir/...', 'z' < 'é'",
+      "files": [
+        {
+          "path": "B.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "_x.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "a.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "dir-a.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "dir/sub/x.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "dir/y.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "z.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "é.txt",
+          "mode": "0644"
+        }
+      ],
+      "canonical": "{\"files\":[{\"mode\":\"0644\",\"path\":\"B.txt\",\"sha256\":\"c0cde77fa8fef97d476c10aad3d2d54fcc2f336140d073651c2dcccf1e379fd6\",\"size\":2},{\"mode\":\"0644\",\"path\":\"_x.txt\",\"sha256\":\"10af960b268d98ed1e95acc1c1d7e9a655b0967acca44fdc4e4af2559ae05ce3\",\"size\":11},{\"mode\":\"0644\",\"path\":\"a.txt\",\"sha256\":\"87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7\",\"size\":2},{\"mode\":\"0644\",\"path\":\"dir-a.txt\",\"sha256\":\"29b525a47cdaecb1addee820beb0754c3019b7705a76c21ac5933839a65dea6f\",\"size\":9},{\"mode\":\"0644\",\"path\":\"dir/sub/x.txt\",\"sha256\":\"64896f89fd11190013b70103e603a1c5826e56b7fb7d2197ab279b0690043599\",\"size\":5},{\"mode\":\"0644\",\"path\":\"dir/y.txt\",\"sha256\":\"3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877\",\"size\":2},{\"mode\":\"0644\",\"path\":\"z.txt\",\"sha256\":\"c865f6c5ab8d1b0bcd383a5e1e3879d22681c96bf462c269b7581d523fbe70ab\",\"size\":2},{\"mode\":\"0644\",\"path\":\"é.txt\",\"sha256\":\"cb67755626a74ecf60edf94a66d4f093d016a3546bf9290aad2d5bc3796e6d1e\",\"size\":8}]}",
+      "hash": "sha256:c52e86f6e75701c3575e3f9d8a4be25f7eae16c57b4426130a3f5398d03ae1fe"
+    },
+    {
+      "name": "empty-file",
+      "dir": "files/empty-file",
+      "note": "an empty file is a file with size 0",
+      "files": [
+        {
+          "path": "empty.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "full.txt",
+          "mode": "0644"
+        }
+      ],
+      "canonical": "{\"files\":[{\"mode\":\"0644\",\"path\":\"empty.txt\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"size\":0},{\"mode\":\"0644\",\"path\":\"full.txt\",\"sha256\":\"64074f40a6bd6941b68f48dd0c70ffd815e376a4cc0a799052bf390c2363ca33\",\"size\":10}]}",
+      "hash": "sha256:86753753a7dbea91cbd3ab75dff5a29ecf6786d481b311b321cb530f518182e1"
+    },
+    {
+      "name": "long-path",
+      "dir": "files/long-path",
+      "note": "paths longer than 100 bytes (the fixed tar uses ustar prefix or pax)",
+      "files": [
+        {
+          "path": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/c.txt",
+          "mode": "0644"
+        },
+        {
+          "path": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.txt",
+          "mode": "0644"
+        }
+      ],
+      "canonical": "{\"files\":[{\"mode\":\"0644\",\"path\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/c.txt\",\"sha256\":\"bbdbb75b415ee9a40f0b3796a8b41a0b7723afe5726b870474ad220a4886d06d\",\"size\":5},{\"mode\":\"0644\",\"path\":\"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.txt\",\"sha256\":\"84f3aba69c02f33c2c68bbb109140cfcab594160cbf9f19191b28b1a7dca61d5\",\"size\":10}]}",
+      "hash": "sha256:fd563905ca200471356add7a92ba3824d4e2594f3e9481f6d88f1eb7a09cac66"
+    }
+  ],
+  "invalid_paths": [
+    {
+      "path": "",
+      "reason": "empty"
+    },
+    {
+      "path": "/etc/passwd",
+      "reason": "absolute"
+    },
+    {
+      "path": "../x",
+      "reason": "dot-dot segment"
+    },
+    {
+      "path": "a/../x",
+      "reason": "dot-dot segment"
+    },
+    {
+      "path": "./a",
+      "reason": "dot segment (a tar entry './a' is read as 'a'; the path itself is refused)"
+    },
+    {
+      "path": "a//b",
+      "reason": "empty segment"
+    },
+    {
+      "path": "a/",
+      "reason": "empty segment"
+    },
+    {
+      "path": "a\\b",
+      "reason": "backslash"
+    },
+    {
+      "path": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "reason": "longer than 255 bytes"
+    },
+    {
+      "path": "a\u0001b",
+      "reason": "C0 control U+0001"
+    },
+    {
+      "path": "tab\there",
+      "reason": "C0 control U+0009"
+    },
+    {
+      "path": "delx",
+      "reason": "DEL U+007F"
+    },
+    {
+      "path": "c1\u0085x",
+      "reason": "C1 control U+0085"
+    },
+    {
+      "path": "c1\u009fx",
+      "reason": "C1 control U+009F"
+    },
+    {
+      "path": "bidi\u202ex.sh",
+      "reason": "bidi control U+202E"
+    },
+    {
+      "path": "bidi\u202ax",
+      "reason": "bidi control U+202A"
+    },
+    {
+      "path": "bidi\u2066x",
+      "reason": "bidi control U+2066"
+    },
+    {
+      "path": "bidi\u2069x",
+      "reason": "bidi control U+2069"
+    }
+  ],
+  "tar_modes": [
+    {
+      "tar_mode": "0700",
+      "mode": "0755"
+    },
+    {
+      "tar_mode": "0755",
+      "mode": "0755"
+    },
+    {
+      "tar_mode": "0744",
+      "mode": "0755"
+    },
+    {
+      "tar_mode": "0600",
+      "mode": "0644"
+    },
+    {
+      "tar_mode": "0644",
+      "mode": "0644"
+    },
+    {
+      "tar_mode": "0611",
+      "mode": "0644"
+    }
+  ],
+  "clashing_sets": [
+    {
+      "paths": ["é.txt", "e\u0301.txt"],
+      "reason": "the same path after NFC (precomposed and decomposed e acute)"
+    },
+    {
+      "paths": ["A.txt", "a.txt"],
+      "reason": "the same path after lowercase folding"
+    },
+    {
+      "paths": ["a", "a/b"],
+      "reason": "a path is also a folder of another path"
+    },
+    {
+      "paths": ["A", "a/b"],
+      "reason": "a path is also a folder of another path, after folding"
+    }
+  ],
+  "ok_sets": [
+    {
+      "paths": ["a.txt", "a/b.txt"],
+      "reason": "a file and a folder with different names"
+    },
+    {
+      "paths": ["ab", "a/b"],
+      "reason": "no clash"
+    }
+  ],
+  "rules_path_set": "Fold key = lowercase(NFC(path)) (Unicode default lowercasing). Two paths with the same fold key are refused. A path whose fold key is a folder (a prefix up to a '/') of another path's fold key is refused. Paths are stored as sent."
+}

@@ -304,6 +304,8 @@ The [Python guide](docs/python-quickstart.md) has pip, Poetry, publishing, CI an
 
 ## Adapters
 
+**Preview.** The `prego adapter` commands and flags can still change in a 1.x minor release (see [Stability](#stability)).
+
 From prego 0.10.0 and registry 1.11.1 (Publisher plan and Trial). AI model adapters are the fine-tuned
 layers (LoRA and the other peft methods) of your AI models. Prego keeps them as one checked OCI artifact:
 `adapter_config.json`, one `.safetensors` weights file and at most 8 text files, at most 2 GiB.
@@ -343,6 +345,27 @@ prego env hash release-vars.json                                                
 The [Release Variables guide](docs/release-variables.md) has the levels, the merge, references, access, CI and
 the errors. [PROTOCOL.md](PROTOCOL.md) section 12 has the client contract.
 
+## Snippets
+
+From prego 1.0.0 and registry 1.24.0. A snippet is a named set of text files (scripts, prompts, agent skills,
+templates) with versions that do not change, read by machines and agents with the identity they already have.
+Like a gist, but private and versioned.
+
+**An agent follows the text in a snippet. Pin the hash with `--expect`, and grant `read` only on snippets you
+trust.**
+
+```sh
+prego snippet push ./deploy-scripts acme/ops/deploy-scripts --tag stable     # a new version, if the files changed
+prego snippet get acme/ops/deploy-scripts@stable ./scripts --expect sha256:...  # exit 3 if it changed
+prego snippet log acme/ops/deploy-scripts
+prego snippet diff acme/ops/deploy-scripts 6 stable
+prego snippet rollback acme/ops/deploy-scripts --to 6 --reason "..."
+prego snippet hash ./deploy-scripts                                            # offline
+```
+
+The [Snippets guide](docs/snippets.md) has references, the file rules, the hash, CI and the errors.
+[PROTOCOL.md](PROTOCOL.md) section 14 has the client contract.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -378,6 +401,8 @@ prego exec -- uv sync                           # a Python token for uv, pip, tw
 prego python publish dist/*                     # upload wheels and sdists (0.9.0)
 prego adapter push ./out/bot acme/ml/bot:v1     # push an AI model adapter (0.10.0, Publisher)
 prego adapter get acme/ml/bot:v1 ./adapters/bot # write an adapter to a folder (0.10.0)
+prego snippet push ./skill acme/agent-skill     # push a new version of a snippet (1.0.0)
+prego snippet get acme/agent-skill@stable --expect sha256:...   # get a pinned snippet (1.0.0)
 ```
 
 `prego oci push <input> <image>`:
@@ -533,6 +558,33 @@ the tag. Cargo publishes `prego-auth` first. Then publish the alias `prego-cli` 
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy and tests on every push to `main` and on every pull request.
 The website in `site/` is deployed to GitHub Pages by `.github/workflows/pages.yml`.
+
+## Stability
+
+From 1.0.0, the Prego client tools follow [Semantic Versioning](https://semver.org/). Within 1.x, these do not
+break:
+
+- The command names and subcommands of `prego`, `cargo-credential-prego` and `docker-credential-prego`.
+- The flags and options, their environment variables (`PREGO_*`) and their meaning.
+- The exit codes: `0` success, `1` error, `2` an encryption mode that this version cannot read, `3` an
+  `--expect` hash that does not match. `prego exec` exits with the code of the command it runs.
+- The config file locations and their keys: `~/.config/prego/config.toml` (or
+  `$XDG_CONFIG_HOME/prego/config.toml`), the login session in the OS keychain, and the files that `prego setup`
+  writes.
+- The credential-provider protocols: the Cargo credential provider protocol of `cargo-credential-prego`, the
+  Docker credential helper protocol of `docker-credential-prego`, and `prego go-auth` as a GOAUTH command.
+- [PROTOCOL.md](PROTOCOL.md), the contract between a client and the registry. A break is a new major version.
+
+A 1.x release can add commands, flags, environment variables, config keys, JSON fields and exit codes for new
+cases. A change to a default host name keeps the old name working.
+
+Not covered:
+
+- The text that commands print for people. Scripts use the exit codes, `--json`, `env pull --format`, and the
+  hash that the `hash` commands print.
+- The Rust API of the `prego-auth` crate. It serves the Prego tools.
+- Preview features, marked "preview" in this README, the guides and `prego --help`. They can change in a 1.x
+  minor release, with a CHANGELOG note. Preview now: `prego adapter push` and `prego adapter get`.
 
 ## Security
 

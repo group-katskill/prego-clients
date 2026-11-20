@@ -1,7 +1,14 @@
 # Prego client protocol
 
-Version 1.12.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.13.0. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
+
+## Stability
+
+From prego-clients 1.0.0, this document is stable within its major version 1. A change that breaks a client
+written to it (a removed or renamed route, field, header, parameter or error code, or a changed meaning) needs
+version 2.0.0. A 1.x version can add routes, fields, headers, parameters, error codes and sections; a client
+ignores what it does not know. A section marked "preview" can still change in a 1.x minor version.
 
 ## Words
 
@@ -662,3 +669,79 @@ API version 1.1) and the upload API of twine. It does not copy packages from pyp
 `sha256_digest`, and the file in `content`. At most 90 MiB per file and 100 files per release. The name and
 version of the filename must be those in the metadata. A filename can be used one time only, also after a
 delete: `400 File already exists.` Every refusal is `400` with one line of text, as on pypi.org.
+
+## 14. Snippets (registry 1.24.0, prego 1.0.0)
+
+A snippet is a named set of UTF-8 text files with immutable numbered versions. The routes are on the control
+host, with the plain path (no edge code) and a registry token from section 1. A normal registry token covers
+snippets; the grants decide (`snippet` or `any` ecosystem, `package_glob` on the snippet name).
+
+### 14.1 Requests
+
+`<s>` is `/v1/snippets/<tenant>/<namespace>/<snippet>`. `<v>` is a version number, a tag, `sha256:<hex>` or
+`current`.
+
+| Method and path | Grant | Purpose |
+| --- | --- | --- |
+| `GET /v1/snippets/<tenant>/<namespace>?limit=&after=` | read | `{items: [{name, current_version, current_hash, version_count, updated_at}], next}`. Only the snippets your grants match; no grant gives an empty list. |
+| `PUT <s>?message=&if_current=&tag=`, body `.tar.gz` (`application/gzip`) or `.tar` | publish | Push. `201` `{created: true, version: {number, hash, file_count, size_bytes}}`; `200` with `created: false` when the hash is the current hash. |
+| `GET <s>` | read | `current` number and hash, version count, tags. |
+| `GET <s>/versions?limit=&after=` | read | `{items: [{number, hash, size_bytes, file_count, pushed_by, created_at, message, tags, current}], next}`, newest first. |
+| `GET <s>/v/<v>?expect=` | read | `{version, hash, files: [{path, mode, size, sha256}]}`. `ETag` is the version hash. |
+| `GET <s>/v/<v>/files/<path>?expect=` | read | One file, `text/plain; charset=utf-8`. |
+| `GET <s>/v/<v>.tar.gz?expect=` | read | The version in the fixed tar form (14.3). |
+| `GET <s>/diff?from=<v>&to=<v>` | read | `{from, to, added: [{path, sha256}], removed, changed: [{path, old_sha256, new_sha256, diff}], truncated}`. At most 1 MiB of diff text. |
+| `PUT <s>/tags/<tag>` `{"version": <v>}` | publish | Create a tag. A second write of the same tag is `409 conflict`. |
+| `POST <s>/current` `{"version": <v>, "reason": "..."}` | publish | Move `current` (rollback or roll forward). No new version. `{current_version, current_hash}`. |
+
+- Every read answer has `X-Prego-Snippet-Version`, `X-Prego-Snippet-Hash` and `X-Prego-Encryption: none`, and
+  version metadata has `"encryption": {"mode": "none"}` (reserved for a later add-on). A missing header or field
+  is `none`. A client that sees any other mode stops and uses none of the content.
+- Files and tarballs come with
+  `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`.
+- `expect=sha256:<hex>` on a read gives `412 hash_mismatch` when the selected version has another hash.
+  `if_current=sha256:<hex>` on a push gives `409 conflict` when `current` has another hash.
+- No grant or no such snippet: `404`. Read but no publish: `403` on a write. Other errors: `400 snippet_invalid`
+  (with `path` and `reason`), `400 invalid_field`, `403 plan_limit`, `413 file_too_large`,
+  `413 version_too_large`, `413 upload_too_large`, `422 looks_like_secret` (with `path` and `line`, never the
+  value), `429 rate_limited` (with `Retry-After`).
+- Names: a snippet name matches `[a-z0-9][a-z0-9._-]{0,127}`. A tag matches `[A-Za-z0-9][A-Za-z0-9._+-]{0,127}`,
+  is not all digits, is not `current`, does not start with `sha256` and does not end in `.tar.gz`.
+
+### 14.2 Content and the version hash
+
+- At most 100 files, each at most 1 MiB, together at most 8 MiB; an upload is at most 8 MiB. Every file is UTF-8
+  with no NUL byte.
+- A path is relative and `/` separated, at most 255 bytes, unique, with no empty, `.` or `..` segment, no leading
+  `/` and no `\`, no control character (U+0001 to U+001F, U+007F to U+009F) and no bidi control (U+202A to U+202E, U+2066 to
+  U+2069). Names are decoded as UTF-8 and refused when they are not valid UTF-8. No two paths are equal after
+  Unicode NFC and lowercase, and no path is also a folder of another path after that folding (`a` and `a/b`, `A` and `a/b`). In a tarball, a leading `./` is removed and directory entries are skipped. Symlinks, hard
+  links and devices are refused.
+- The mode is `"0755"` when the owner execute bit is set, else `"0644"`.
+- The version hash: one entry `{"path", "mode", "size", "sha256"}` per file (`mode` the text `"0644"` or
+  `"0755"`, `size` an integer, `sha256` the 64 lowercase hex of the file bytes), sorted by the UTF-8 bytes of
+  `path`, in `{"files": [...]}`, in RFC 8785 canonical form (section 12.2). The hash is `sha256:` and the hex
+  SHA-256 of those bytes. `prego snippet hash` computes it offline. The shared test vectors are in
+  `prego/tests/vectors/snippets/`.
+
+### 14.3 Fixed tar form
+
+Paths sorted by their bytes; ustar headers; type `0` only, no directory entries; mode `0644` or `0755`; mtime 0;
+uid and gid 0; empty user and group names; a pax `x` header with a `path` record only for a path that does not
+fit the ustar name and prefix fields; two zero blocks at the end; gzip level 6. Two gzip implementations can
+give other compressed bytes for the same tar, so a client compares hashes of the file list, never of the
+tarball.
+
+### 14.4 Client behavior
+
+- `prego snippet get` reads the file list, computes the version hash from it and refuses an answer whose
+  `hash` or `X-Prego-Snippet-Hash` differs. It then reads each file from `<s>/v/sha256:<hash>/files/<path>`, so
+  every file comes from that one version, and checks its size and SHA-256. With `--expect`, a mismatch (local or
+  `412`) exits with code 3 and writes nothing.
+- It writes to a new or empty folder only, creates every folder itself, refuses a path that leaves the folder,
+  never overwrites, and sets mode `0644` or `0755`. On an error, it removes what it wrote.
+- `--tar` unpacks the tarball in memory and checks the hash of its file list before it writes the tarball.
+- An encryption mode other than `none`, in the `X-Prego-Encryption` header of any read or in `encryption.mode`
+  of the file list, the diff or a history item, exits with code 2 and the message `this snippet uses encryption
+  mode <m>, which this prego version cannot read`. Nothing is written: `get` makes its folder only after every
+  file is read and checked.

@@ -11,7 +11,7 @@ use std::thread;
 pub struct MockResponse {
     status: u16,
     headers: Vec<(String, String)>,
-    body: String,
+    body: Vec<u8>,
 }
 
 impl MockResponse {
@@ -20,7 +20,16 @@ impl MockResponse {
         MockResponse {
             status,
             headers: vec![("Content-Type".into(), "application/json".into())],
-            body: body.into(),
+            body: body.as_bytes().to_vec(),
+        }
+    }
+
+    /// A response with any bytes and this content type.
+    pub fn bytes(status: u16, content_type: &str, body: Vec<u8>) -> Self {
+        MockResponse {
+            status,
+            headers: vec![("Content-Type".into(), content_type.into())],
+            body,
         }
     }
 
@@ -35,7 +44,7 @@ impl MockResponse {
         MockResponse {
             status: 307,
             headers: vec![("Location".into(), location.into())],
-            body: String::new(),
+            body: Vec::new(),
         }
     }
 }
@@ -51,6 +60,8 @@ pub struct MockRequest {
     pub headers: Vec<(String, String)>,
     /// Body as text.
     pub body: String,
+    /// Body as bytes.
+    pub raw: Vec<u8>,
 }
 
 impl MockRequest {
@@ -125,7 +136,7 @@ impl MockServer {
                 }
                 head.push_str("\r\n");
                 let _ = stream.write_all(head.as_bytes());
-                let _ = stream.write_all(response.body.as_bytes());
+                let _ = stream.write_all(&response.body);
                 let _ = stream.flush();
             }
         });
@@ -172,5 +183,6 @@ fn read_request(reader: &mut impl BufRead) -> Option<MockRequest> {
         target,
         headers,
         body: String::from_utf8_lossy(&body).into_owned(),
+        raw: body,
     })
 }

@@ -2,6 +2,9 @@
 
 From prego 0.10.0 and registry 1.11.1. **Publisher plan** (and Trial).
 
+**Preview.** The `prego adapter` commands and flags can still change in a 1.x minor release (see
+[Stability](../README.md#stability)).
+
 AI model adapters are the fine-tuned layers of your AI models: the output of LoRA and the other
 parameter-efficient methods of [peft](https://huggingface.co/docs/peft). An adapter is small and loads on top
 of a base model. Prego keeps your adapters in your private registry. Your machines and your customers load

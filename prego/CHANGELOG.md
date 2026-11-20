@@ -6,6 +6,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. From 1.0.0 the commands, flags, exit codes, config file locations, the credential-provider protocols and PROTOCOL.md keep working within 1.x (README section "Stability").
+
+### Added
+
+- `prego snippet` (ADR-0057, registry 1.24.0): Snippets, named sets of text files with immutable versions.
+  `push <folder|file> <ref> [--tag] [--message] [--if-current] [--tar]`, `get <ref>[@<version>] [<folder>]
+  [--file P] [--tar] [--expect H]`, `ls <tenant>[/<namespace>]`, `log`, `diff <ref> <v1> <v2>`,
+  `tag <ref>@<v> <tag>`, `rollback <ref> --to <v> --reason R`, and `hash <folder|file> [--tar]` (offline).
+  The version hash (RFC 8785 canonical file list) and the fixed tar form are written from the ADR text and
+  checked against the registry's shared test vectors (`tests/vectors/snippets/`, data only).
+- `get` checks the version hash of the file list, reads every file from that exact version by its hash, checks
+  each file's size and SHA-256, and writes only to a new or empty folder: no path leaves the folder, mode
+  `0644` or `0755` only, and nothing is left behind on an error. `--expect` exits with 3 on a mismatch (local
+  or `412`) and writes nothing.
+- `push` checks the files first (100 files, 1 MiB each, 8 MiB together, UTF-8 without NUL, path rules
+  including no C0, C1 or bidi controls, no two paths equal after Unicode NFC and lowercase, no path that is also a
+  folder of another path (also after folding), no symlinks), refuses tags that end in `.tar.gz`, skips a `.git` folder, maps the mode by the owner execute bit, and sends one `.tar.gz` in the
+  fixed form.
+
+- An encryption mode other than `none` (header `X-Prego-Encryption` on any snippet read, or
+  `encryption.mode` in version metadata) stops with exit code 2 and writes nothing. A missing header or field
+  is `none`. `get` makes its folder only after every file is read and checked.
+
+### Changed
+
+- New direct dependency `icu_normalizer` 2.4 (Unicode NFC of snippet paths). It was in the tree already
+  through `url` and `idna`; `Cargo.lock` gets no new crate.
+- `prego env` and `prego snippet` share the code that gets the control host and the registry token. No change
+  in behavior.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed
