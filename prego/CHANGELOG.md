@@ -24,7 +24,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   `429` is sent again; a file of 0 bytes is refused before the copy; a save of a WAL database that no program
   has open (no `-wal` and no `-shm` file) leaves no `-wal` or `-shm` file next to it: it is opened read-write,
   with no write, and SQLite checkpoints and removes the files at close; if that open fails, read-only, and in a
-  folder that the user cannot write, as immutable; a hint is printed when SQLite leaves the files. Tested against the shared vectors of
+  folder that the user cannot write, as immutable; a hint is printed when SQLite leaves the files. A save reads
+  `GET <d>` first: when the latest snapshot has the same hash, nothing is sent and the exit code is 0 (also within
+  the one-save-per-minute limit, which gave `429` and exit code 4 in the staging test); `--tag` then tags the
+  latest snapshot. Tested against the shared vectors of
   Prego-registry (`tests/vectors/sqlite/`: the hash rule, the frame, snapshot and file hashes, the header
   values, a restore of each accepted file, and no upload for the refused files).
 - SQLite 3.54.1 is compiled in, through `rusqlite` 0.41.1 with the `bundled` feature. The release binary is

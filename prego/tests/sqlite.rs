@@ -79,6 +79,11 @@ fn sts_ok() -> MockResponse {
     )
 }
 
+/// The answer to `GET <d>` before a save: no such database yet.
+fn no_database() -> MockResponse {
+    MockResponse::json(404, &json!({"error": {"code": "not_found"}}).to_string())
+}
+
 fn sts(server: &MockServer) -> String {
     format!("{}/v1/sts/token/e/k7mq", server.base_url())
 }
@@ -153,6 +158,7 @@ fn save_one_frame_sends_a_checked_gzip_with_both_hashes() {
         .unwrap();
     let server = MockServer::start(vec![
         sts_ok(),
+        no_database(),
         MockResponse::json(
             201,
             &json!({"created": true, "seq": 3, "hash": "sha256:filled-below", "stored_bytes": 2048})
@@ -178,8 +184,10 @@ fn save_one_frame_sends_a_checked_gzip_with_both_hashes() {
     // The answer hash is a placeholder, so the client warns; the request is what this test checks.
     assert_eq!(r.code, 0, "{}", r.stderr);
     let reqs = server.requests();
-    assert_eq!(reqs.len(), 2);
-    let put = &reqs[1];
+    assert_eq!(reqs.len(), 3);
+    assert_eq!(reqs[1].method, "GET");
+    assert_eq!(reqs[1].target, "/v1/sqlite/acme/fleet/lookup");
+    let put = &reqs[2];
     assert_eq!(put.method, "PUT");
     assert_eq!(
         put.target,
@@ -225,6 +233,7 @@ fn save_compact_check_none_and_no_change() {
         .unwrap();
     let server = MockServer::start(vec![
         sts_ok(),
+        no_database(),
         MockResponse::json(200, &json!({"created": false, "seq": 9}).to_string()),
     ]);
     let r = d.run(&[
@@ -239,7 +248,7 @@ fn save_compact_check_none_and_no_change() {
         "none",
     ]);
     assert_eq!(r.code, 0, "{}", r.stderr);
-    let put = &server.requests()[1];
+    let put = &server.requests()[2];
     assert_eq!(put.target, "/v1/sqlite/acme/default/lookup");
     assert_eq!(
         put.header("x-prego-labels").unwrap(),
@@ -259,12 +268,104 @@ fn save_compact_check_none_and_no_change() {
     assert_ne!(full.stdout.trim(), h.stdout.trim());
 }
 
+/// The same data as the latest snapshot: nothing is uploaded, the exit code is 0, and the server's
+/// one-save-per-minute check (429) is never reached. With --tag, the latest snapshot gets the tag.
+#[test]
+fn save_of_the_latest_data_sends_nothing() {
+    let d = Dir::new("same");
+    make_db(&d.p("app.db"), 40);
+    let h = d.run(&["sqlite", "hash", "app.db"]);
+    assert_eq!(h.code, 0, "{}", h.stderr);
+    let hash = h.stdout.trim().to_string();
+    let db = json!({"name": "lookup", "latest_seq": 7, "latest_hash": hash, "snapshot_count": 7});
+    let server = MockServer::start(vec![sts_ok(), MockResponse::json(200, &db.to_string())]);
+    let r = d.run(&[
+        "sqlite",
+        "save",
+        "app.db",
+        "acme/fleet/lookup",
+        "--sts-url",
+        &sts(&server),
+    ]);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert_eq!(
+        r.stdout,
+        format!("acme/fleet/lookup: no change, snapshot 7 is the latest ({hash})\n")
+    );
+    let reqs = server.requests();
+    assert_eq!(reqs.len(), 2);
+    assert_eq!(reqs[1].method, "GET");
+    d.assert_tmp_clean();
+
+    // With --tag: the tag goes on the latest snapshot.
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::json(200, &db.to_string()),
+        MockResponse::json(
+            201,
+            &json!({"tag": "v2", "seq": 7, "hash": hash}).to_string(),
+        ),
+    ]);
+    let r = d.run(&[
+        "sqlite",
+        "save",
+        "app.db",
+        "acme/fleet/lookup",
+        "--tag",
+        "v2",
+        "--sts-url",
+        &sts(&server),
+    ]);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let reqs = server.requests();
+    assert_eq!(reqs.len(), 3);
+    assert_eq!(reqs[2].method, "PUT");
+    assert_eq!(reqs[2].target, "/v1/sqlite/acme/fleet/lookup/tags/v2");
+    assert_eq!(
+        serde_json::from_slice::<Value>(&reqs[2].raw).unwrap(),
+        json!({"snapshot": 7})
+    );
+    assert!(r.stdout.contains("tag v2 -> snapshot 7"), "{}", r.stdout);
+}
+
+/// Other data within a minute: the server refuses with 429, the client shows Retry-After and exits 4.
+#[test]
+fn save_of_other_data_within_a_minute_exits_4() {
+    let d = Dir::new("rate");
+    make_db(&d.p("app.db"), 40);
+    let db = json!({"name": "lookup", "latest_seq": 7, "latest_hash": format!("sha256:{}", "0".repeat(64))});
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::json(200, &db.to_string()),
+        MockResponse::json(
+            429,
+            &json!({"error": {"code": "rate_limited", "message": "one save per minute", "retry_after": 42}})
+                .to_string(),
+        )
+        .with_header("Retry-After", "42"),
+    ]);
+    let r = d.run(&[
+        "sqlite",
+        "save",
+        "app.db",
+        "acme/fleet/lookup",
+        "--sts-url",
+        &sts(&server),
+    ]);
+    assert_eq!(r.code, 4, "{}", r.stderr);
+    assert!(r.stderr.contains("429 rate_limited"), "{}", r.stderr);
+    assert!(r.stderr.contains("retry after 42 s"), "{}", r.stderr);
+    assert_eq!(server.requests()[2].method, "PUT");
+    d.assert_tmp_clean();
+}
+
 #[test]
 fn save_refused_exits_4_and_removes_the_copy() {
     let d = Dir::new("refused");
     make_db(&d.p("app.db"), 10);
     let server = MockServer::start(vec![
         sts_ok(),
+        no_database(),
         MockResponse::json(
             403,
             &json!({"error": {"code": "plan_limit", "message": "storage pool is full"}})
@@ -344,6 +445,7 @@ fn save_of_more_than_one_frame_uses_an_upload_session() {
     }
     let server = MockServer::start(vec![
         sts_ok(),
+        no_database(),
         MockResponse::json(201, &json!({"id": "squ_1", "expires_at": "x"}).to_string()),
         // The frame answers are written after the frames are known; the client compares them.
         MockResponse::json(200, &json!({"index": 0}).to_string()),
@@ -370,25 +472,25 @@ fn save_of_more_than_one_frame_uses_an_upload_session() {
     ]);
     assert_eq!(r.code, 0, "{}", r.stderr);
     let reqs = server.requests();
-    let open: Value = serde_json::from_slice(&reqs[1].raw).unwrap();
-    assert_eq!(reqs[1].target, "/v1/sqlite/acme/fleet/big/uploads");
+    let open: Value = serde_json::from_slice(&reqs[2].raw).unwrap();
+    assert_eq!(reqs[2].target, "/v1/sqlite/acme/fleet/big/uploads");
     assert_eq!(open["frames"], 2);
     assert_eq!(
-        reqs[2].target,
+        reqs[3].target,
         "/v1/sqlite/acme/fleet/big/uploads/squ_1/frames/0"
     );
     assert_eq!(
-        reqs[3].target,
+        reqs[4].target,
         "/v1/sqlite/acme/fleet/big/uploads/squ_1/frames/1"
     );
     // The 503 was tried again.
-    assert_eq!(reqs[4].target, reqs[3].target);
+    assert_eq!(reqs[5].target, reqs[4].target);
     assert_eq!(
-        reqs[5].target,
+        reqs[6].target,
         "/v1/sqlite/acme/fleet/big/uploads/squ_1/commit"
     );
-    assert_eq!(reqs[6].target, reqs[5].target);
-    assert_eq!(reqs[6].raw, reqs[5].raw);
+    assert_eq!(reqs[7].target, reqs[6].target);
+    assert_eq!(reqs[7].raw, reqs[6].raw);
     assert!(
         r.stdout.contains(
             "acme/fleet/big: removed snapshots 1, 2, the oldest without a tag (keep_count)"
@@ -396,18 +498,18 @@ fn save_of_more_than_one_frame_uses_an_upload_session() {
         "{}",
         r.stdout
     );
-    let f0 = gunzip(&reqs[2].raw);
-    let f1 = gunzip(&reqs[4].raw);
+    let f0 = gunzip(&reqs[3].raw);
+    let f1 = gunzip(&reqs[5].raw);
     assert_eq!(f0.len(), FRAME);
     let mut data = f0.clone();
     data.extend_from_slice(&f1);
     assert_eq!(open["snapshot_hash"], snapshot_hash(&data));
     assert_eq!(open["file_sha256"], hex(&data));
     // Each frame is one gzip member; together they are the file.
-    let mut both = reqs[2].raw.clone();
-    both.extend_from_slice(&reqs[4].raw);
+    let mut both = reqs[3].raw.clone();
+    both.extend_from_slice(&reqs[5].raw);
     assert!(gunzip(&both) == data);
-    let commit: Value = serde_json::from_slice(&reqs[5].raw).unwrap();
+    let commit: Value = serde_json::from_slice(&reqs[6].raw).unwrap();
     assert_eq!(
         commit,
         json!({"labels": {"prego.check": "quick_check:ok"}, "message": "m"})
@@ -429,6 +531,7 @@ fn a_frame_failure_cancels_the_session_and_exits_4() {
     }
     let server = MockServer::start(vec![
         sts_ok(),
+        no_database(),
         MockResponse::json(201, &json!({"id": "squ_2"}).to_string()),
         MockResponse::json(
             413,

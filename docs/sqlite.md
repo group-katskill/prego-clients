@@ -65,7 +65,11 @@ prego sqlite save ./app.db acme/fleet/lookup --message "Daily build"
   hash of a save without `--compact`.
 - `--label key=value` (at most 16, as in Context), `--message <text>` (at most 200 characters) and
   `--tag <tag>` add metadata. Label keys that start with `prego.` are kept for Prego.
-- If the snapshot has the same hash as the latest snapshot, Prego does not make a new snapshot.
+- If the snapshot has the same hash as the latest snapshot, `prego` sends nothing: it prints
+  `no change, snapshot <n> is the latest` and exits with 0. So you can run the same save again at any time, also
+  within the one-save-per-minute limit. With `--tag`, the latest snapshot gets the tag.
+- A save of different data within one minute of the last save is refused (`429 rate_limited`, exit code 4); the
+  error shows how many seconds to wait.
 - When a save takes the database over its `keep_count`, Prego removes the oldest snapshot without a tag, and
   `prego` prints its number.
 - If Prego refuses the save, `prego` shows the error and the exit code is 4.

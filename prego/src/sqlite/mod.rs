@@ -500,6 +500,9 @@ fn send_save(
     o: &SaveOptions<'_>,
 ) -> Result<(), String> {
     let what = format!("save to {}", r.long());
+    if unchanged(api, r, h, o.tag, &what)? {
+        return Ok(());
+    }
     let mut f = BufReader::with_capacity(
         1 << 20,
         File::open(copy).map_err(|e| format!("prego: {}: {e}", copy.display()))?,
@@ -535,6 +538,47 @@ fn send_save(
     };
     report(r, h, &a, status, o.tag);
     Ok(())
+}
+
+/// True when the latest snapshot of the database already has the snapshot hash `h`: the save is a no-op, and
+/// nothing is sent. This also avoids the server's one-save-per-minute refusal (`429`) for a save of the same
+/// data. With `--tag`, the latest snapshot gets the tag. A missing database (`404`) or any other answer to the read
+/// goes on with the save, which gives the real answer.
+fn unchanged(
+    api: &Api,
+    r: &DbRef,
+    h: &Hashes,
+    tag: Option<&str>,
+    what: &str,
+) -> Result<bool, String> {
+    let d = match api.get_json(&Api::db(r), what) {
+        Ok((_, d)) => d,
+        Err(_) => return Ok(false),
+    };
+    if d["latest_hash"].as_str() != Some(h.snapshot.as_str()) {
+        return Ok(false);
+    }
+    let seq = text(&d["latest_seq"]);
+    println!(
+        "{}: no change, snapshot {seq} is the latest ({})",
+        r.long(),
+        h.snapshot
+    );
+    if let Some(t) = tag {
+        let body = json!({ "snapshot": selector_json(&seq) });
+        let a = api.call(
+            "PUT",
+            &format!("{}/tags/{}", Api::db(r), seg(t)),
+            Some(&body),
+            what,
+        )?;
+        let seq = match field(&a, "seq") {
+            Value::Null => seq,
+            v => text(v),
+        };
+        println!("{}: tag {t} -> snapshot {seq}", r.long());
+    }
+    Ok(true)
 }
 
 fn frame_size(body: &[u8], what: &str) -> Result<(), String> {

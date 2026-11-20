@@ -913,6 +913,10 @@ tag or `sha256:<hex>`.
 - It runs `PRAGMA quick_check` on the copy (`--check full`: `integrity_check`; `--check none`: no check), opened
   read-only as immutable. A failed check exits with code 5 and sends nothing.
 - It refuses a file of 0 bytes (SQLite would open it as an empty database).
+- Before it sends anything, it reads `GET <d>`. When `latest_hash` is the snapshot hash of the copy, it sends
+  nothing, prints the no-op line and exits with 0 (with `--tag`, it sends `PUT <d>/tags/<tag>` for the latest seq).
+  A `404` (no database yet), or any other answer, goes on with the save. So a save of the same data is a no-op even
+  within the one-save-per-minute limit, which the server checks before it knows the bytes.
 - One frame: one `PUT`. More frames: an upload session; a frame or a commit that fails with a network error, a
   `5xx` or a `429` is sent again (at most 3 times, after `Retry-After`, at most 60 s). On any other failure the
   client cancels the session.
