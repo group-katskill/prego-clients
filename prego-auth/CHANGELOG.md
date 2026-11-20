@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
+### Changed
+
+- Release 1.1.0 with `prego` 1.1.0 (Context). No change in `prego-auth`.
+
 ## [1.0.0] - 2026-11-20
 
 This release replaces 0.12.0, which was never tagged. The Rust API of `prego-auth` serves the Prego tools and is not covered by the 1.x stability promise (README section "Stability").

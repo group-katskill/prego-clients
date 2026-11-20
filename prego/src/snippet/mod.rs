@@ -229,7 +229,7 @@ fn load(source: &str, tar: bool) -> Result<(Vec<File>, Option<Vec<u8>>), String>
 
 /// Percent-encodes one path segment. `:` and `+` stay (they are allowed in a segment, and `sha256:<hex>`
 /// and tags use them).
-fn seg(s: &str) -> String {
+pub(crate) fn seg(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b':' | b'+' => {
@@ -341,7 +341,7 @@ impl Api {
     }
 }
 
-fn parse_json(bytes: &[u8], what: &str) -> Result<Value, String> {
+pub(crate) fn parse_json(bytes: &[u8], what: &str) -> Result<Value, String> {
     serde_json::from_slice(bytes).map_err(|e| format!("prego: {what}: the answer is not JSON: {e}"))
 }
 

@@ -23,6 +23,39 @@ pub const MAX_VERSION_BYTES: u64 = 8 * 1024 * 1024;
 pub const MAX_UPLOAD_BYTES: u64 = 8 * 1024 * 1024;
 pub const MAX_PATH_BYTES: usize = 255;
 
+/// The size limits of one unit of content: a snippet version (ADR-0057 item 4) or a context checkpoint
+/// (ADR-0058 item 4). The path and entry rules are the same for both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Limits {
+    /// The word for one unit in messages: `version` or `checkpoint`.
+    pub unit: &'static str,
+    pub max_files: usize,
+    pub max_file_bytes: u64,
+    pub max_total_bytes: u64,
+    pub max_upload_bytes: u64,
+}
+
+pub const SNIPPET: Limits = Limits {
+    unit: "version",
+    max_files: MAX_FILES,
+    max_file_bytes: MAX_FILE_BYTES,
+    max_total_bytes: MAX_VERSION_BYTES,
+    max_upload_bytes: MAX_UPLOAD_BYTES,
+};
+
+pub const CONTEXT: Limits = Limits {
+    unit: "checkpoint",
+    max_files: 1000,
+    max_file_bytes: 32 * 1024 * 1024,
+    max_total_bytes: 128 * 1024 * 1024,
+    max_upload_bytes: 32 * 1024 * 1024,
+};
+
+/// `1 MiB`, `32 MiB`: a size in whole MiB for messages.
+pub fn mib(bytes: u64) -> String {
+    format!("{} MiB", bytes / (1024 * 1024))
+}
+
 /// The two kept modes.
 pub const MODE_FILE: u32 = 0o644;
 pub const MODE_EXEC: u32 = 0o755;
@@ -206,13 +239,20 @@ fn check_local_path(path: &str) -> Result<(), String> {
 
 /// Checks a whole version against item 4: the file count, the sizes, the paths (unique), UTF-8 and NUL.
 pub fn check_files(files: &[File]) -> Result<(), String> {
+    check_files_with(files, &SNIPPET)
+}
+
+/// [`check_files`] with the given limits.
+pub fn check_files_with(files: &[File], l: &Limits) -> Result<(), String> {
     if files.is_empty() {
         return Err("there are no files".into());
     }
-    if files.len() > MAX_FILES {
+    if files.len() > l.max_files {
         return Err(format!(
-            "{} files: a version has at most {MAX_FILES} files",
-            files.len()
+            "{} files: a {} has at most {} files",
+            files.len(),
+            l.unit,
+            l.max_files
         ));
     }
     let mut seen = std::collections::BTreeSet::new();
@@ -229,19 +269,24 @@ pub fn check_files(files: &[File]) -> Result<(), String> {
             ));
         }
         let size = f.data.len() as u64;
-        if size > MAX_FILE_BYTES {
+        if size > l.max_file_bytes {
             return Err(format!(
-                "{}: {size} bytes: a file is at most 1 MiB ({MAX_FILE_BYTES} bytes)",
-                f.path
+                "{}: {size} bytes: a file is at most {} ({} bytes)",
+                f.path,
+                mib(l.max_file_bytes),
+                l.max_file_bytes
             ));
         }
         total += size;
         check_text(&f.data).map_err(|e| format!("{}: {e}", f.path))?;
     }
     check_clashes(files)?;
-    if total > MAX_VERSION_BYTES {
+    if total > l.max_total_bytes {
         return Err(format!(
-            "{total} bytes: the files of a version are at most 8 MiB ({MAX_VERSION_BYTES} bytes) together"
+            "{total} bytes: the files of a {} are at most {} ({} bytes) together",
+            l.unit,
+            mib(l.max_total_bytes),
+            l.max_total_bytes
         ));
     }
     Ok(())
@@ -250,7 +295,9 @@ pub fn check_files(files: &[File]) -> Result<(), String> {
 /// UTF-8 with no NUL byte.
 pub fn check_text(data: &[u8]) -> Result<(), String> {
     if let Some(i) = data.iter().position(|b| *b == 0) {
-        return Err(format!("a NUL byte at offset {i}: a snippet file is text"));
+        return Err(format!(
+            "a NUL byte at offset {i}: only text files are allowed"
+        ));
     }
     std::str::from_utf8(data)
         .map(|_| ())
@@ -261,17 +308,22 @@ pub fn check_text(data: &[u8]) -> Result<(), String> {
 /// A folder named `.git` is skipped; other dotfiles are kept. Symlinks and other special files are refused,
 /// not followed. Empty folders give nothing.
 pub fn collect(source: &Path) -> Result<Vec<File>, String> {
+    collect_with(source, &SNIPPET)
+}
+
+/// [`collect`] with the given limits.
+pub fn collect_with(source: &Path, l: &Limits) -> Result<Vec<File>, String> {
     let meta =
         std::fs::symlink_metadata(source).map_err(|e| format!("{}: {e}", source.display()))?;
     let mut files = Vec::new();
     if meta.is_dir() {
-        walk(source, "", &mut files)?;
+        walk(source, "", &mut files, l)?;
     } else if meta.is_file() {
         let name = source
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| format!("{}: the file name is not UTF-8", source.display()))?;
-        files.push(read_file(source, name, &meta)?);
+        files.push(read_file(source, name, &meta, l)?);
     } else {
         return Err(format!(
             "{}: not a folder or a regular file (symlinks are refused)",
@@ -282,7 +334,7 @@ pub fn collect(source: &Path) -> Result<Vec<File>, String> {
     Ok(files)
 }
 
-fn walk(dir: &Path, prefix: &str, files: &mut Vec<File>) -> Result<(), String> {
+fn walk(dir: &Path, prefix: &str, files: &mut Vec<File>, l: &Limits) -> Result<(), String> {
     let entries = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -302,14 +354,15 @@ fn walk(dir: &Path, prefix: &str, files: &mut Vec<File>) -> Result<(), String> {
             if rel.rsplit('/').next() == Some(".git") {
                 continue;
             }
-            walk(&full, &rel, files)?;
+            walk(&full, &rel, files, l)?;
         } else if meta.is_file() {
-            if files.len() >= MAX_FILES {
+            if files.len() >= l.max_files {
                 return Err(format!(
-                    "more than {MAX_FILES} files: a version has at most {MAX_FILES} files"
+                    "more than {0} files: a {1} has at most {0} files",
+                    l.max_files, l.unit
                 ));
             }
-            files.push(read_file(&full, &rel, &meta)?);
+            files.push(read_file(&full, &rel, &meta, l)?);
         } else {
             return Err(format!(
                 "{rel}: not a regular file (symlinks, devices and sockets are refused)"
@@ -319,16 +372,18 @@ fn walk(dir: &Path, prefix: &str, files: &mut Vec<File>) -> Result<(), String> {
     Ok(())
 }
 
-fn read_file(full: &Path, rel: &str, meta: &std::fs::Metadata) -> Result<File, String> {
-    if meta.len() > MAX_FILE_BYTES {
+fn read_file(full: &Path, rel: &str, meta: &std::fs::Metadata, l: &Limits) -> Result<File, String> {
+    if meta.len() > l.max_file_bytes {
         return Err(format!(
-            "{rel}: {} bytes: a file is at most 1 MiB ({MAX_FILE_BYTES} bytes)",
-            meta.len()
+            "{rel}: {} bytes: a file is at most {} ({} bytes)",
+            meta.len(),
+            mib(l.max_file_bytes),
+            l.max_file_bytes
         ));
     }
     let mut data = Vec::with_capacity(meta.len() as usize);
     std::fs::File::open(full)
-        .and_then(|f| f.take(MAX_FILE_BYTES + 1).read_to_end(&mut data))
+        .and_then(|f| f.take(l.max_file_bytes + 1).read_to_end(&mut data))
         .map_err(|e| format!("{rel}: {e}"))?;
     Ok(File {
         path: rel.to_string(),
@@ -466,8 +521,13 @@ fn write_padded(out: &mut Vec<u8>, data: &[u8]) {
 /// `prego snippet get --tar`. Only regular files are accepted (directory entries are skipped); the mode is
 /// mapped by the owner's execute bit; every file is checked with [`check_files`].
 pub fn untar(bytes: &[u8]) -> Result<Vec<File>, String> {
-    // The unpacked tar is the content plus headers: content 8 MiB, at most 100 files of 3 blocks each.
-    const MAX_UNPACKED: u64 = MAX_VERSION_BYTES + (MAX_FILES as u64 + 1) * 3 * BLOCK as u64 + 2048;
+    untar_with(bytes, &SNIPPET)
+}
+
+/// [`untar`] with the given limits.
+pub fn untar_with(bytes: &[u8], l: &Limits) -> Result<Vec<File>, String> {
+    // The unpacked tar is the content plus headers: at most 3 blocks of headers per file, and the end.
+    let max_unpacked: u64 = l.max_total_bytes + (l.max_files as u64 + 1) * 3 * BLOCK as u64 + 2048;
     let gz = bytes.starts_with(&[0x1f, 0x8b]);
     let reader: Box<dyn Read + '_> = if gz {
         Box::new(flate2::read::GzDecoder::new(bytes))
@@ -476,11 +536,14 @@ pub fn untar(bytes: &[u8]) -> Result<Vec<File>, String> {
     };
     let mut plain = Vec::new();
     reader
-        .take(MAX_UNPACKED + 1)
+        .take(max_unpacked + 1)
         .read_to_end(&mut plain)
         .map_err(|e| format!("the tarball cannot be read: {e}"))?;
-    if plain.len() as u64 > MAX_UNPACKED {
-        return Err("the unpacked tarball is larger than a version can be".into());
+    if plain.len() as u64 > max_unpacked {
+        return Err(format!(
+            "the unpacked tarball is larger than a {} can be",
+            l.unit
+        ));
     }
     let mut archive = tar::Archive::new(plain.as_slice());
     let mut files = Vec::new();
@@ -508,17 +571,17 @@ pub fn untar(bytes: &[u8]) -> Result<Vec<File>, String> {
         } else {
             MODE_FILE
         };
-        if files.len() >= MAX_FILES {
-            return Err(format!("more than {MAX_FILES} files in the tarball"));
+        if files.len() >= l.max_files {
+            return Err(format!("more than {} files in the tarball", l.max_files));
         }
         let mut data = Vec::new();
         (&mut entry)
-            .take(MAX_FILE_BYTES + 1)
+            .take(l.max_file_bytes + 1)
             .read_to_end(&mut data)
             .map_err(|e| format!("{path}: {e}"))?;
         files.push(File { path, mode, data });
     }
-    check_files(&files)?;
+    check_files_with(&files, l)?;
     files.sort_by(|a, b| a.path.as_bytes().cmp(b.path.as_bytes()));
     Ok(files)
 }

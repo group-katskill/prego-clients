@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
+### Added
+
+- Context (ADR-0058, `prego context`): `docs/context.md`, a README section "Save context before compaction"
+  with a hook example, and PROTOCOL.md 1.14.0 section 15 (routes, content rules, checkpoint hash, client
+  redaction, exit codes).
+- `prego/tests/vectors/secrets/`: the shared secret-shape vectors from the registry, copied as data.
+
+### Changed
+
+- Release 1.1.0: `prego context`, stable after the staging e2e passed (registry 1.25.0). The README Stability
+  section lists exit code 4 (a refused context save).
+
 ## [1.0.0] - 2026-11-20
 
 This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. From 1.0.0 the commands, flags, exit codes, config file locations, the credential-provider protocols and PROTOCOL.md keep working within 1.x (README section "Stability").
