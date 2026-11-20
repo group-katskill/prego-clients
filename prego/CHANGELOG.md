@@ -6,11 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.13.0] - 2026-11-20
+## [1.1.0] - 2026-11-20
 
 ### Added
 
-- `prego context` (ADR-0058): agent context. Checkpoints of text files (memory, notes, plans, transcripts)
+- `prego context` (ADR-0058, preview until the staging tests pass): agent context. Checkpoints of text files (memory, notes, plans, transcripts)
   that agents save and restore with their own identity. `save <folder> <ref> [--session S] [--parent H]
   [--trigger compact|stop|manual|schedule] [--label k=v]... [--message M] [--tag T] [--no-redact]`,
   `restore <ref>[@<checkpoint>] <folder> [--session S] [--expect H]`, `ls <tenant>[/<namespace>]`,
@@ -34,7 +34,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   Context (1,000 files, 32 MiB, 128 MiB, upload 32 MiB) share the same path and entry rules. No change for
   `prego snippet`, except that the NUL byte message no longer says "snippet".
 
-## [0.12.0] - 2026-11-19
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. From 1.0.0 the commands, flags, exit codes, config file locations, the credential-provider protocols and PROTOCOL.md keep working within 1.x (README section "Stability").
 
 ### Added
 

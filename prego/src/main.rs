@@ -57,15 +57,15 @@ Commands:
                                   [host/]<tenant>/<namespace>/<repo>[:tag]. --from mounts blobs that are
                                   already in another repository of the tenant
   adapter push <folder> <repo>:<version> [--license <id>] [--base-revision <rev>]
-                                  push an AI model adapter (LoRA and the other peft methods; Publisher and
-                                  Trial plans). The folder has adapter_config.json, one .safetensors file
+                                  (preview) push an AI model adapter (LoRA and the other peft methods;
+                                  Publisher and Trial plans). The folder has adapter_config.json, one .safetensors file
                                   and at most 8 text files (README.md, tokenizer files). prego checks them
                                   first, with the rules of the registry. The license comes from --license,
                                   or from license: in the README.md front matter. A version is written one
                                   time only. <repo> is [host/]<tenant>/<namespace>/<repo>
   adapter get <repo>:<version> <folder>
-                                  write the files of an adapter to a new or empty folder, and check their
-                                  SHA-256. Load it with peft (PeftModel.from_pretrained) or vLLM
+                                  (preview) write the files of an adapter to a new or empty folder, and
+                                  check their SHA-256. Load it with peft (PeftModel.from_pretrained) or vLLM
                                   (--lora-modules name=<folder>)
   go publish [<module dir>] [<tag>] [--namespace <ns>] [--dry-run] [--json]
                                   build the module zip from the git tree of the tag (not from the working
@@ -150,9 +150,9 @@ Commands:
                                   hash (--expect) and grant read only on snippets you trust.
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
-                                  save a checkpoint of agent context (memory, notes, plans, transcripts):
-                                  all regular files of the folder (not .git), UTF-8 text only, at most
-                                  1,000 files, 32 MiB each, 128 MiB together. <ref> is <tenant>/<context>
+                                  (preview) save a checkpoint of agent context (memory, notes, plans,
+                                  transcripts): all regular files of the folder (not .git), UTF-8 text
+                                  only, at most 1,000 files, 32 MiB each, 128 MiB together. <ref> is <tenant>/<context>
                                   or <tenant>/<namespace>/<context>. Secret-shaped strings are replaced
                                   with [REDACTED:<kind>] first (the count is printed, never the strings);
                                   --no-redact sends the files as they are. The same files as the latest

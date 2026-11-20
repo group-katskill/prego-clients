@@ -6,17 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.13.0] - 2026-11-20
+## [1.1.0] - 2026-11-20
 
 ### Changed
 
-- Release 0.13.0 with `prego-auth` 0.13.0. No change in `cargo-credential-prego`.
+- Release 1.1.0 with `prego-auth` 1.1.0. No change in `cargo-credential-prego`.
 
-## [0.12.0] - 2026-11-19
+## [1.0.0] - 2026-11-20
+
+This release replaces 0.12.0, which was never tagged, and is the first stable release, for paying users. The credential-provider protocol of this tool does not break within 1.x (README section "Stability").
 
 ### Changed
 
-- Release 0.12.0 with `prego-auth` 0.12.0. No change in `cargo-credential-prego`.
+- Release 1.0.0 with `prego-auth` 1.0.0. No change in `cargo-credential-prego`.
 
 ## [0.11.0] - 2026-11-17
 
