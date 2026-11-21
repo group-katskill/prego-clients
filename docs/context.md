@@ -32,7 +32,8 @@ checkpoint.
 
 ## Before you start
 
-- Your plan must have Context: Trial, Indie, Org and Publisher save. Consumer restores through grants.
+- Your plan must have Context: Trial, Org and Publisher save. Indie does not have Context. Consumer restores through
+  grants.
 - You need a grant with the type "Context" (or "any"). Use `read` to restore, `publish` to save, tag and change
   settings, and `delete` to remove checkpoints. No grant gives `404`: the registry does not tell whether the
   context exists.

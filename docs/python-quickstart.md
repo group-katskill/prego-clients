@@ -126,7 +126,6 @@ GitHub Actions works the same with `permissions: id-token: write`. See the [CI g
 | --- | --- | --- |
 | `File already exists.` | The filename was used before. | Publish a new version. |
 | `is larger than 90 MiB` | The file is too large. `prego python publish` stops before the upload. | Make the wheel smaller, or split the package. |
-| `Python packages need the Org or Publisher plan.` | The tenant is on Indie. | Change to Org or Publisher. |
 | `401` | No token, or the token expired. | Run the command with `prego exec`, or run `prego whoami`. |
 | `is not a Prego Python URL` | `prego token --python --url` got another host. | Give the Prego index URL. A token never goes to another host. |
 
