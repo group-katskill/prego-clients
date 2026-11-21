@@ -124,7 +124,8 @@ pub fn read_folder(dir: &Path) -> Result<Folder, String> {
     })?;
     if config.size > MAX_CONFIG {
         return Err(format!(
-            "{CONFIG_FILE} is larger than {MAX_CONFIG} bytes (64 KiB)"
+            "{CONFIG_FILE} is larger than {}",
+            crate::size::human(MAX_CONFIG)
         ));
     }
     let config_bytes =
@@ -170,8 +171,10 @@ pub fn read_folder(dir: &Path) -> Result<Folder, String> {
         }
         if f.size > MAX_EXTRA_FILE {
             return Err(format!(
-                "`{}` is larger than {MAX_EXTRA_FILE} bytes (10 MiB). An extra file is at most 10 MiB",
-                f.name
+                "`{}` is {}. An extra file is at most {}",
+                f.name,
+                crate::size::human(f.size),
+                crate::size::human(MAX_EXTRA_FILE)
             ));
         }
         check_text_file(&f.path)
@@ -181,7 +184,9 @@ pub fn read_folder(dir: &Path) -> Result<Folder, String> {
     let total = config.size + weights.size + extras.iter().map(|f| f.size).sum::<u64>();
     if total > MAX_TOTAL {
         return Err(format!(
-            "the adapter is {total} bytes. An adapter is at most {MAX_TOTAL} bytes (2 GiB)"
+            "the adapter is {}. An adapter is at most {}",
+            crate::size::human(total),
+            crate::size::human(MAX_TOTAL)
         ));
     }
     Ok(Folder {
@@ -251,7 +256,8 @@ pub fn check_safetensors(path: &Path, size: u64) -> Result<usize, String> {
     let n = u64::from_le_bytes(len);
     if n == 0 || n > MAX_HEADER || n > size - 8 {
         return Err(format!(
-            "the safetensors header length must be 1 to {MAX_HEADER} bytes and inside the file"
+            "the safetensors header length must be 1 byte to {} and inside the file",
+            crate::size::human(MAX_HEADER)
         ));
     }
     let mut header = vec![0u8; n as usize];
@@ -563,7 +569,10 @@ pub fn check_pulled(bytes: &[u8]) -> Result<Pulled, String> {
         return Err(format!("the config media type must be {CONFIG_TYPE}"));
     }
     if cs > MAX_CONFIG {
-        return Err(format!("the config is larger than {MAX_CONFIG} bytes"));
+        return Err(format!(
+            "the config is larger than {}",
+            crate::size::human(MAX_CONFIG)
+        ));
     }
     let mut parts = vec![Part {
         name: CONFIG_FILE.into(),
@@ -612,7 +621,8 @@ pub fn check_pulled(bytes: &[u8]) -> Result<Pulled, String> {
             FILE_TYPE if part.size <= MAX_EXTRA_FILE => extras.push(part),
             FILE_TYPE => {
                 return Err(format!(
-                    "{where_}: an extra file is at most {MAX_EXTRA_FILE} bytes"
+                    "{where_}: an extra file is at most {}",
+                    crate::size::human(MAX_EXTRA_FILE)
                 ))
             }
             _ => return Err(format!("{where_}: media type {mt} is not an adapter part")),
@@ -636,7 +646,10 @@ pub fn check_pulled(bytes: &[u8]) -> Result<Pulled, String> {
         .try_fold(0u64, |a, p| a.checked_add(p.size))
         .unwrap_or(u64::MAX);
     if total > MAX_TOTAL {
-        return Err(format!("an adapter is at most {MAX_TOTAL} bytes (2 GiB)"));
+        return Err(format!(
+            "an adapter is at most {}",
+            crate::size::human(MAX_TOTAL)
+        ));
     }
     let annotation = |key: &str| {
         doc.pointer("/annotations")

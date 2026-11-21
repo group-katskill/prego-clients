@@ -213,9 +213,9 @@ fn load(source: &str, tar: bool) -> Result<(Vec<File>, Option<Vec<u8>>), String>
         let meta = std::fs::metadata(source).map_err(|e| format!("prego: {source}: {e}"))?;
         if meta.len() > files::MAX_UPLOAD_BYTES {
             return Err(format!(
-                "prego: {source}: {} bytes: an upload is at most 8 MiB ({} bytes)",
-                meta.len(),
-                files::MAX_UPLOAD_BYTES
+                "prego: {source}: {}: an upload is at most {}",
+                crate::size::human(meta.len()),
+                crate::size::human(files::MAX_UPLOAD_BYTES)
             ));
         }
         let raw = std::fs::read(source).map_err(|e| format!("prego: {source}: {e}"))?;
@@ -431,9 +431,9 @@ fn push(
     };
     if body.len() as u64 > files::MAX_UPLOAD_BYTES {
         return Err(format!(
-            "prego: the tarball is {} bytes: an upload is at most 8 MiB ({} bytes)",
-            body.len(),
-            files::MAX_UPLOAD_BYTES
+            "prego: the tarball is {}: an upload is at most {}",
+            crate::size::human(body.len() as u64),
+            crate::size::human(files::MAX_UPLOAD_BYTES)
         ));
     }
     let mut q: Vec<(&str, String)> = Vec::new();
@@ -744,10 +744,10 @@ fn log(api: &Api, r: &SnipRef) -> Result<(), String> {
             format!("  [{}]", tags.join(", "))
         };
         println!(
-            "{mark}{:>5}  {}  {:>8} B  {:>3} files  {}  {}{tags}  {}",
+            "{mark}{:>5}  {}  {:>10}  {:>3} files  {}  {}{tags}  {}",
             text(&v["number"]),
             text(&v["hash"]),
-            text(&v["size_bytes"]),
+            crate::size::human_of(&v["size_bytes"]).unwrap_or_else(|| text(&v["size_bytes"])),
             text(&v["file_count"]),
             text(&v["created_at"]),
             text(&v["pushed_by"]),

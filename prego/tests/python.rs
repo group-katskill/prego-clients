@@ -272,7 +272,7 @@ fn publish_refuses_before_any_request() {
         ],
     );
     assert_eq!(r.code, 1);
-    assert!(r.stderr.contains("is larger than 90 MiB"), "{}", r.stderr);
+    assert!(r.stderr.contains("a file is at most 90 MiB"), "{}", r.stderr);
     let egg = write(&dir, "acme-1.0.zip", b"x");
     let r = run(
         &server,

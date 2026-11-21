@@ -172,8 +172,8 @@ pub fn build(opts: &Options<'_>) -> Result<Built, String> {
         .ok_or_else(|| format!("prego: the tag {tag} has no {go_mod_path}"))?;
     if go_mod_entry.size > zip::MAX_GO_MOD_BYTES {
         return Err(format!(
-            "prego: {go_mod_path} is larger than {} bytes",
-            zip::MAX_GO_MOD_BYTES
+            "prego: {go_mod_path} is larger than {}",
+            crate::size::human(zip::MAX_GO_MOD_BYTES)
         ));
     }
     let mut blobs = git::Blobs::open(&loc)?;
@@ -275,11 +275,11 @@ pub fn publish(globals: &[&str], opts: &Options<'_>, env: &dyn Env) -> Result<()
         token: None,
     };
     eprintln!(
-        "prego: publishing {}@{} ({} files, {} bytes) to {base}",
+        "prego: publishing {}@{} ({} files, {}) to {base}",
         built.module,
         built.version,
         built.files.len(),
-        built.zip_size
+        crate::size::human(built.zip_size)
     );
     let answer = upload(
         &http,
@@ -342,7 +342,7 @@ fn print_dry_run(b: &Built, as_json: bool) {
     );
     println!("files:");
     for (p, s) in &b.files {
-        println!("  {s:>10}  {p}");
+        println!("  {:>10}  {p}", crate::size::human(*s));
     }
     for (p, why) in &b.omitted {
         let why = match why {
@@ -353,7 +353,7 @@ fn print_dry_run(b: &Built, as_json: bool) {
         };
         println!("  left out    {p} ({why})");
     }
-    println!("zip size: {} bytes", b.zip_size);
+    println!("zip size: {}", crate::size::human(b.zip_size));
     println!("h1:       {}", b.h1);
     println!("go.mod:   {}", b.mod_h1);
     println!("Dry run: nothing was sent. Check that the file list holds no secret.");

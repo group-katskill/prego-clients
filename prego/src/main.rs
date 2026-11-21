@@ -14,6 +14,7 @@ mod npm;
 mod oci;
 mod python;
 mod setup;
+mod size;
 mod snippet;
 mod sqlite;
 mod token;

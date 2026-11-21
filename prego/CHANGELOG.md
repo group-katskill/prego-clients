@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- Sizes in the CLI output are in binary units, from one formatter (`size::human`): under 1 KiB `N bytes`, an
+  exact multiple a whole unit (`8 MiB`), any other value one decimal (`1.5 KiB`). This covers `prego sqlite`
+  (hash, save, frames, get, ls, log, prune), the size columns of `prego snippet log`, `prego context log` and
+  `prego env history`, the `prego go publish` dry run and progress line, and the `prego oci push` and
+  `prego adapter` lines (`N bytes` under 1 KiB, before `N B`). `--json` output stays in bytes.
+- Errors that name a limit give only the unit, with no byte count in brackets: `an upload is at most 8 MiB`, and the
+  same for Go module zips, go.mod and LICENSE, Python files (`a file is at most 90 MiB`), snippet and context
+  files and uploads, context labels, SQLite frames, OCI input files, `prego setup docker` and adapter checks.
+
 ## [1.2.0] - 2026-11-20
 
 ### Added

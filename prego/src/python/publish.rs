@@ -157,9 +157,10 @@ pub fn publish(
         }
         if meta.len() > MAX_FILE_BYTES {
             return Err(format!(
-                "prego: {filename} is larger than 90 MiB ({} bytes). The registry refuses it. Make the wheel \
+                "prego: {filename} is {}: a file is at most {}. The registry refuses it. Make the wheel \
                  smaller, or split the package.",
-                meta.len()
+                crate::size::human(meta.len()),
+                crate::size::human(MAX_FILE_BYTES)
             ));
         }
         dists.push((path, d, meta.len()));

@@ -51,11 +51,6 @@ pub const CONTEXT: Limits = Limits {
     max_upload_bytes: 32 * 1024 * 1024,
 };
 
-/// `1 MiB`, `32 MiB`: a size in whole MiB for messages.
-pub fn mib(bytes: u64) -> String {
-    format!("{} MiB", bytes / (1024 * 1024))
-}
-
 /// The two kept modes.
 pub const MODE_FILE: u32 = 0o644;
 pub const MODE_EXEC: u32 = 0o755;
@@ -271,10 +266,10 @@ pub fn check_files_with(files: &[File], l: &Limits) -> Result<(), String> {
         let size = f.data.len() as u64;
         if size > l.max_file_bytes {
             return Err(format!(
-                "{}: {size} bytes: a file is at most {} ({} bytes)",
+                "{}: {}: a file is at most {}",
                 f.path,
-                mib(l.max_file_bytes),
-                l.max_file_bytes
+                crate::size::human(size),
+                crate::size::human(l.max_file_bytes)
             ));
         }
         total += size;
@@ -283,10 +278,10 @@ pub fn check_files_with(files: &[File], l: &Limits) -> Result<(), String> {
     check_clashes(files)?;
     if total > l.max_total_bytes {
         return Err(format!(
-            "{total} bytes: the files of a {} are at most {} ({} bytes) together",
+            "{}: the files of a {} are at most {} together",
+            crate::size::human(total),
             l.unit,
-            mib(l.max_total_bytes),
-            l.max_total_bytes
+            crate::size::human(l.max_total_bytes)
         ));
     }
     Ok(())
@@ -375,10 +370,9 @@ fn walk(dir: &Path, prefix: &str, files: &mut Vec<File>, l: &Limits) -> Result<(
 fn read_file(full: &Path, rel: &str, meta: &std::fs::Metadata, l: &Limits) -> Result<File, String> {
     if meta.len() > l.max_file_bytes {
         return Err(format!(
-            "{rel}: {} bytes: a file is at most {} ({} bytes)",
-            meta.len(),
-            mib(l.max_file_bytes),
-            l.max_file_bytes
+            "{rel}: {}: a file is at most {}",
+            crate::size::human(meta.len()),
+            crate::size::human(l.max_file_bytes)
         ));
     }
     let mut data = Vec::with_capacity(meta.len() as usize);

@@ -54,7 +54,7 @@ pub fn push(
     eprintln!(
         "Pushing {} blobs ({}) and {} manifests to {}/{}:{}",
         image.blobs.len(),
-        human(total),
+        crate::size::human(total),
         image.manifests.len(),
         r.host,
         r.name,
@@ -86,7 +86,7 @@ pub fn push(
             eprintln!(
                 "  {}  {:>10}  exists",
                 short(&blob.digest),
-                human(blob.size)
+                crate::size::human(blob.size)
             );
         } else {
             missing.push(blob);
@@ -106,13 +106,13 @@ pub fn push(
         let what = match reg.push_blob(blob)? {
             BlobResult::Mounted => "mounted".to_string(),
             BlobResult::Uploaded { parts, part_size } => {
-                format!("uploaded in {parts} part(s) of up to {}", human(part_size))
+                format!("uploaded in {parts} part(s) of up to {}", crate::size::human(part_size))
             }
         };
         eprintln!(
             "  {}  {:>10}  {what}",
             short(&blob.digest),
-            human(blob.size)
+            crate::size::human(blob.size)
         );
     }
     let last = image.manifests.len() - 1;
@@ -128,19 +128,4 @@ pub fn push(
 
 fn short(digest: &str) -> &str {
     &digest[..19.min(digest.len())]
-}
-
-fn human(bytes: u64) -> String {
-    const UNITS: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
-    let mut v = bytes as f64;
-    let mut u = 0;
-    while v >= 1024.0 && u < UNITS.len() - 1 {
-        v /= 1024.0;
-        u += 1;
-    }
-    if u == 0 {
-        format!("{bytes} B")
-    } else {
-        format!("{v:.1} {}", UNITS[u])
-    }
 }

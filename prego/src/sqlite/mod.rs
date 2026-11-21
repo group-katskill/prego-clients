@@ -107,8 +107,8 @@ pub fn run(globals: &[&str], command: &SqliteCommand, env: &dyn Env) -> Result<(
             db::copy(Path::new(file), &copy, *compact).map_err(err)?;
             let h = hash_file(&copy)?;
             eprintln!(
-                "{file}: {} bytes, {} frame{}, file sha256 {}",
-                h.size,
+                "{file}: {}, {} frame{}, file sha256 {}",
+                crate::size::human(h.size),
                 h.frames.len(),
                 plural(h.frames.len()),
                 h.file
@@ -467,11 +467,11 @@ fn save(
     let h = hash_file(&copy)?;
     let head = db::header(&copy).map_err(err)?;
     eprintln!(
-        "prego: snapshot of {}: {} bytes ({} pages of {} bytes), {} frame{}, {}",
+        "prego: snapshot of {}: {} ({} pages of {}), {} frame{}, {}",
         source.display(),
-        h.size,
+        crate::size::human(h.size),
         head.page_count,
-        head.page_size,
+        crate::size::human(head.page_size.into()),
         h.frames.len(),
         plural(h.frames.len()),
         o.check.label()
@@ -584,9 +584,9 @@ fn unchanged(
 fn frame_size(body: &[u8], what: &str) -> Result<(), String> {
     if body.len() as u64 > MAX_COMPRESSED_FRAME {
         return Err(format!(
-            "prego: {what}: a frame is {} bytes compressed: at most {} bytes",
-            body.len(),
-            MAX_COMPRESSED_FRAME
+            "prego: {what}: a frame is {} compressed: at most {}",
+            crate::size::human(body.len() as u64),
+            crate::size::human(MAX_COMPRESSED_FRAME)
         ));
     }
     Ok(())
@@ -645,10 +645,11 @@ fn session_save(
                 }
             }
             eprintln!(
-                "prego: frame {}/{} sent ({n} bytes, {} compressed)",
+                "prego: frame {}/{} sent ({}, {} compressed)",
                 i + 1,
                 h.frames.len(),
-                body.len()
+                crate::size::human(n),
+                crate::size::human(body.len() as u64)
             );
         }
         let mut map = serde_json::Map::new();
@@ -732,13 +733,16 @@ fn report(r: &DbRef, h: &Hashes, a: &Value, status: u16, tag: Option<&str>) {
     let seq = text(field(a, "seq"));
     let stored = match field(a, "stored_bytes") {
         Value::Null => String::new(),
-        v => format!(", {} bytes stored", text(v)),
+        v => format!(
+            ", {} stored",
+            crate::size::human_of(v).unwrap_or_else(|| text(v))
+        ),
     };
     if a["created"].as_bool().unwrap_or(status == 201) {
         println!(
-            "{}: snapshot {seq} ({hash}), {} bytes{stored}",
+            "{}: snapshot {seq} ({hash}), {}{stored}",
             r.long(),
-            h.size
+            crate::size::human(h.size)
         );
     } else {
         println!(
@@ -1016,9 +1020,9 @@ fn restore_inner(
         }
     }
     eprintln!(
-        "{}@{seq} {hash} ({} bytes, quick_check ok)",
+        "{}@{seq} {hash} ({}, quick_check ok)",
         r.long(),
-        got.size
+        crate::size::human(got.size)
     );
     println!("{}", target.display());
     Ok(())
@@ -1089,12 +1093,12 @@ fn ls(api: &Api, tenant: &str, namespace: &str) -> Result<(), String> {
         |d| {
             n += 1;
             println!(
-                "{:<40} {:>6}  {}  {:>5} snapshots  {:>12} B stored  {}",
+                "{:<40} {:>6}  {}  {:>5} snapshots  {:>10} stored  {}",
                 text(&d["name"]),
                 text(&d["latest_seq"]),
                 text(&d["latest_hash"]),
                 text(&d["snapshot_count"]),
-                text(&d["stored_bytes"]),
+                size_text(&d["stored_bytes"]),
                 text(&d["updated_at"]),
             );
         },
@@ -1103,6 +1107,11 @@ fn ls(api: &Api, tenant: &str, namespace: &str) -> Result<(), String> {
         eprintln!("no SQLite databases in {tenant}/{namespace} that you can read");
     }
     Ok(())
+}
+
+/// A size from the answer for a list column: binary units, or the value as it is when it is not a number.
+fn size_text(v: &Value) -> String {
+    crate::size::human_of(v).unwrap_or_else(|| text(v))
 }
 
 fn tags_of(s: &Value) -> Vec<String> {
@@ -1133,12 +1142,12 @@ fn log(api: &Api, r: &DbRef) -> Result<(), String> {
             _ => "-".into(),
         };
         println!(
-            "{mark}{:>6}  {}  {}  {:>12} B ({} stored)  {:>8} pages  user_version {}  {}  agent {}{tags}  {}",
+            "{mark}{:>6}  {}  {}  {:>10} ({} stored)  {:>8} pages  user_version {}  {}  agent {}{tags}  {}",
             text(&s["seq"]),
             text(&s["hash"]),
             text(&s["created_at"]),
-            text(&s["file_bytes"]),
-            text(&s["stored_bytes"]),
+            size_text(&s["file_bytes"]),
+            size_text(&s["stored_bytes"]),
             text(&s["page_count"]),
             text(&s["user_version"]),
             check,
@@ -1345,18 +1354,19 @@ fn prune(
     for s in &plan {
         bytes += s["stored_bytes"].as_u64().unwrap_or(0);
         println!(
-            "  {:>6}  {}  {}  {:>12} B stored",
+            "  {:>6}  {}  {}  {:>10} stored",
             text(&s["seq"]),
             text(&s["hash"]),
             text(&s["created_at"]),
-            text(&s["stored_bytes"])
+            size_text(&s["stored_bytes"])
         );
     }
     let q = format!(
-        "Remove these {} snapshot{} of {} ({bytes} bytes stored)",
+        "Remove these {} snapshot{} of {} ({} stored)",
         plan.len(),
         plural(plan.len()),
-        r.long()
+        r.long(),
+        crate::size::human(bytes)
     );
     if !yes && !confirm(&q)? {
         return Err("prego: nothing was removed".into());

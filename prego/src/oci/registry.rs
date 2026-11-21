@@ -561,7 +561,9 @@ pub fn part_size(requested: Option<u64>, min: Option<u64>) -> Result<u64, String
     let min = min.unwrap_or(1).max(1);
     if min > MAX_PART {
         return Err(format!(
-            "prego: the registry needs parts of at least {min} bytes, more than the 95 MiB limit"
+            "prego: the registry needs parts of at least {}, more than the {} limit",
+            crate::size::human(min),
+            crate::size::human(MAX_PART)
         ));
     }
     Ok(requested.unwrap_or(DEFAULT_PART).clamp(min, MAX_PART))
