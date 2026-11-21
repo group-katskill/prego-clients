@@ -13,6 +13,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Publisher 90, Trial 3 days) and an owner can "Remove now" (`docs/npm-quickstart.md`, PROTOCOL.md 1.15.1
   section 16.1); access audit events are kept for the plan's retention (Indie 90, Org 180, Publisher 370, Trial and
   Consumer 400 days) and the Release Variables set purge is owner only (`docs/openapi.yaml` 1.7.0).
+- `docs/openapi.yaml` 1.7.0: the owner-only route `POST /v1/admin/tenants/{tenant}/pending/{id}/remove-now`
+  (`confirm`, the `200` answer `RemoveNowResult`, the kinds by ID prefix, the errors `400`, `403`, `404` and `409`),
+  and the `id` and `size_bytes` of pending-deletion list rows.
 
 ## [1.2.0] - 2026-11-20
 

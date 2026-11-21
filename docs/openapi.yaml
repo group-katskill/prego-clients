@@ -1846,7 +1846,60 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Ok" }
         "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
         "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
+
+  /v1/admin/tenants/{tenant}/pending/{id}/remove-now:
+    parameters:
+      - $ref: "#/components/parameters/Tenant"
+      - name: id
+        in: path
+        required: true
+        description: |
+          The prefixed ID of one item pending deletion. The prefix sets the kind: `rep` oci.repository, `man`
+          oci.manifest (also untagged manifests and adapters), `gom` go.module, `gov` go.version, `npk` npm.package,
+          `npv` npm.version, `pyp` python.project, `pyv` python.release, `pyf` python.file, `rvs` vars.set, `snp`
+          snippet, `ctx` context, `ckp` context.checkpoint, `sqd` sqlite.database, `sqs` sqlite.snapshot. Every
+          pending-deletion list row gives this `id` and `size_bytes`, the storage that this route frees.
+        schema: { type: string }
+    post:
+      tags: [admin]
+      operationId: adminRemoveNow
+      x-human-only: true
+      security:
+        - firebaseIdToken: []
+      summary: Remove one pending item now. Owner only (ADR-0056 Amendment 1).
+      description: |
+        Purges one item in its restore period at once and frees its storage. The item cannot be restored; backups
+        made before keep it until they expire. Owner only: members, admins, machines and admin tokens get `403`. An
+        item under a takedown or legal hold gets `409`. Each use is a Tier A audit event `<kind>.remove_now` with
+        the item, its kind, its size and the owner. OCI tags have no ID and hold no storage, so they have no
+        remove-now. The per-type `.../purge` routes stay for one release as owner-only aliases that answer
+        `{"ok": true}`. Crate versions are yanked, not deleted, so crates have no restore period.
+
+        Errors: `400 bad_request` "confirm must be the item ID"; `403 forbidden` "only an owner can remove an item
+        now"; `404 not_found` for an unknown prefix, an item that is not pending, an item of another tenant, or an
+        item already purged; `409 conflict` "the item is under a hold" (a hold on the item, or a tenant hold).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm: { type: string, description: Must equal the `id` in the path. }
+      responses:
+        "200":
+          description: The item is removed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RemoveNowResult" }
+        "400": { $ref: "#/components/responses/AdminError" }
+        "403": { $ref: "#/components/responses/AdminError" }
+        "404": { $ref: "#/components/responses/AdminError" }
+        "409": { $ref: "#/components/responses/AdminError" }
 
   /v1/admin/tenants/{tenant}/vars/resolve:
     parameters:
@@ -2631,6 +2684,21 @@ components:
         deleted_at: { type: string, format: date-time }
         deleted_by: { type: string }
         purge_after: { type: string, format: date-time }
+    RemoveNowResult:
+      type: object
+      required: [ok, kind, id, size_bytes, removed_at]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        kind:
+          type: string
+          enum: [oci.repository, oci.manifest, go.module, go.version, npm.package, npm.version, python.project,
+            python.release, python.file, vars.set, snippet, context, context.checkpoint, sqlite.database,
+            sqlite.snapshot]
+        id: { type: string, description: The prefixed ID of the removed item. }
+        size_bytes:
+          type: integer
+          description: The storage freed on the tenant counter, the same number as in the Tier A audit detail.
+        removed_at: { type: string, format: date-time }
     VarSetWithContent:
       allOf:
         - $ref: "#/components/schemas/VarSet"
