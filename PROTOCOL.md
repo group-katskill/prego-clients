@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.15.0. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.15.1. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Stability
@@ -848,8 +848,8 @@ tag or `sha256:<hex>`.
 | `GET <d>/at/<sel>.db.gz?expect=` | read | The snapshot (`application/gzip`): the gzip members of the frames in order, which together are a valid `.gz` of the database file. |
 | `PUT <d>/tags/<tag>` `{"snapshot": <sel>}` | publish | Create a tag: `201 {tag, seq, hash}`. `200` when the tag already names that snapshot; `409 conflict` when it names another one. |
 | `PATCH <d>` `{"keep_count": <n>, "keep_days": <n>}` (one or both) | publish | Change rotation: the database. |
-| `DELETE <d>/at/<sel>` | delete | Remove one snapshot: `{ok, deleted, purge_after}` (the delete grace). |
-| `DELETE <d>` | delete | Remove the database and all its snapshots: `{ok, purge_after}` (the delete grace). |
+| `DELETE <d>/at/<sel>` | delete | Remove one snapshot: `{ok, deleted, purge_after}` (after the restore period of the plan). |
+| `DELETE <d>` | delete | Remove the database and all its snapshots: `{ok, purge_after}` (after the restore period of the plan). |
 
 - A snapshot: `{seq, hash, created_at, file_bytes, stored_bytes, frame_count, file_sha256, page_size, page_count,
   text_encoding, user_version, application_id, client_check, agent, message, tags, latest, encryption}`. A

@@ -118,7 +118,8 @@ prego exec -- npm publish
 - `npm dist-tag add @acme/core@1.3.0 beta` needs `publish`. `latest` cannot be removed.
 - `npm deprecate` needs `yank`.
 - `npm unpublish @acme/core@1.2.0` needs `delete`. The version is gone at once, and an admin can restore it
-  in the console for 3 days. Delete a whole package in the console, not with `npm unpublish --force`.
+  in the console during the restore period of the plan (Indie 3 days, Org 30 days, Publisher 90 days, Trial 3
+  days). An owner can use "Remove now" to remove it at once. Delete a whole package in the console, not with `npm unpublish --force`.
 
 ## CI
 

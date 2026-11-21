@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.6.0
+  version: 1.7.0
   summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by KatSkill.
   description: |
     The public, tenant-facing API of Prego by KatSkill.
@@ -1019,15 +1019,16 @@ paths:
       summary: List the access events of one UTC day (ADR-0053). Role admin or higher.
       description: |
         The tenant's Tier B events of one UTC day: good token exchanges, publishes, yanks and unyanks, pushes and
-        uploads, and Release Variable writes (with result ok only). They are kept 400 days and are not in
-        `GET /tenants/{tenant}/audit`, which lists Tier A rows. A page holds the events of at most 20 stored
+        uploads, and Release Variable writes (with result ok only). They are kept for the access audit retention of the tenant's plan
+        (Indie 90, Org 180, Publisher 370, Trial and Consumer 400 days; ADR-0056 Amendment 1) and are not in
+        `GET /tenants/{tenant}/audit`, which lists Tier A rows. Tier A rows are kept with no end. A page holds the events of at most 20 stored
         objects; pass `next_cursor` back as `cursor` for the rest of the day (`null` after the last). Without the
         audit bucket the answer is `available: false` with no items.
       parameters:
         - name: date
           in: query
           required: false
-          description: "`YYYY-MM-DD`. Default today (UTC). Must be within the last 400 days, else `400`."
+          description: "`YYYY-MM-DD`. Default today (UTC). Must be within the access audit retention of the tenant's plan (Indie 90, Org 180, Publisher 370, Trial and Consumer 400 days), else `400`."
           schema: { type: string, format: date }
         - name: cursor
           in: query
@@ -1832,7 +1833,7 @@ paths:
       x-human-only: true
       security:
         - firebaseIdToken: []
-      summary: Purge a pending set now. Role admin or higher (registry 1.8.0).
+      summary: Purge a pending set now. Owner only (ADR-0056 Amendment 1); an alias of remove-now for one release.
       requestBody:
         required: true
         content:
