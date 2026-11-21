@@ -1,6 +1,6 @@
 # Prego client protocol
 
-Version 1.15.1. This is the public contract between a client and the Prego STS. Use it to write your own
+Version 1.15.2. This is the public contract between a client and the Prego STS. Use it to write your own
 client. A change that breaks this contract is a MAJOR version change for the registry and for the clients.
 
 ## Stability
@@ -39,8 +39,8 @@ Content-Type: application/x-www-form-urlencoded
 ```
 
 The control host is `api.prego.k8skill.com` (ADR-0054). sts.prego.k8skill.com is an alias and keeps working:
-a request on either name gets the same answer. The OCI token realm in the registry's challenge (section 7) stays
-on the sts name; use it as it is.
+a request on either name gets the same answer. The OCI token realm in the registry's challenge (section 7) is on
+the api name from registry 1.27.1 (an older registry gives it on the sts name); use it as it is.
 
 A JSON body with the same fields is also accepted.
 
@@ -287,13 +287,13 @@ The OCI registry is `oci.prego.k8skill.com`. Image names are `oci.prego.k8skill.
 The registry uses the Docker token flow:
 
 1. A request without a registry token gets `401` with
-   `WWW-Authenticate: Bearer realm="https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>",service="oci.prego.k8skill.com",scope="..."`.
+   `WWW-Authenticate: Bearer realm="https://api.prego.k8skill.com/v1/oci/token/e/<edge code>",service="oci.prego.k8skill.com",scope="..."`.
    Use the realm from the challenge of a repository path (for example `GET /v2/<name>/tags/list`) as it is.
    Its code is the code of the repository's tenant, which can be another tenant than the caller's. The
    challenge of `GET /v2/` names no repository and has the realm without a code. Do not make the realm URL yourself: the realm without the edge
    code refuses requests with a scope (`400 invalid_request`, "this token URL does not issue repository
    tokens"). It serves only the `docker login` check without a scope.
-2. The client calls the realm, `GET https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>?service=...&scope=...`, with HTTP
+2. The client calls the realm, `GET https://api.prego.k8skill.com/v1/oci/token/e/<edge code>?service=...&scope=...`, with HTTP
    Basic auth. `POST` with the form fields `grant_type=password`, `username`, `password`, `service` and `scope`
    is also accepted.
    - **username**: the tenant slug of the caller's principal. It is not used for API keys.
@@ -884,7 +884,7 @@ tag or `sha256:<hex>`.
 
 ### 16.2 Frames and the snapshot hash
 
-- A frame is 64 MiB (67,108,864 bytes) of the database file; the last frame is shorter. Each frame is sent as one
+- A frame is 64 MiB of the database file; the last frame is shorter. Each frame is sent as one
   gzip member, at most 95 MiB compressed.
 - The frame hash is the `sha256` of the uncompressed frame, written `sha256:<64 lowercase hex>`.
 - The snapshot hash is the `sha256` of one UTF-8 line `sha256:<64 lowercase hex>\n` for each frame, in frame

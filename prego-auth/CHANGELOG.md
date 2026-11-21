@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: the OCI realm in a registry challenge is on the api name of the control host from registry 1.27.1
+  (`check_challenge_realm`, `config.rs`); `check_challenge_realm` accepts either name, as before. The realm tests
+  use the api name, and the alias tests stay.
+
 ## [1.2.0] - 2026-11-20
 
 ### Changed

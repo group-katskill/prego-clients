@@ -91,10 +91,10 @@ pub fn realm_url(config: &Config) -> Result<String, Error> {
 
 /// Checks the realm from a registry's `401` challenge for a repository and returns it. The realm must be on
 /// the STS host of `config`, with the path `/v1/oci/token/e/<edge code>`, so the subject token never goes to
-/// another host. For the Prego control host, its api and sts names are the same host (ADR-0054): the
-/// registry gives the realm on the sts name. The code is the edge code of the repository's tenant. It can be another tenant's code (a
-/// grant from that tenant): the subject token still names the caller, so the code is not compared with the
-/// configured one.
+/// another host. For the Prego control host, its api and sts names are the same host (ADR-0054): the registry
+/// gives the realm on the api name from registry 1.27.1, and on the sts name before. The code is the edge
+/// code of the repository's tenant. It can be another tenant's code (a grant from that tenant): the subject
+/// token still names the caller, so the code is not compared with the configured one.
 pub fn check_challenge_realm(config: &Config, realm: &str) -> Result<String, String> {
     let origin = sts_origin(config).map_err(|e| e.to_string())?;
     let refuse = || {
@@ -458,33 +458,34 @@ mod tests {
     #[test]
     fn challenge_realm_checks() {
         let cfg = config(crate::DEFAULT_STS_URL);
-        let good = "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq";
+        let good = "https://api.prego.k8skill.com/v1/oci/token/e/k7mq";
         assert_eq!(check_challenge_realm(&cfg, good).unwrap(), good);
         for bad in [
-            "https://sts.prego.k8skill.com/v1/oci/token",
-            "https://sts.prego.k8skill.com/v1/oci/token/t/acme",
-            "https://sts.prego.k8skill.com/v1/oci/token/e/K7MQ",
-            "https://sts.prego.k8skill.com/v1/oci/token/e/k7mq/x",
+            "https://api.prego.k8skill.com/v1/oci/token",
+            "https://api.prego.k8skill.com/v1/oci/token/t/acme",
+            "https://api.prego.k8skill.com/v1/oci/token/e/K7MQ",
+            "https://api.prego.k8skill.com/v1/oci/token/e/k7mq/x",
             "https://evil.example.test/v1/oci/token/e/k7mq",
-            "http://sts.prego.k8skill.com/v1/oci/token/e/k7mq",
-            "https://sts.prego.k8skill.com.evil.example.test/v1/oci/token/e/k7mq",
+            "http://api.prego.k8skill.com/v1/oci/token/e/k7mq",
+            "https://api.prego.k8skill.com.evil.example.test/v1/oci/token/e/k7mq",
         ] {
             let e = check_challenge_realm(&cfg, bad).unwrap_err();
             assert!(e.contains("not sent"), "{bad}: {e}");
         }
         // Another tenant's code (a cross-tenant grant) is accepted: the subject token names the caller.
-        let other = "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c";
+        let other = "https://api.prego.k8skill.com/v1/oci/token/e/ab2c";
         assert_eq!(check_challenge_realm(&cfg, other).unwrap(), other);
         // Without an edge code in the settings, the realm gives it.
         let mut none = cfg.clone();
         none.edge_code = None;
-        let other = "https://sts.prego.k8skill.com/v1/oci/token/e/ab2c";
+        let other = "https://api.prego.k8skill.com/v1/oci/token/e/ab2c";
         assert_eq!(check_challenge_realm(&none, other).unwrap(), other);
     }
 
     #[test]
     fn challenge_realm_on_either_control_host_name() {
-        // ADR-0054: the registry gives the realm on the sts name; the STS URL can be on either name.
+        // ADR-0054: the registry gives the realm on the api name (sts before registry 1.27.1); the STS URL
+        // can be on either name.
         for sts in [
             crate::DEFAULT_STS_URL,
             "https://sts.prego.k8skill.com/v1/sts/token",

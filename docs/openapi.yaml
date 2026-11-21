@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Prego public API
-  version: 1.7.0
+  version: 1.7.1
   summary: STS token exchange, Cargo registry endpoints, Release Variables and the tenant admin API of Prego by KatSkill.
   description: |
     The public, tenant-facing API of Prego by KatSkill.
@@ -44,9 +44,7 @@ info:
 
 servers:
   - url: https://api.prego.k8skill.com
-    description: STS and admin API (the control host, ADR-0054)
-  - url: https://sts.prego.k8skill.com
-    description: The same host. sts.prego.k8skill.com is an alias and keeps working.
+    description: STS and admin API (the control host, ADR-0054). sts.prego.k8skill.com is an alias and keeps working.
 
 tags:
   - name: sts
@@ -688,7 +686,7 @@ paths:
               type: object
               required: [token]
               properties:
-                token: { type: string, maxLength: 8192 }
+                token: { type: string, maxLength: 8192, description: At most 8192 characters (8 KiB). }
       responses:
         "200":
           description: The result. On failure `ok` is false, `principal_id` is null and `reason` says why.
@@ -2137,7 +2135,7 @@ components:
         subject_token:
           type: string
           maxLength: 8192
-          description: The JWT or the API key (`prk_...`).
+          description: The JWT or the API key (`prk_...`). At most 8192 characters (8 KiB).
         subject_token_type:
           type: string
           enum:

@@ -8,7 +8,8 @@ use crate::sources::SourceKind;
 /// The default STS endpoint, on the control host `api.prego.k8skill.com` (ADR-0054).
 pub const DEFAULT_STS_URL: &str = "https://api.prego.k8skill.com/v1/sts/token";
 /// The names of the Prego control host: the api name and its sts alias (ADR-0054). A request on either name
-/// gets the same answer. The OCI realm in a registry challenge stays on the sts name.
+/// gets the same answer. The OCI realm in a registry challenge is on the api name from registry 1.27.1 (on the sts
+/// name before); a client accepts either name.
 const CONTROL_HOST_NAMES: [(&str, &str); 2] = [
     ("api.prego.k8skill.com", "sts.prego.k8skill.com"),
     (
