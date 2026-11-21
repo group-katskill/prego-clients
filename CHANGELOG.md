@@ -8,6 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- prego: sizes in CLI output and limit errors are in binary units (KiB, MiB, GiB) from one formatter;
+  `--json` stays in bytes. The Python quickstart error table quotes the new text `a file is at most 90 MiB`.
 - Docs follow ADR-0056 Amendment 1 (plan limits 1.1.0): Indie has Python and no Context (`docs/context.md`, the
   Python quickstart error table); a delete can be restored for the restore period of the plan (Indie 3, Org 30,
   Publisher 90, Trial 3 days) and an owner can "Remove now" (`docs/npm-quickstart.md`, PROTOCOL.md 1.15.1

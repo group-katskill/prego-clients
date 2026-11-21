@@ -484,7 +484,8 @@ pub fn check_labels(labels: &[(String, String)]) -> Result<(), String> {
     let size = labels_header(labels).len();
     if size > 2048 {
         return Err(format!(
-            "the labels are {size} bytes as JSON: at most 2 KiB (2048 bytes) together"
+            "the labels are {} as JSON: at most 2 KiB together",
+            crate::size::human(size as u64)
         ));
     }
     Ok(())
@@ -527,10 +528,9 @@ fn send_save(
 ) -> Result<(), String> {
     if bundle.len() as u64 > CONTEXT.max_upload_bytes {
         return Err(format!(
-            "prego: the tarball is {} bytes: an upload is at most {} ({} bytes)",
-            bundle.len(),
-            files::mib(CONTEXT.max_upload_bytes),
-            CONTEXT.max_upload_bytes
+            "prego: the tarball is {}: an upload is at most {}",
+            crate::size::human(bundle.len() as u64),
+            crate::size::human(CONTEXT.max_upload_bytes)
         ));
     }
     let api = Api::new(globals, &r.tenant, env)?;
@@ -837,11 +837,11 @@ fn log(api: &Api, r: &CtxRef, session: Option<&str>) -> Result<(), String> {
                 format!("  [{}]", tags.join(", "))
             };
             println!(
-                "{mark}{:>6}  {}  {}  {:>10} B  {:>4} files  {:<8}  session {}  agent {}{tags}  {}",
+                "{mark}{:>6}  {}  {}  {:>10}  {:>4} files  {:<8}  session {}  agent {}{tags}  {}",
                 text(&c["seq"]),
                 text(&c["hash"]),
                 text(&c["created_at"]),
-                text(&c["size"]),
+                crate::size::human_of(&c["size"]).unwrap_or_else(|| text(&c["size"])),
                 text(&c["file_count"]),
                 text(&c["trigger"]),
                 text(&c["session"]),

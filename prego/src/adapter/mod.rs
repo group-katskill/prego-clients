@@ -84,7 +84,11 @@ pub fn push(
                 BlobResult::Uploaded { parts, .. } => format!("uploaded in {parts} part(s)"),
             }
         };
-        eprintln!("  {:<32} {:>10}  {what}", file.name, human(file.size));
+        eprintln!(
+            "  {:<32} {:>10}  {what}",
+            file.name,
+            crate::size::human(file.size)
+        );
     }
     let m = Manifest {
         digest: sha256(&manifest),
@@ -167,7 +171,11 @@ fn get_into(globals: &[&str], r: &Reference, dir: &Path, env: &dyn Env) -> Resul
             reg.get_blob(&part.digest, part.size, &mut file)?;
             drop(file);
             check_part(part, &tmp, pulled.base.as_deref())?;
-            eprintln!("  {:<32} {:>10}  ok", part.name, human(part.size));
+            eprintln!(
+                "  {:<32} {:>10}  ok",
+                part.name,
+                crate::size::human(part.size)
+            );
         }
         for (part, tmp) in pulled.parts.iter().zip(&temps) {
             let target = dir.join(&part.name);
@@ -265,7 +273,7 @@ fn load_config(globals: &[&str], r: &Reference, env: &dyn Env) -> Result<Config,
 fn print_summary(f: &Folder, license: &str, from: &str, revision: Option<&str>, r: &Reference) {
     eprintln!(
         "Pushing adapter {} ({} {}, {} tensors) to {}/{}:{}",
-        human(f.total),
+        crate::size::human(f.total),
         f.peft_type,
         f.weights.name,
         f.tensors,
@@ -290,21 +298,6 @@ fn print_summary(f: &Folder, license: &str, from: &str, revision: Option<&str>, 
 fn sha256(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     format!("sha256:{}", hex(&Sha256::digest(bytes)))
-}
-
-fn human(bytes: u64) -> String {
-    const UNITS: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
-    let mut v = bytes as f64;
-    let mut u = 0;
-    while v >= 1024.0 && u < UNITS.len() - 1 {
-        v /= 1024.0;
-        u += 1;
-    }
-    if u == 0 {
-        format!("{bytes} B")
-    } else {
-        format!("{v:.1} {}", UNITS[u])
-    }
 }
 
 #[cfg(test)]

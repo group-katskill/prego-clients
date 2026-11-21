@@ -56,7 +56,8 @@ pub fn add_cred_helpers(path: &Path, hosts: &[String]) -> Result<Change, String>
     let old_text = match fs::metadata(path) {
         Ok(m) if m.len() > MAX_FILE_BYTES => {
             return Err(format!(
-                "prego: {shown} is larger than {MAX_FILE_BYTES} bytes"
+                "prego: {shown} is larger than {}",
+                crate::size::human(MAX_FILE_BYTES)
             ))
         }
         Ok(_) => {

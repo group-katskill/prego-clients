@@ -44,7 +44,7 @@ impl Source {
 
     fn read_all(&self, max: u64, what: &str) -> Result<Vec<u8>, String> {
         if self.size > max {
-            return Err(format!("{what} is larger than {max} bytes"));
+            return Err(format!("{what} is larger than {}", crate::size::human(max)));
         }
         let mut buf = Vec::with_capacity(self.size as usize);
         self.reader(0, self.size)

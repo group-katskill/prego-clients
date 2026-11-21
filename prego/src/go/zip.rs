@@ -17,9 +17,9 @@ pub const MAX_ZIP_BYTES: u64 = 300 << 20;
 /// The refusal text for a module that is larger than [`MAX_ZIP_BYTES`].
 fn too_large(what: &str, size: u64) -> String {
     format!(
-        "{what} is {size} bytes ({:.1} MiB); Prego takes a module zip of at most 300 MiB ({MAX_ZIP_BYTES} bytes), \
-         compressed and uncompressed. Nothing was sent",
-        size as f64 / (1u64 << 20) as f64
+        "{what} is {}; Prego takes a module zip of at most {}, compressed and uncompressed. Nothing was sent",
+        crate::size::human(size),
+        crate::size::human(MAX_ZIP_BYTES)
     )
 }
 
@@ -128,12 +128,16 @@ pub fn select(candidates: Vec<Candidate>) -> Result<Selection, String> {
         total = total.saturating_add(c.size);
         if p == "go.mod" && c.size > MAX_GO_MOD_BYTES {
             errors.push(format!(
-                "go.mod is {} bytes; Prego takes at most {MAX_GO_MOD_BYTES}",
-                c.size
+                "go.mod is {}; Prego takes at most {}",
+                crate::size::human(c.size),
+                crate::size::human(MAX_GO_MOD_BYTES)
             ));
         }
         if p == "LICENSE" && c.size > MAX_LICENSE_BYTES {
-            errors.push(format!("LICENSE is larger than {MAX_LICENSE_BYTES} bytes"));
+            errors.push(format!(
+                "LICENSE is larger than {}",
+                crate::size::human(MAX_LICENSE_BYTES)
+            ));
         }
         out.files.push(c);
     }
@@ -480,12 +484,12 @@ mod tests {
         // go.mod is 1 byte, so 300 MiB minus 1 byte of other files is exactly at the cap.
         select(vec![cand("go.mod", Mode::Regular), sized(300 * MIB - 1)]).unwrap();
         let err = select(vec![cand("go.mod", Mode::Regular), sized(300 * MIB)]).unwrap_err();
-        assert!(err.contains("314572801 bytes"), "{err}");
+        assert!(err.contains("is 300.0 MiB;"), "{err}");
         assert!(err.contains("at most 300 MiB"), "{err}");
 
         check_zip_size(300 * MIB).unwrap();
         let err = check_zip_size(300 * MIB + 1).unwrap_err();
-        assert!(err.contains("the zip is 314572801 bytes"), "{err}");
+        assert!(err.contains("the zip is 300.0 MiB;"), "{err}");
         assert!(err.contains("Nothing was sent"), "{err}");
     }
 
@@ -523,7 +527,7 @@ mod tests {
         let mut big = cand("go.mod", Mode::Regular);
         big.size = MAX_GO_MOD_BYTES + 1;
         let e = select(vec![big]).unwrap_err();
-        assert!(e.contains("65536"), "{e}");
+        assert!(e.contains("at most 64 KiB"), "{e}");
     }
 
     #[test]

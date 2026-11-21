@@ -541,10 +541,10 @@ fn history(api: &Api, r: &Ref) -> Result<(), String> {
     for v in list {
         let mark = if v["current"] == true { "*" } else { " " };
         println!(
-            "{mark}{:>5}  {}  {:>8} B  {:>4} keys  {}  {}  {}",
+            "{mark}{:>5}  {}  {:>10}  {:>4} keys  {}  {}  {}",
             text(&v["number"]),
             text(&v["hash"]),
-            text(&v["size_bytes"]),
+            crate::size::human_of(&v["size_bytes"]).unwrap_or_else(|| text(&v["size_bytes"])),
             text(&v["key_count"]),
             text(&v["created_at"]),
             text(&v["pushed_by"]),
