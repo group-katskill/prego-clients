@@ -19,7 +19,7 @@ pub fn human(bytes: u64) -> String {
         u += 1;
     }
     let unit = 1u64 << (10 * (u + 1));
-    if bytes % unit == 0 {
+    if bytes.is_multiple_of(unit) {
         return format!("{} {}", bytes / unit, UNITS[u]);
     }
     let v = format!("{:.1}", bytes as f64 / unit as f64);
