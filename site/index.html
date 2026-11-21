@@ -40,6 +40,7 @@
           <span class="brand-by">clients</span>
         </a>
         <nav class="site-nav" aria-label="Sections">
+          <a href="#types">Types</a>
           <a href="#install">Install</a>
           <a href="#login">Log in</a>
           <a href="#configure">Cargo</a>
@@ -77,7 +78,7 @@
             <p class="eyebrow">Open source · Apache-2.0 · Version __PREGO_VERSION__</p>
             <h1 class="display">Prego clients</h1>
             <p class="lede">
-              Client tools for Prego registries: crates, OCI images, Go modules and npm packages. They find the machine identity of your
+              Client tools for Prego registries and every <a href="#types">Prego type</a>. They find the machine identity of your
               build, exchange it at the Prego STS, and give Cargo, Docker and other tools a registry token that is
               valid for 15 minutes by default. No long-lived secret goes into your config.
             </p>
@@ -96,6 +97,36 @@
 <span class="p">$ </span>prego setup docker --write
 <span class="p">$ </span>docker push oci.prego.k8skill.com/acme/default/api:1.4.0</code></pre>
           </div>
+        </div>
+      </section>
+
+      <section class="section" id="types" aria-labelledby="types-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="types-title">Supported types</h2>
+          <p class="section-lede">Prego hosts these types. The <code>prego</code> tools work with all of them.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">Type</th><th scope="col">What it holds</th><th scope="col">Docs</th></tr>
+              </thead>
+              <tbody>
+                  <tr><td><a href="#configure">Crates (Cargo)</a></td><td>Private Rust crates for Cargo, with the credential provider <code>cargo-credential-prego</code>.</td><td><a href="https://docs.prego.k8skill.com/crates">Docs</a></td></tr>
+                  <tr><td><a href="#go">Go modules</a></td><td>Private Go modules through <code>GOPROXY</code>, with <code>prego go-auth</code> and <code>prego go publish</code>.</td><td><a href="https://docs.prego.k8skill.com/go">Docs</a></td></tr>
+                  <tr><td><a href="#npm">npm</a></td><td>Scoped npm packages, and trusted publishing from CI.</td><td><a href="https://docs.prego.k8skill.com/npm">Docs</a></td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients#python-packages">Python</a></td><td>Private Python packages for uv, pip and Poetry.</td><td><a href="https://docs.prego.k8skill.com/python">Docs</a></td></tr>
+                  <tr><td><a href="#oci">Containers and OCI artifacts</a></td><td>Container images and other OCI artifacts, for example Helm charts and <code>.deb</code> files.</td><td><a href="https://docs.prego.k8skill.com/oci">Docs</a></td></tr>
+                  <tr><td><a href="#adapters">Adapters</a></td><td>AI model adapters (LoRA and other peft adapters) as safetensors.</td><td><a href="https://docs.prego.k8skill.com/adapters">Docs</a></td></tr>
+                  <tr><td><a href="#vars">Release Variables</a></td><td>Versioned sets of release settings, pinned by hash.</td><td><a href="https://docs.prego.k8skill.com/release-variables">Docs</a></td></tr>
+                  <tr><td><a href="#snippets">Snippets</a></td><td>Versioned sets of text files: scripts, prompts, agent skills and templates.</td><td><a href="https://docs.prego.k8skill.com/snippets">Docs</a></td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients#context">Context</a></td><td>Agent context that agents save before they compact or stop, and restore later.</td><td><a href="https://docs.prego.k8skill.com/context">Docs</a></td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients#share-a-sqlite-database">SQLite snapshots</a></td><td>Snapshots of SQLite database files that machines, agents and developers share. We are not your backup. We are for sharing.</td><td><a href="https://docs.prego.k8skill.com/sqlite-snapshots">Docs</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The plans that include each type are on the <a href="https://docs.prego.k8skill.com/limits">plan limits page</a>. The docs site needs a
+            sign-in with your Prego account.
+          </p>
         </div>
       </section>
 

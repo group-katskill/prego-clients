@@ -1,1 +1,4 @@
 cargo-credential-prego, docker-credential-prego, prego and prego-auth. Copyright 2026 KatSkill LLC.
+
+The prego binary includes SQLite (https://sqlite.org), compiled in through the crate libsqlite3-sys (MIT).
+The authors of SQLite have dedicated it to the public domain. See https://sqlite.org/copyright.html.

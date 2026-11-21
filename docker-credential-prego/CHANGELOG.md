@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-20
+
+### Changed
+
+- Release 1.2.0 with `prego-auth` 1.2.0. No change in `docker-credential-prego`.
+
 ## [1.1.1] - 2026-11-20
 
 ### Changed

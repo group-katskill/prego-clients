@@ -106,6 +106,8 @@ pub enum Command {
     Snippet(crate::snippet::SnippetCommand),
     /// `prego context ...`.
     Context(Box<crate::context::ContextCommand>),
+    /// `prego sqlite ...`.
+    Sqlite(Box<crate::sqlite::SqliteCommand>),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -115,7 +117,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 33] = [
+const WITH_VALUE: [&str; 37] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -149,9 +151,13 @@ const WITH_VALUE: [&str; 33] = [
     "--label",
     "--keep-days",
     "--on-full",
+    "--check",
+    "--keep",
+    "--older-than",
+    "--keep-count",
 ];
 /// Options without a value.
-const FLAGS: [&str; 11] = [
+const FLAGS: [&str; 14] = [
     "--write",
     "--print",
     "--dry-run",
@@ -163,6 +169,9 @@ const FLAGS: [&str; 11] = [
     "--pip",
     "--tar",
     "--no-redact",
+    "--compact",
+    "--force",
+    "--yes",
 ];
 
 /// Parses the arguments after the program name.
@@ -454,6 +463,7 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
         ["snippet", rest @ ..] => Command::Snippet(parse_snippet(rest, &opts, &flag, &allow)?),
         ["context", rest @ ..] => Command::Context(Box::new(parse_context(rest, &opts, &flag, &allow)?)),
+        ["sqlite", rest @ ..] => Command::Sqlite(Box::new(parse_sqlite(rest, &opts, &flag, &allow)?)),
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };
@@ -868,6 +878,159 @@ fn parse_context(
             ContextCommand::Hash {
                 folder: folder.to_string(),
                 redact: !flag("--no-redact"),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
+}
+
+fn parse_sqlite(
+    words: &[&str],
+    opts: &[(&str, String)],
+    flag: &dyn Fn(&str) -> bool,
+    allow: &Allow<'_>,
+) -> Result<crate::sqlite::SqliteCommand, String> {
+    use crate::env::jcs;
+    use crate::sqlite::{self, db::Check, reference, SqliteCommand};
+    let take = |name: &str| -> Vec<String> {
+        opts.iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .collect()
+    };
+    let one = |name: &str| -> Result<Option<String>, String> {
+        let mut v = take(name);
+        if v.len() > 1 {
+            return Err(format!("{name} can be given one time only"));
+        }
+        Ok(v.pop())
+    };
+    let number = |name: &str, lo: u32, hi: u32| -> Result<Option<u32>, String> {
+        match one(name)? {
+            Some(v) => Ok(Some(
+                v.parse::<u32>()
+                    .ok()
+                    .filter(|n| (lo..=hi).contains(n))
+                    .ok_or_else(|| format!("bad {name} `{v}`: a number from {lo} to {hi}"))?,
+            )),
+            None => Ok(None),
+        }
+    };
+    let usage =
+        "usage: prego sqlite save|restore|ls|log|tag|rm|prune|set|hash ... (see prego --help)";
+    Ok(match words {
+        ["save", file, r] => {
+            allow(
+                &["--check", "--label", "--message", "--tag"],
+                &["--compact"],
+            )?;
+            let tag = one("--tag")?;
+            if let Some(t) = &tag {
+                reference::check_tag(t)?;
+            }
+            let message = one("--message")?;
+            if message.as_ref().is_some_and(|m| m.chars().count() > 200) {
+                return Err("--message is at most 200 characters".into());
+            }
+            let mut labels = Vec::new();
+            for l in take("--label") {
+                let (k, v) = l
+                    .split_once('=')
+                    .ok_or_else(|| format!("bad --label `{l}`: use key=value"))?;
+                labels.push((k.to_string(), v.to_string()));
+            }
+            sqlite::check_user_labels(&labels)?;
+            SqliteCommand::Save {
+                file: file.to_string(),
+                reference: r.to_string(),
+                compact: flag("--compact"),
+                check: match one("--check")? {
+                    Some(c) => Check::parse(&c)?,
+                    None => Check::Quick,
+                },
+                labels,
+                message,
+                tag,
+            }
+        }
+        ["restore", r, file] => {
+            allow(&["--expect"], &["--force"])?;
+            let expect = one("--expect")?;
+            if let Some(h) = &expect {
+                if !jcs::is_hash(h) {
+                    return Err(format!(
+                        "--expect `{h}` is not a hash: use sha256:<64 lowercase hex>"
+                    ));
+                }
+            }
+            SqliteCommand::Restore {
+                reference: r.to_string(),
+                file: file.to_string(),
+                expect,
+                force: flag("--force"),
+            }
+        }
+        ["ls", scope] => {
+            allow(&[], &[])?;
+            SqliteCommand::Ls {
+                scope: scope.to_string(),
+            }
+        }
+        ["log", r] => {
+            allow(&[], &[])?;
+            SqliteCommand::Log {
+                reference: r.to_string(),
+            }
+        }
+        ["tag", r, tag] => {
+            allow(&[], &[])?;
+            SqliteCommand::Tag {
+                reference: r.to_string(),
+                tag: tag.to_string(),
+            }
+        }
+        ["rm", r] => {
+            allow(&[], &["--yes"])?;
+            SqliteCommand::Rm {
+                reference: r.to_string(),
+                yes: flag("--yes"),
+            }
+        }
+        ["prune", r] => {
+            allow(&["--keep", "--older-than"], &["--yes"])?;
+            let keep = number("--keep", 0, 100_000)?;
+            let older_than = match one("--older-than")? {
+                Some(a) => Some(sqlite::parse_age(&a)?),
+                None => None,
+            };
+            if keep.is_none() && older_than.is_none() {
+                return Err("give --keep <n>, --older-than <age>, or both".into());
+            }
+            SqliteCommand::Prune {
+                reference: r.to_string(),
+                keep,
+                older_than,
+                yes: flag("--yes"),
+            }
+        }
+        ["set", r] => {
+            allow(&["--keep-count", "--keep-days"], &[])?;
+            let keep_count = number("--keep-count", 1, 1000)?;
+            let keep_days = number("--keep-days", 1, 400)?;
+            if keep_count.is_none() && keep_days.is_none() {
+                return Err("give --keep-count <n>, --keep-days <n>, or both".into());
+            }
+            SqliteCommand::Set {
+                reference: r.to_string(),
+                keep_count,
+                keep_days,
+            }
+        }
+        ["hash", file] => {
+            allow(&[], &["--compact"])?;
+            SqliteCommand::Hash {
+                file: file.to_string(),
+                compact: flag("--compact"),
             }
         }
         _ => return Err(usage.into()),
@@ -1426,6 +1589,145 @@ mod tests {
         }
         let long = "m".repeat(201);
         assert!(p(&["env", "push", "a/p@1", "--set", "A=1", "--message", &long]).is_err());
+    }
+
+    #[test]
+    fn sqlite_commands() {
+        use crate::sqlite::{db::Check, SqliteCommand};
+        let sq = |args: &[&str]| match p(args) {
+            Ok(Parsed::Run {
+                command: Command::Sqlite(c),
+                ..
+            }) => *c,
+            other => panic!("{other:?}"),
+        };
+        let h = format!("sha256:{}", "b".repeat(64));
+        assert_eq!(
+            sq(&[
+                "sqlite",
+                "save",
+                "app.db",
+                "acme/fleet/lookup",
+                "--compact",
+                "--check",
+                "full",
+                "--label",
+                "build=42",
+                "--message",
+                "Daily build",
+                "--tag",
+                "2026-11-20"
+            ]),
+            SqliteCommand::Save {
+                file: "app.db".into(),
+                reference: "acme/fleet/lookup".into(),
+                compact: true,
+                check: Check::Full,
+                labels: vec![("build".into(), "42".into())],
+                message: Some("Daily build".into()),
+                tag: Some("2026-11-20".into()),
+            }
+        );
+        assert_eq!(
+            sq(&["sqlite", "save", "app.db", "acme/lookup"]),
+            SqliteCommand::Save {
+                file: "app.db".into(),
+                reference: "acme/lookup".into(),
+                compact: false,
+                check: Check::Quick,
+                labels: vec![],
+                message: None,
+                tag: None,
+            }
+        );
+        assert_eq!(
+            sq(&[
+                "sqlite",
+                "restore",
+                "acme/lookup@42",
+                "l.db",
+                "--expect",
+                &h,
+                "--force"
+            ]),
+            SqliteCommand::Restore {
+                reference: "acme/lookup@42".into(),
+                file: "l.db".into(),
+                expect: Some(h.clone()),
+                force: true,
+            }
+        );
+        assert_eq!(
+            sq(&[
+                "sqlite",
+                "prune",
+                "acme/lookup",
+                "--older-than",
+                "7d",
+                "--yes"
+            ]),
+            SqliteCommand::Prune {
+                reference: "acme/lookup".into(),
+                keep: None,
+                older_than: Some(7 * 86_400),
+                yes: true,
+            }
+        );
+        assert_eq!(
+            sq(&[
+                "sqlite",
+                "set",
+                "acme/lookup",
+                "--keep-count",
+                "10",
+                "--keep-days",
+                "14"
+            ]),
+            SqliteCommand::Set {
+                reference: "acme/lookup".into(),
+                keep_count: Some(10),
+                keep_days: Some(14),
+            }
+        );
+        assert_eq!(
+            sq(&["sqlite", "hash", "app.db", "--compact"]),
+            SqliteCommand::Hash {
+                file: "app.db".into(),
+                compact: true,
+            }
+        );
+        assert_eq!(
+            sq(&["sqlite", "rm", "acme/lookup"]),
+            SqliteCommand::Rm {
+                reference: "acme/lookup".into(),
+                yes: false,
+            }
+        );
+        for bad in [
+            &["sqlite", "save", "app.db"][..],
+            &["sqlite", "save", "a.db", "acme/l", "--check", "fast"],
+            &[
+                "sqlite",
+                "save",
+                "a.db",
+                "acme/l",
+                "--label",
+                "prego.check=ok",
+            ],
+            &["sqlite", "save", "a.db", "acme/l", "--tag", "x.db.gz"],
+            &["sqlite", "save", "a.db", "acme/l", "--force"],
+            &["sqlite", "restore", "acme/l", "l.db", "--expect", "abc"],
+            &["sqlite", "restore", "acme/l", "l.db", "--compact"],
+            &["sqlite", "prune", "acme/l"],
+            &["sqlite", "prune", "acme/l", "--older-than", "7"],
+            &["sqlite", "set", "acme/l"],
+            &["sqlite", "set", "acme/l", "--keep-count", "0"],
+            &["sqlite", "set", "acme/l", "--keep-days", "401"],
+            &["sqlite", "log", "acme/l", "--yes"],
+            &["sqlite", "backup", "acme/l"],
+        ] {
+            assert!(p(bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

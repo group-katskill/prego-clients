@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "sqlite_version": "3.45.1",
+  "frame_bytes": 67108864,
+  "hash_rule": "snapshot hash = sha256 over one line per frame, 'sha256:<64 lowercase hex>\\n', in frame order; the frame hash is sha256 of the uncompressed frame",
+  "files": [
+    {
+      "file": "small-4096.db",
+      "note": "page size 4096, user_version 7, application_id set",
+      "expect": "accept",
+      "file_bytes": 16384,
+      "file_sha256": "90326cfb08b0d8210dafc367697eb1732faa07befb3b4634871f6d80d9ed32c9",
+      "frame_hashes": [
+        "sha256:90326cfb08b0d8210dafc367697eb1732faa07befb3b4634871f6d80d9ed32c9"
+      ],
+      "snapshot_hash": "sha256:d42d70e28211ec3eac98dd101f7b543349d14fc86c4e642abe008402c241136f",
+      "page_size": 4096,
+      "page_count": 4,
+      "text_encoding": 1,
+      "user_version": 7,
+      "application_id": 1347568455,
+      "tables": [
+        "notes",
+        "tags"
+      ],
+      "indexes": [
+        "notes_body"
+      ],
+      "names_complete": true
+    },
+    {
+      "file": "empty.db",
+      "note": "a new empty database: one page of 4096 bytes",
+      "expect": "accept",
+      "file_bytes": 4096,
+      "file_sha256": "ac7fbf4732ec6b1a11c3af81cea48005c158e39d9043800a4d7895506a32b5b5",
+      "frame_hashes": [
+        "sha256:ac7fbf4732ec6b1a11c3af81cea48005c158e39d9043800a4d7895506a32b5b5"
+      ],
+      "snapshot_hash": "sha256:90fb991a68733407e5c0a2cc218fc54529856ab7ddf1f10a0eedb77556c762de",
+      "page_size": 4096,
+      "page_count": 1,
+      "text_encoding": 0,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [],
+      "indexes": [],
+      "names_complete": true
+    },
+    {
+      "file": "page-512.db",
+      "note": "page size 512",
+      "expect": "accept",
+      "file_bytes": 1024,
+      "file_sha256": "098f777ab19b43c51ff2cefe17610f3373d69977e2b549be28aea8b1446379a1",
+      "frame_hashes": [
+        "sha256:098f777ab19b43c51ff2cefe17610f3373d69977e2b549be28aea8b1446379a1"
+      ],
+      "snapshot_hash": "sha256:b8f540feef612bc2fd1e53f5d68b6238b036d2d527b490c73fcad8e8872c60b1",
+      "page_size": 512,
+      "page_count": 2,
+      "text_encoding": 1,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [
+        "t"
+      ],
+      "indexes": [],
+      "names_complete": true
+    },
+    {
+      "file": "page-65536.db",
+      "note": "page size 65536",
+      "expect": "accept",
+      "file_bytes": 131072,
+      "file_sha256": "e80a4e2b5378d883d713704931490522f76028fa5d51f6d4dc3cc1149dc5ae92",
+      "frame_hashes": [
+        "sha256:e80a4e2b5378d883d713704931490522f76028fa5d51f6d4dc3cc1149dc5ae92"
+      ],
+      "snapshot_hash": "sha256:c8b4d11e4c58da4629aa81f3d6d34c00a8e90476412f9a0d1af31cb4d705bd7f",
+      "page_size": 65536,
+      "page_count": 2,
+      "text_encoding": 1,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [
+        "t"
+      ],
+      "indexes": [],
+      "names_complete": true
+    },
+    {
+      "file": "utf16le.db",
+      "note": "text encoding 2 (UTF-16le); a table name with a non-ASCII letter",
+      "expect": "accept",
+      "file_bytes": 8192,
+      "file_sha256": "a22612025a4cba10071717ba1e601de548695a3cd7749cf5a64c49ab62ffdd7e",
+      "frame_hashes": [
+        "sha256:a22612025a4cba10071717ba1e601de548695a3cd7749cf5a64c49ab62ffdd7e"
+      ],
+      "snapshot_hash": "sha256:ed2b71ee9dd223a73f75aa2128b7f5fd125813d6ad5cc0fbce130fc81fe83099",
+      "page_size": 4096,
+      "page_count": 2,
+      "text_encoding": 2,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [
+        "t\u00e4ble"
+      ],
+      "indexes": [],
+      "names_complete": true
+    },
+    {
+      "file": "wal.db",
+      "note": "a WAL-mode database (header bytes 18 and 19 are 2)",
+      "expect": "accept",
+      "file_bytes": 8192,
+      "file_sha256": "243f0b1bcd30437f839d60b907f93d8bdc64499dd0a2ea497f6f92970253b277",
+      "frame_hashes": [
+        "sha256:243f0b1bcd30437f839d60b907f93d8bdc64499dd0a2ea497f6f92970253b277"
+      ],
+      "snapshot_hash": "sha256:2d2ad89001ee80742293ab5b237a18bb1e045affd3ba3cc8a2095b434a69aa4d",
+      "page_size": 4096,
+      "page_count": 2,
+      "text_encoding": 1,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [
+        "t"
+      ],
+      "indexes": [],
+      "names_complete": true
+    },
+    {
+      "file": "schema-full.db",
+      "note": "60 tables: page 1 is an interior page, so no names are on it",
+      "expect": "accept",
+      "file_bytes": 70656,
+      "file_sha256": "bbb0610c0b6608c2da750afed1ce12b3617160656da2d01dfb8b73111daa7966",
+      "frame_hashes": [
+        "sha256:bbb0610c0b6608c2da750afed1ce12b3617160656da2d01dfb8b73111daa7966"
+      ],
+      "snapshot_hash": "sha256:df281c66762273c521cc75f6d7fed02f7d81d44f737e59de9f4b5e976a2f6781",
+      "page_size": 1024,
+      "page_count": 69,
+      "text_encoding": 1,
+      "user_version": 0,
+      "application_id": 0,
+      "tables": [],
+      "indexes": [],
+      "names_complete": false
+    },
+    {
+      "file": "random.bin",
+      "note": "random bytes",
+      "expect": "refuse",
+      "reason": "not_sqlite",
+      "file_bytes": 4096,
+      "file_sha256": "a733ec0c6e3df53b8acce4aaab86894f972095bee1b521081822c556e58d4619"
+    },
+    {
+      "file": "encrypted-like.db",
+      "note": "the start of an encrypted database (no header string)",
+      "expect": "refuse",
+      "reason": "not_sqlite",
+      "file_bytes": 4096,
+      "file_sha256": "7a1b1b70db282916205638614614805f21dae4b8220376c9de8db6b59c0eb234"
+    },
+    {
+      "file": "empty-file.bin",
+      "note": "a file of 0 bytes",
+      "expect": "refuse",
+      "reason": "not_sqlite",
+      "file_bytes": 0,
+      "file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "truncated.db",
+      "note": "a valid database without its last 100 bytes",
+      "expect": "refuse",
+      "reason": "bad_length",
+      "file_bytes": 16284,
+      "file_sha256": "21a669c09286e283014e5c8d572df405f2fd843941f98d4f20dced6ed1e70b16"
+    },
+    {
+      "file": "padded.db",
+      "note": "a valid database with one more page of zeros",
+      "expect": "refuse",
+      "reason": "bad_length",
+      "file_bytes": 20480,
+      "file_sha256": "9fe162d13ed6add52d6fae4ec5056307128282f4d43207559b3181bd5f77f0c1"
+    },
+    {
+      "file": "bad-page-count.db",
+      "note": "the header page count is one too large (offset 92 = offset 24)",
+      "expect": "refuse",
+      "reason": "bad_length",
+      "file_bytes": 16384,
+      "file_sha256": "d01c8e5082cefd667596006eefb73495373a627713f204fc1c766b3d83e09dc4"
+    },
+    {
+      "file": "bad-fractions.db",
+      "note": "the max payload fraction is 65, not 64",
+      "expect": "refuse",
+      "reason": "bad_header",
+      "file_bytes": 16384,
+      "file_sha256": "d007acca0f6c46a268af2486e2071cb45384764269692eb764fec17413db0846"
+    },
+    {
+      "file": "bad-page-size.db",
+      "note": "the page size is 3000",
+      "expect": "refuse",
+      "reason": "bad_page_size",
+      "file_bytes": 16384,
+      "file_sha256": "fd4a9995f5d8e7f0ae3da346e723d49628012a71fde59d42ff6bf76ba3e53b21"
+    },
+    {
+      "file": "index-page-one.db",
+      "note": "page 1 is an index b-tree leaf page",
+      "expect": "refuse",
+      "reason": "bad_header",
+      "file_bytes": 16384,
+      "file_sha256": "24e6953239394cfe0d58fc1cefcbed46c63ab6250524b500203336b2f9206f82"
+    },
+    {
+      "file": "duckdb-like.db",
+      "note": "the header of a DuckDB file",
+      "expect": "refuse",
+      "reason": "not_sqlite",
+      "file_bytes": 16384,
+      "file_sha256": "51f572c255e3a410bc96bb0d0d272790f30ee24a4bac626b5f51a2e568e95bf7"
+    }
+  ],
+  "hash_rule_cases": [
+    {
+      "frame_hashes": [
+        "sha256:01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca"
+      ],
+      "snapshot_hash": "sha256:c4dbaa77d582debdee1e5f526b4341bf3d795934b0d5db94a2b312d63260291d"
+    },
+    {
+      "frame_hashes": [
+        "sha256:01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca",
+        "sha256:ffadf8d89d37b3b55fe1847b513cf92e3be87e4c168708c7851845df96fb36be"
+      ],
+      "snapshot_hash": "sha256:1ab1f65e8b001b144814649f85c00edf5036f5d0c78fb9f29a04c720b2662f93"
+    },
+    {
+      "frame_hashes": [
+        "sha256:01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca",
+        "sha256:ffadf8d89d37b3b55fe1847b513cf92e3be87e4c168708c7851845df96fb36be",
+        "sha256:3500d93214caf7f502af5adcd28f8f4fb3620eae3bedbeb327cc5c68a57b3129"
+      ],
+      "snapshot_hash": "sha256:932a5732ab0e36105f571ecfff836841816134baa4bafa182f2aadc1a5c00bfd"
+    }
+  ]
+}
