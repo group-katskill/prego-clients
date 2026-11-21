@@ -234,7 +234,8 @@ docker pull oci.prego.k8skill.com/acme/default/api:1.0.0
 
 For a Prego host, the helper gives Docker the tenant as the username and the subject token (from the
 [identity sources](#identity-sources)) as the password. Docker sends them only to the Prego token realm
-(`https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's challenge). For all other hosts the helper answers "not found", so Docker
+(`https://api.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's challenge;
+sts.prego.k8skill.com is an alias and keeps working). For all other hosts the helper answers "not found", so Docker
 uses its other credentials. `docker login` and `docker logout` do not change anything in the helper. Podman
 uses the same `credHelpers` key in `auth.json`.
 

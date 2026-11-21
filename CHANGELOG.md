@@ -16,6 +16,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/openapi.yaml` 1.7.0: the owner-only route `POST /v1/admin/tenants/{tenant}/pending/{id}/remove-now`
   (`confirm`, the `200` answer `RemoveNowResult`, the kinds by ID prefix, the errors `400`, `403`, `404` and `409`),
   and the `id` and `size_bytes` of pending-deletion list rows.
+- Docs name the control host `api.prego.k8skill.com` (ADR-0054) in every example: the OCI token realm in the
+  README, `docs/oci-quickstart.md` and PROTOCOL.md 1.15.2 section 7 is on the api name from registry 1.27.1, and
+  `docs/openapi.yaml` 1.7.1 lists one server. sts.prego.k8skill.com is an alias and keeps working. prego and
+  docker-credential-prego accept a realm on either name since 0.11.0; the token `iss` claim is unchanged.
+- Sizes in the docs are in binary units (KiB, MiB, GiB): PROTOCOL.md section 16 drops the byte count of the
+  64 MiB frame, and `docs/openapi.yaml` gives the 8192-character token limit as 8 KiB.
 
 ## [1.2.0] - 2026-11-20
 

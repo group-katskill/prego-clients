@@ -68,8 +68,8 @@ prego login --publish          # from 0.7.0: approve the code in the console; re
 
 The helper gives the tenant as the username and the identity as the password. With a `prego login` session,
 the password is a short registry token from the session; the session itself never goes to Docker. Docker sends them only to the
-Prego token realm (`https://sts.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's `401`
-answer). The realm gives Docker a registry token (15
+Prego token realm (`https://api.prego.k8skill.com/v1/oci/token/e/<edge code>`, from the registry's `401`
+answer; sts.prego.k8skill.com is an alias and keeps working). The realm gives Docker a registry token (15
 minutes by default, or the lifetime of your grant), and Docker gets a new one when the registry answers `401`. No password goes into `config.json`.
 
 ## 3. Push and pull

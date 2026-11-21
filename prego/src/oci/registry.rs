@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 
 use super::input::{hex, Blob, Manifest, Source};
 
-/// Largest upload part. The registry body limit is 100 MB.
+/// Largest upload part, 95 MiB: the most the registry accepts in one request.
 pub const MAX_PART: u64 = 95 * 1024 * 1024;
 /// Upload part size if `--chunk-size` is not given.
 pub const DEFAULT_PART: u64 = 64 * 1024 * 1024;
@@ -796,10 +796,10 @@ mod tests {
     #[test]
     fn challenges() {
         let c = parse_bearer_challenge(
-            r#"Bearer realm="https://sts.prego.k8skill.com/v1/oci/token",service="oci.prego.k8skill.com",scope="repository:a/b/c:pull""#,
+            r#"Bearer realm="https://api.prego.k8skill.com/v1/oci/token",service="oci.prego.k8skill.com",scope="repository:a/b/c:pull""#,
         )
         .unwrap();
-        assert_eq!(c.realm, "https://sts.prego.k8skill.com/v1/oci/token");
+        assert_eq!(c.realm, "https://api.prego.k8skill.com/v1/oci/token");
         assert_eq!(c.service.as_deref(), Some("oci.prego.k8skill.com"));
         let c = parse_bearer_challenge("bearer realm=https://x.test/t, service=s").unwrap();
         assert_eq!(c.realm, "https://x.test/t");
