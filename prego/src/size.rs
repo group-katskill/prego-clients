@@ -62,7 +62,10 @@ mod tests {
 
     #[test]
     fn json_values() {
-        assert_eq!(human_of(&serde_json::json!(16384)).as_deref(), Some("16 KiB"));
+        assert_eq!(
+            human_of(&serde_json::json!(16384)).as_deref(),
+            Some("16 KiB")
+        );
         assert_eq!(human_of(&Value::Null), None);
         assert_eq!(human_of(&serde_json::json!("x")), None);
     }

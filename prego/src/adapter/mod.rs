@@ -84,7 +84,11 @@ pub fn push(
                 BlobResult::Uploaded { parts, .. } => format!("uploaded in {parts} part(s)"),
             }
         };
-        eprintln!("  {:<32} {:>10}  {what}", file.name, crate::size::human(file.size));
+        eprintln!(
+            "  {:<32} {:>10}  {what}",
+            file.name,
+            crate::size::human(file.size)
+        );
     }
     let m = Manifest {
         digest: sha256(&manifest),
@@ -167,7 +171,11 @@ fn get_into(globals: &[&str], r: &Reference, dir: &Path, env: &dyn Env) -> Resul
             reg.get_blob(&part.digest, part.size, &mut file)?;
             drop(file);
             check_part(part, &tmp, pulled.base.as_deref())?;
-            eprintln!("  {:<32} {:>10}  ok", part.name, crate::size::human(part.size));
+            eprintln!(
+                "  {:<32} {:>10}  ok",
+                part.name,
+                crate::size::human(part.size)
+            );
         }
         for (part, tmp) in pulled.parts.iter().zip(&temps) {
             let target = dir.join(&part.name);

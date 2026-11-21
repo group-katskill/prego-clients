@@ -106,7 +106,10 @@ pub fn push(
         let what = match reg.push_blob(blob)? {
             BlobResult::Mounted => "mounted".to_string(),
             BlobResult::Uploaded { parts, part_size } => {
-                format!("uploaded in {parts} part(s) of up to {}", crate::size::human(part_size))
+                format!(
+                    "uploaded in {parts} part(s) of up to {}",
+                    crate::size::human(part_size)
+                )
             }
         };
         eprintln!(

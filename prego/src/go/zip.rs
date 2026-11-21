@@ -527,7 +527,7 @@ mod tests {
         let mut big = cand("go.mod", Mode::Regular);
         big.size = MAX_GO_MOD_BYTES + 1;
         let e = select(vec![big]).unwrap_err();
-        assert!(e.contains("65536"), "{e}");
+        assert!(e.contains("at most 64 KiB"), "{e}");
     }
 
     #[test]
