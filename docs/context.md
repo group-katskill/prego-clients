@@ -38,7 +38,8 @@ checkpoint.
   settings, and `delete` to remove checkpoints. No grant gives `404`: the registry does not tell whether the
   context exists.
 - `prego` uses the same identity sources as the other tools: GitLab or GitHub OIDC, SPIFFE, an API key, or
-  `prego login` (use `prego login --publish` to save from a laptop).
+  `prego login` (use `prego login --publish` to save from a laptop). SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or
+  `PREGO_SVID_FILE`) needs the Publisher plan (or a Trial).
 
 ## References
 
