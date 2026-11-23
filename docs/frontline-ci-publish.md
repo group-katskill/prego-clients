@@ -18,7 +18,9 @@ The pattern has three parts:
    There is no Prego secret in the repository.
 2. **Point the heavy readers at Prego.** Fleets, runners and customers pull from Prego with the identity they
    already have (OIDC, SPIFFE, or a read-only API key where nothing else exists). Pulls are not charged by the
-   byte; each plan has a monthly usage limit and a hard stop, never an overage bill.
+   byte; each plan has a monthly usage limit and a hard stop, never an overage bill. SPIFFE
+   (`SPIFFE_ENDPOINT_SOCKET` or `PREGO_SVID_FILE`) needs the Publisher plan (or a Trial); OIDC works on every
+   plan.
 3. **You stay in control.** Prego never reaches into your registry. If you stop the publish job, Prego stops
    changing. Nothing you publish to Prego is required to be anywhere else.
 

@@ -6,6 +6,9 @@ Docker, Podman, BuildKit, crane and ORAS run it to sign in. The helper finds a m
 JWT-SVID, GitLab or GitHub CI OIDC token, token file, or API key) and gives it to Docker for the Prego token
 realm only. It never prints a token to stderr and never writes a token to disk. `docker login` stores nothing.
 
+The SPIFFE sources (`SPIFFE_ENDPOINT_SOCKET` and `PREGO_SVID_FILE`) need the Publisher plan (or a Trial).
+OIDC and API keys work on every plan.
+
 ```sh
 cargo install docker-credential-prego
 ```
