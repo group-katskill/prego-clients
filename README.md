@@ -491,7 +491,7 @@ Prego registry 1.0.0 does not have these:
 ## The prego CLI
 
 ```sh
-prego login [--publish]          # log in on a laptop with your console account (0.7.0)
+prego login [--publish] [--namespace <ns>]...  # log in on a laptop with your console account (0.7.0)
 prego status                     # the login session: tenant, access, end time (0.7.0)
 prego logout                     # end the session and delete it from this computer (0.7.0)
 prego whoami                     # tenant, identity source, principal, token lifetime, registry URLs (no token)
@@ -625,7 +625,11 @@ The STS takes the tenant from the API key. Registry endpoints never accept an AP
 
 On a laptop, use `prego login` and `prego logout` ([Quick start](#quick-start-on-a-laptop)). `prego login`
 prints a code; confirm it at <https://app.prego.k8skill.com/device> while you are signed in to the console. A
-login with `--publish` asks for your passkey there. `cargo login`,
+login with `--publish` asks for your passkey there.
+
+The session is for namespace `default`. To use another namespace, give `--namespace <ns>` (up to 10 times):
+`prego login --publish --namespace releases --namespace team-a`. `prego status` shows the namespaces of the
+session. A namespace is 3 to 40 lower case letters, digits and `-`; `prego login` checks it before the request. `cargo login`,
 `cargo logout`, `docker login` and `npm login` are not supported. Manage trust configs, principals and API keys in the
 Prego console at <https://app.prego.k8skill.com>, or from CI with an admin token
 (see [Manage Prego from CI](docs/ci.md#manage-prego-from-ci) and [`examples/admin/`](examples/admin/)).

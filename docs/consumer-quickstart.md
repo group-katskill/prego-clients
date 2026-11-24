@@ -84,7 +84,9 @@ prego login             # read access. prego login --publish: read and publish
 
 `prego login` shows a page and a code. Open the page, sign in, check the code, and approve. The session is
 kept in your OS keychain (on Linux without a desktop, in the kernel keyring, lost at reboot), never in a file.
-`prego status` shows it; `prego logout` ends it. The provider uses the session when no workload identity and
+`prego status` shows it; `prego logout` ends it. The session is for namespace `default`. For another
+namespace, add `--namespace <ns>` (you can give it up to 10 times), for example
+`prego login --namespace releases`. The provider uses the session when no workload identity and
 no `PREGO_API_KEY` is set. Lost laptop? Revoke the session in the console: Settings, Your sessions.
 
 **Or with an API key.** Put the key in your shell environment. Do not write it into `config.toml` or a file in your project.

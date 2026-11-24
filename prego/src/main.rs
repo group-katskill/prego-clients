@@ -30,12 +30,13 @@ prego: command-line tool for Prego by KatSkill.
 Usage: prego [options] <command>
 
 Commands:
-  login [--publish] [--no-browser]
+  login [--publish] [--no-browser] [--namespace <ns>]...
                                   log in with your console sign-in: open the page, confirm the code. The
                                   session is kept in the OS keychain (on Linux without a desktop, in the
                                   kernel keyring, lost at reboot), never in a file. It gives read access;
-                                  --publish asks for read and publish. The tools use it when no workload
-                                  identity and no PREGO_API_KEY is set. Not for CI
+                                  --publish asks for read and publish. --namespace asks for that namespace
+                                  (default: default); give it up to 10 times. The tools use it when no
+                                  workload identity and no PREGO_API_KEY is set. Not for CI
   logout                          end the login session and delete it from this computer
   status                          show the login session: tenant, access, end time (never a token)
   token [--scope <scope>]... [--resource <url>]
@@ -278,7 +279,8 @@ fn main() {
                 Command::Login {
                     publish,
                     no_browser,
-                } => login::login(&globals, publish, no_browser, &env),
+                    namespaces,
+                } => login::login(&globals, publish, no_browser, &namespaces, &env),
                 Command::Logout => login::logout(&globals, &env),
                 Command::Status => login::status(&globals, &env),
                 Command::Token { scopes, resource } => {

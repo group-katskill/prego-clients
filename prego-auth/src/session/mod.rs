@@ -77,18 +77,65 @@ pub struct Access {
     pub actions: Vec<String>,
 }
 
+/// The most access items in one device request (`PROTOCOL.md` section 11.1).
+pub const MAX_ACCESS_ITEMS: usize = 10;
+
+/// Checks a namespace slug with the rule of the server: `^[a-z][a-z0-9-]{1,38}[a-z0-9]$` (3 to 40
+/// characters, lower case letters, digits and `-`, a letter first, no `-` last).
+pub fn check_namespace(ns: &str) -> Result<(), String> {
+    let b = ns.as_bytes();
+    let ok = (3..=40).contains(&b.len())
+        && b[0].is_ascii_lowercase()
+        && b.iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == b'-')
+        && b[b.len() - 1] != b'-';
+    if ok {
+        Ok(())
+    } else {
+        Err(format!(
+            "bad namespace `{ns}`: use 3 to 40 lower case letters, digits and `-`, a letter first and no `-` last"
+        ))
+    }
+}
+
 impl Access {
-    /// What `prego login` asks for: read on every package type, and publish with `--publish`.
+    /// What `prego login` asks for: read on every package type in namespace `default`, and publish with
+    /// `--publish`.
     pub fn request(publish: bool) -> Vec<Access> {
+        Self::request_for(publish, &[]).expect("no namespace is always valid")
+    }
+
+    /// What `prego login --namespace <ns>...` asks for: one item for each namespace, read on every package
+    /// type, and publish with `--publish`. No namespace gives one item without a namespace (`default`).
+    /// It checks each slug ([`check_namespace`]) and the item count ([`MAX_ACCESS_ITEMS`]) before the
+    /// request. A namespace given two times gives one item.
+    pub fn request_for(publish: bool, namespaces: &[String]) -> Result<Vec<Access>, String> {
         let mut actions = vec!["read".to_string()];
         if publish {
             actions.push("publish".to_string());
         }
-        vec![Access {
+        let item = |namespace: Option<String>| Access {
             ecosystem: "any".into(),
-            namespace: None,
-            actions,
-        }]
+            namespace,
+            actions: actions.clone(),
+        };
+        if namespaces.is_empty() {
+            return Ok(vec![item(None)]);
+        }
+        let mut seen: Vec<&str> = Vec::new();
+        for ns in namespaces {
+            check_namespace(ns)?;
+            if !seen.contains(&ns.as_str()) {
+                seen.push(ns);
+            }
+        }
+        if seen.len() > MAX_ACCESS_ITEMS {
+            return Err(format!(
+                "too many namespaces: {} (at most {MAX_ACCESS_ITEMS})",
+                seen.len()
+            ));
+        }
+        Ok(seen.into_iter().map(|ns| item(Some(ns.into()))).collect())
     }
 }
 

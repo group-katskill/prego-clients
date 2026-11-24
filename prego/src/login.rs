@@ -30,8 +30,11 @@ pub fn login(
     globals: &[&str],
     publish: bool,
     no_browser: bool,
+    namespaces: &[String],
     env: &dyn Env,
 ) -> Result<(), String> {
+    // Check the namespaces before anything else: a bad slug makes no request.
+    let access = Access::request_for(publish, namespaces).map_err(|e| format!("prego: {e}"))?;
     let config = config(globals, env)?;
     // Stop before the request if there is no secure storage.
     let device = DeviceHandle::open(env).map_err(|e| e.to_string())?;
@@ -41,7 +44,7 @@ pub fn login(
         &http,
         &config,
         crate::USER_AGENT.replace("prego/", "prego-cli/").as_str(),
-        &Access::request(publish),
+        &access,
         &sleep,
     )
     .map_err(|e| e.to_string())?;

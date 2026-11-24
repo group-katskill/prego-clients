@@ -236,3 +236,96 @@ fn exec_with_a_session_writes_no_netrc_file() {
     assert_eq!(r.code, 0, "{}", r.stderr);
     assert!(r.stderr.contains("no NETRC file"), "{}", r.stderr);
 }
+
+fn token_answer_for(access: &serde_json::Value, refresh: &str) -> MockResponse {
+    MockResponse::json(
+        200,
+        &json!({
+            "access_token": REG_1, "token_type": "Bearer", "expires_in": 900,
+            "refresh_token": refresh,
+            "session": {
+                "id": "dvs_02", "name": "prego-cli on laptop", "access": access,
+                "idle_expires_at": 4_102_444_800i64, "expires_at": 4_102_444_800i64
+            }
+        })
+        .to_string(),
+    )
+}
+
+#[test]
+fn login_for_a_namespace_asks_for_it_and_status_shows_it() {
+    let approved = json!([
+        {"ecosystem": "any", "namespace": "releases", "actions": ["read", "publish"]},
+        {"ecosystem": "any", "namespace": "team-a", "actions": ["read", "publish"]}
+    ]);
+    let server = MockServer::start(vec![start_answer(), token_answer_for(&approved, "rt-1")]);
+    let env = Env::new(&server, "ns");
+    let vars = env.vars();
+
+    let r = run(
+        &[
+            "login",
+            "--publish",
+            "--no-browser",
+            "--namespace",
+            "releases",
+            "--namespace=team-a",
+        ],
+        &vars,
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(
+        r.stderr
+            .contains("read, publish (any, releases); read, publish (any, team-a)"),
+        "{}",
+        r.stderr
+    );
+
+    let r = run(&["status"], &vars);
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(
+        r.stdout
+            .contains("read, publish (any, releases); read, publish (any, team-a)"),
+        "{}",
+        r.stdout
+    );
+    assert!(!r.stdout.contains("default"), "{}", r.stdout);
+
+    let reqs = server.requests();
+    assert_eq!(reqs[0].target, "/v1/sts/device/e/k7mq/start");
+    let start: serde_json::Value = serde_json::from_str(&reqs[0].body).unwrap();
+    assert_eq!(start["access"], approved);
+}
+
+#[test]
+fn login_without_a_namespace_sends_none() {
+    let server = MockServer::start(vec![start_answer(), token_answer(REG_1, "rt-1")]);
+    let env = Env::new(&server, "nons");
+    let r = run(&["login", "--no-browser"], &env.vars());
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let start: serde_json::Value = serde_json::from_str(&server.requests()[0].body).unwrap();
+    assert_eq!(
+        start["access"],
+        json!([{"ecosystem": "any", "actions": ["read"]}])
+    );
+}
+
+#[test]
+fn a_bad_namespace_stops_before_the_request() {
+    let server = MockServer::start(vec![]);
+    let env = Env::new(&server, "badns");
+    for bad in ["Releases", "a_b", "ab", "rel-"] {
+        let r = run(&["login", "--no-browser", "--namespace", bad], &env.vars());
+        assert_eq!(r.code, 1, "{bad}");
+        assert!(r.stderr.contains("bad namespace"), "{bad}: {}", r.stderr);
+    }
+    let mut args = vec!["login", "--no-browser"];
+    let names: Vec<String> = (0..11).map(|i| format!("ns{i}x")).collect();
+    for n in &names {
+        args.extend(["--namespace", n.as_str()]);
+    }
+    let r = run(&args, &env.vars());
+    assert_eq!(r.code, 1);
+    assert!(r.stderr.contains("too many namespaces"), "{}", r.stderr);
+    assert!(server.requests().is_empty());
+}

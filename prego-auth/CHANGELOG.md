@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `Access::request_for(publish, namespaces)` (minor): one access item for each namespace of a device request,
+  with the slug check `check_namespace` (the server rule `^[a-z][a-z0-9-]{1,38}[a-z0-9]$`) and the limit
+  `MAX_ACCESS_ITEMS` (10). `Access::request(publish)` is unchanged (namespace `default`).
+
 ### Changed
 
 - Docs: the OCI realm in a registry challenge is on the api name of the control host from registry 1.27.1
