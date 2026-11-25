@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Site, README and consumer quickstart: the install text names version 1.3.0 (it said 0.10.0), the cosign example
+  uses the tag `prego-clients-v1.3.0`, and the binary download example uses `x86_64-unknown-linux-musl`, the only
+  release target (it named `aarch64-apple-darwin`, which 1.3.0 does not have).
+
 ## [1.3.0] - 2026-11-25
 
 ### Added
