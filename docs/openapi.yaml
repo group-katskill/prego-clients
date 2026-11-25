@@ -7,7 +7,8 @@ info:
     The public, tenant-facing API of Prego by KatSkill.
 
     - **STS** (`api.prego.k8skill.com`): exchange a subject token (JWT-SVID, OIDC ID token or API key) for a
-      short-lived registry token. See `PROTOCOL.md`.
+      short-lived registry token. See `PROTOCOL.md`. A JWT-SVID (SPIFFE) needs the Publisher plan (or a Trial);
+      OIDC ID tokens and API keys work on every plan.
     - **Cargo registry** (`cargo.prego.k8skill.com`): the Cargo sparse registry protocol. Every request carries a
       registry token from the STS. Cargo gets it from `cargo-credential-prego`.
     - **Release Variables** (`api.prego.k8skill.com/v1/vars`, registry 1.8.0): plain settings that go with a
@@ -633,7 +634,8 @@ paths:
       summary: Create a trust config. Role admin or higher.
       description: |
         Give exactly one of `jwks_url` or `jwks_inline`. For OIDC you can give neither; then the STS uses OIDC
-        discovery on the issuer. `issuer` and `spiffe_trust_domain` are unique in a tenant.
+        discovery on the issuer. `issuer` and `spiffe_trust_domain` are unique in a tenant. Kind `spiffe` needs
+        the Publisher plan (or a Trial).
       requestBody:
         required: true
         content:
@@ -732,7 +734,9 @@ paths:
         - firebaseIdToken: []
         - adminToken: ["principals:write"]
       summary: Create a principal. Role admin or higher.
-      description: For kind `api_key`, the response holds the key value `api_key` once. It is never returned again.
+      description: |
+        For kind `api_key`, the response holds the key value `api_key` once. It is never returned again. Kind
+        `spiffe` needs the Publisher plan (or a Trial).
       requestBody:
         required: true
         content:

@@ -31,7 +31,8 @@ This guide uses tenant `acme`, namespace `fleet` and database `lookup`. Replace 
   and change settings, and `delete` to remove snapshots. No grant gives `404`: Prego does not tell whether the
   database exists.
 - `prego` uses the same identity sources as the other tools: GitLab or GitHub OIDC, SPIFFE, an API key, or
-  `prego login` (use `prego login --publish` to save from a laptop).
+  `prego login` (use `prego login --publish` to save from a laptop). SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or
+  `PREGO_SVID_FILE`) needs the Publisher plan (or a Trial).
 
 ## References
 

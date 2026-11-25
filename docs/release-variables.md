@@ -45,7 +45,8 @@ A **set** is a flat map of keys to values on one **level**:
 ## Access
 
 `prego env` uses the same identity sources and grants as the other tools: GitLab or GitHub OIDC, SPIFFE, an
-API key, or `prego login`. There is no new grant type.
+API key, or `prego login`. There is no new grant type. SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or `PREGO_SVID_FILE`)
+needs the Publisher plan (or a Trial).
 
 - **Read** a `version` set: a grant with `read` whose glob matches the package (any `ecosystem`). Read a
   `namespace` or `tenant` set: any grant in that namespace or tenant.

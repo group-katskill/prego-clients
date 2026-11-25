@@ -104,6 +104,9 @@ If the job runs next to a SPIRE agent (or another SPIFFE Workload API), set `SPI
 provider fetches a JWT-SVID with audience `prego.k8skill.com`. With spiffe-helper, write the JWT-SVID to a file
 and set `PREGO_SVID_FILE` instead.
 
+SPIFFE needs the Publisher plan (or a Trial). Indie, Org and Consumer do not have SPIFFE machine identity:
+use GitLab or GitHub OIDC, a token file or an API key there.
+
 Console: a trust config of kind `spiffe` with your trust domain (for example `prod.acme.io`) and its JWKS, and a
 principal with a SPIFFE ID, `exact` or `prefix` match (for example prefix `spiffe://prod.acme.io/ci/`).
 
