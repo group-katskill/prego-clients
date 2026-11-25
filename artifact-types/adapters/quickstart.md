@@ -95,7 +95,7 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct --enable-lora --lora-modules support
 The commands use the machine identity, as the other `prego` commands: GitLab `id_tokens`, GitHub Actions
 OIDC, SPIFFE or a workload token file, or `PREGO_API_KEY`. See the [CI guide](../../docs/ci.md). A training job pushes
 with a `publish` grant; a serving job gets with a `read` grant. SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or
-`PREGO_SVID_FILE`) needs the Publisher plan (or a Trial).
+`PREGO_SVID_FILE`) needs the Org or Publisher plan (or a Trial).
 
 ```yaml
 # GitLab CI: a serving image that loads the adapter at build time

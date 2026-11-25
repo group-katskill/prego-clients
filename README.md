@@ -92,7 +92,7 @@ Prego registries accept only a short-lived **registry token** (15 minutes by def
 
 1. It finds a **subject token** on the machine: a SPIFFE JWT-SVID, a CI OIDC ID token, a token file, or an
    API key (`prk_...`). With none of them, it uses the `prego login` session, which gets the registry token
-   directly with a session refresh. SPIFFE needs the Publisher plan (or a Trial); OIDC works on every plan.
+   directly with a session refresh. SPIFFE needs the Org or Publisher plan (or a Trial); OIDC works on every plan.
 2. It sends the subject token to the Prego **STS** (`POST /v1/sts/token/e/<edge code>`, RFC 8693 token exchange).
 3. The STS checks the subject token against the trust config and principals of your tenant. It returns a
    registry token.
@@ -640,7 +640,7 @@ In `auto` mode the provider uses the first source that is present, in this order
 | 6 | `api-key` | `PREGO_API_KEY` is set | Prego API key `prk_...` |
 | 7 | `device` | none of the above, and you ran `prego login` (0.7.0) | none: a session refresh gives the registry token |
 
-The SPIFFE sources (`spiffe` and `svid-file`) need the Publisher plan (or a Trial). Indie, Org and
+The SPIFFE sources (`spiffe` and `svid-file`) need the Org or Publisher plan (or a Trial). Indie and
 Consumer do not have SPIFFE machine identity: use OIDC, a token file or an API key there.
 
 If no source is present, the error lists the sources that the provider checked.

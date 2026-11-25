@@ -244,7 +244,7 @@ and uses the first one that is present. `--source <name>` (or `PREGO_SOURCE`) se
 | 7 | `device` | No source above is present, and secure storage holds a device session for the tenant and STS | A session refresh (section 11.3). It is not a subject token: the client gets the registry token directly. | none |
 
 The SPIFFE sources (`spiffe`, from `SPIFFE_ENDPOINT_SOCKET`, and `svid-file`, from `PREGO_SVID_FILE`) need
-the Publisher plan (or a Trial). Indie, Org and Consumer do not have SPIFFE machine identity. OIDC sources
+the Org or Publisher plan (or a Trial). Indie and Consumer do not have SPIFFE machine identity. OIDC sources
 and API keys work on every plan.
 
 `jwt` means `urn:ietf:params:oauth:token-type:jwt`. `api-key` means `urn:k8skill:prego:token-type:api-key`.

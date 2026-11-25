@@ -6,7 +6,7 @@ Cargo runs it to get a registry token. The provider finds a machine identity (SP
 GitHub CI OIDC token, token file, or API key), exchanges it at the Prego STS, and gives Cargo a short-lived
 registry token. It never prints a token and never writes a token to disk.
 
-The SPIFFE sources (`SPIFFE_ENDPOINT_SOCKET` and `PREGO_SVID_FILE`) need the Publisher plan (or a Trial).
+The SPIFFE sources (`SPIFFE_ENDPOINT_SOCKET` and `PREGO_SVID_FILE`) need the Org or Publisher plan (or a Trial).
 OIDC and API keys work on every plan.
 
 ```sh

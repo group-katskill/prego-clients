@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- PREGO-43 (registry 1.30.0): SPIFFE machine identity (`SPIFFE_ENDPOINT_SOCKET`, `PREGO_SVID_FILE`) is also on the
+  Org plan. Every SPIFFE plan line now says "the Org or Publisher plan (or a Trial)"; Indie and Consumer do not have
+  it; OIDC stays on every plan. `README.md`, `PROTOCOL.md` section 5, `docs/openapi.yaml` (description text only),
+  `docs/ci.md`, `docs/consumer-quickstart.md`, `docs/frontline-ci-publish.md`, the crate READMEs of
+  `cargo-credential-prego` and `docker-credential-prego`, `artifact-types/*/quickstart.md` and `site/index.html`.
 - The shared ADR-0061 and ADR-0062 test vectors (`prego/tests/vectors/{signing,keys,a2a}/`), copied as data with
   their READMEs from the Prego monorepo (branch `vectors/keys-a2a`); the generator scripts are not copied. NOTICE
   names the pinned A2A v1.0.1 proto and schema in `prego/tests/vectors/a2a/schema/` (Apache-2.0, test data only).

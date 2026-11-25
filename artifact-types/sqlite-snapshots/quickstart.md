@@ -32,7 +32,7 @@ This guide uses tenant `acme`, namespace `fleet` and database `lookup`. Replace 
   database exists.
 - `prego` uses the same identity sources as the other tools: GitLab or GitHub OIDC, SPIFFE, an API key, or
   `prego login` (use `prego login --publish` to save from a laptop). SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or
-  `PREGO_SVID_FILE`) needs the Publisher plan (or a Trial).
+  `PREGO_SVID_FILE`) needs the Org or Publisher plan (or a Trial).
 
 ## References
 

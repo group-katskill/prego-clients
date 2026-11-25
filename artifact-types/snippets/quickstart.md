@@ -25,7 +25,7 @@ This guide uses tenant `acme`, namespace `ops` and snippet `deploy-scripts`. Rep
   roll back. No grant gives `404`: the registry does not tell whether the snippet exists.
 - `prego` uses the same identity sources as the other tools: GitLab or GitHub OIDC, SPIFFE, an API key, or
   `prego login` (use `prego login --publish` to push from a laptop). SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or
-  `PREGO_SVID_FILE`) needs the Publisher plan (or a Trial).
+  `PREGO_SVID_FILE`) needs the Org or Publisher plan (or a Trial).
 
 ## References
 
