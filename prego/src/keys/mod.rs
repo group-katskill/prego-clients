@@ -802,9 +802,7 @@ mod tests {
 
     #[test]
     fn private_key_is_refused_before_any_request() {
-        let dir = std::env::temp_dir().join(format!("prego-keys-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = crate::sign::scrub_dir::ScrubDir::new("keys");
         let pubf = dir.join("a.pub");
         std::fs::write(
             &pubf,

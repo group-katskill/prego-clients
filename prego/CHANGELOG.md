@@ -62,6 +62,12 @@ Version 1.3.0 (minor). Not released yet.
   makes no request. No `--namespace` sends the same body as before (namespace `default`). `prego status` shows
   the namespaces. Fixes: a login session could reach only namespace `default`.
 
+### Tests
+
+- The `prego keys` and `prego a2a` tests remove their temp directories when they end, also after a failure. Before
+  the removal, each file is overwritten with zeros, because the directories hold test private keys. Before, the
+  directories `prego-keys-a2a-*`, `prego-keys-*` and `prego-keyfile-*` stayed in the system temp directory.
+
 ## [1.2.0] - 2026-11-20
 
 ### Added
