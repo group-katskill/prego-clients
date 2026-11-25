@@ -112,7 +112,7 @@ prego a2a get acme/agents/support@stable --expect sha256:...            # exit 3
 When a grant is missing, `prego` names it:
 
 ```text
-read on a2a set acme/agents/support (type A2A Agent Cards) is missing, or the set does not exist; ask an admin of acme for a grant
+read on a2a set acme/agents/support (type A2A Agent Cards) is missing; ask an admin of acme for a grant
 ```
 
 ```text
@@ -179,5 +179,5 @@ for the trust config and the principal.
 | `422 signature_invalid` | A signature does not verify, the key is revoked or past its end date, or the key is not in the item. | Read the reason. Push the public key with `prego keys push`, or make a new key with `prego keys new`. |
 | `422 source_mismatch` | A card says it comes from another tenant, namespace or set. | Push to the set that the card names, or sign again with `--sign` (it writes the new source). |
 | `422 looks_like_secret` | A card value looks like a secret. | Remove the secret from the card. |
-| `... is missing, or the set does not exist; ask an admin of acme for a grant` | No grant, or no set with that name. | Check the reference. Ask an admin for the grant. |
+| `... is missing; ask an admin of acme for a grant (... not found, or you have no grant for it ...)` | No grant, or no set with that name (the registry does not say which). | Check the reference. Ask an admin for the grant. |
 | `verify needs read on key ...` | You can read the set but not the key item. | Ask an admin for `read` on the key item. |

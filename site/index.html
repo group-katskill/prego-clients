@@ -522,7 +522,7 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
           <ul class="rules">
             <li><code>--sign</code> signs each card (an A2A 1.0 signature) and the set on your computer. It first adds the Prego source extension <code>https://prego.k8skill.com/ext/a2a-source/v1</code> (tenant, namespace, set) to each card; <code>--no-source</code> leaves it out. Prego never gets the private key.</li>
             <li>Card files are named <code>[a-z0-9][a-z0-9._-]{0,127}.json</code>, for example <code>acme.support-bot.json</code>. At most 100 cards, 64 KiB each, 1 MiB together.</li>
-            <li><code>--verify</code> needs <code>read</code> on the card set and <code>read</code> on the signing key item. A missing grant is named: &ldquo;read on a2a set acme/agents/support (type A2A Agent Cards) is missing, or the set does not exist; ask an admin of acme for a grant&rdquo; and &ldquo;verify needs read on key acme/release-keys/signer (type Keys and Certificates); ask an admin of acme for a grant&rdquo;.</li>
+            <li><code>--verify</code> needs <code>read</code> on the card set and <code>read</code> on the signing key item. A missing grant is named: &ldquo;read on a2a set acme/agents/support (type A2A Agent Cards) is missing; ask an admin of acme for a grant&rdquo; and &ldquo;verify needs read on key acme/release-keys/signer (type Keys and Certificates); ask an admin of acme for a grant&rdquo;.</li>
             <li>Trial, Indie, Org and Publisher publish. Consumer reads through grants. On Indie, the cards stay in your tenant.</li>
           </ul>
           <h3 id="a2a-upgrade">Upgrade an A2A 0.3 card, with no account</h3>

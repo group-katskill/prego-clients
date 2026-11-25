@@ -154,7 +154,7 @@ prego keys revoke acme/release-keys/signer --reason "laptop lost"
 When you have no grant on an item, or the item does not exist, `prego` names the grant to ask for:
 
 ```text
-read on key acme/release-keys/deploy (type Keys and Certificates) is missing, or the key item does not exist; ask an admin of acme for a grant
+read on key acme/release-keys/deploy (type Keys and Certificates) is missing; ask an admin of acme for a grant
 ```
 
 `prego a2a get --verify` needs `read` on the key item that signed the cards. Without it, `prego` stops with:
@@ -175,5 +175,5 @@ key and a PEM certificate bundle that you give, and prints the fingerprints.
 | `Keys and Certificates holds public keys and certificates only. Entry <index> holds a private key (<kind>). <hint>` | A file holds private key material. Nothing was sent. | Upload the public part, as the hint says. |
 | `422 private_key_material` | The registry found private key material. | The same. |
 | `400 key_invalid` | An entry does not parse as its type, or the key is too small (for example an SSH RSA key of 2048 bits). | Read the reason and the entry index. Fix the file or the `--type`. |
-| `... is missing, or the key item does not exist; ask an admin of acme for a grant` | No grant, or no item with that name. | Check the reference. Ask an admin for the grant. |
+| `... is missing; ask an admin of acme for a grant (... not found, or you have no grant for it ...)` | No grant, or no item with that name (the registry does not say which). | Check the reference. Ask an admin for the grant. |
 | `403 plan_limit` | The plan's item count or storage is full, or the plan does not allow the action. | See the plan limits page. |

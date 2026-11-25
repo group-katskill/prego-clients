@@ -184,19 +184,15 @@ fn api(globals: &[&str], tenant: &str, env: &dyn Env) -> Result<Api, String> {
 /// The ADR-0062 section 5 text for a missing grant on a set.
 pub fn missing_set_grant(action: &str, r: &SnipRef) -> String {
     format!(
-        "{action} on a2a set {} (type A2A Agent Cards) is missing, or the set does not exist; ask an admin \
-         of {} for a grant",
+        "{action} on a2a set {} (type A2A Agent Cards) is missing; ask an admin of {} for a grant",
         r.long(),
         r.tenant
     )
 }
 
+/// The grant text for a 404 on a card set (ADR-0062 section 5).
 fn hint(e: String, r: &SnipRef, action: &str) -> String {
-    if e.ends_with("not found, or you have no grant for it") {
-        format!("{e}: {}", missing_set_grant(action, r))
-    } else {
-        e
-    }
+    keys::with_grant(e, missing_set_grant(action, r))
 }
 
 fn error(res: &FullResponse, what: &str, r: &SnipRef, action: &str) -> String {
@@ -446,7 +442,7 @@ impl KeyBook<'_> {
             .unwrap_or_else(|| "current".into());
         let api = Api::with_prefix(self.globals, t, self.env, "keys")?;
         let found = keys::find_key(&api, &r, &selector, &h.kid).map_err(|e| {
-            if e.contains("is missing, or the key item does not exist") {
+            if e.contains("(type Keys and Certificates) is missing") {
                 format!(
                     "prego: verify needs read on key {} (type Keys and Certificates); ask an admin of {} for a \
                      grant",

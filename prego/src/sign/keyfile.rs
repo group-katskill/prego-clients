@@ -55,8 +55,14 @@ impl PrivateKey {
             }
         }
         .map_err(|_| "the key pair cannot be made (no system random source)".to_string())?;
-        let key = PrivateKey::from_pkcs8(doc.as_ref())?;
-        Ok((key, pem("PRIVATE KEY", doc.as_ref())))
+        // ring writes Ed25519 as PKCS #8 v2 (RFC 5958, with the public key). OpenSSL 3.0 and other tools read
+        // only v1, so the file gets the v1 form; the public key is derived again on load.
+        let der = match alg {
+            NewAlg::Ed25519 => ed25519_v1(doc.as_ref())?,
+            NewAlg::Es256 => doc.as_ref().to_vec(),
+        };
+        let key = PrivateKey::from_pkcs8(&der)?;
+        Ok((key, pem("PRIVATE KEY", &der)))
     }
 
     /// Reads a key file. The error says how to make a usable file.
@@ -178,6 +184,39 @@ impl PrivateKey {
     }
 }
 
+/// The PKCS #8 v1 form (RFC 5208) of an Ed25519 key: `SEQUENCE { INTEGER 0, SEQUENCE { OID 1.3.101.112 },
+/// OCTET STRING { OCTET STRING <32-byte seed> } }` (RFC 8410 section 7). It takes the seed from the v1 or v2
+/// document that ring makes.
+fn ed25519_v1(doc: &[u8]) -> Result<Vec<u8>, String> {
+    let bad = || "the new Ed25519 key is not in the expected PKCS #8 form".to_string();
+    let top = der::expect(der::read_all(doc)?, der::SEQUENCE, "PKCS #8")?;
+    let parts = der::children(top.content)?;
+    let alg = parts
+        .get(1)
+        .filter(|t| t.tag == der::SEQUENCE)
+        .ok_or_else(bad)?;
+    let oid = der::children(alg.content)?
+        .first()
+        .map(|t| der::oid_text(t.content));
+    if oid.as_deref() != Some("1.3.101.112") {
+        return Err(bad());
+    }
+    let outer = parts
+        .get(2)
+        .filter(|t| t.tag == der::OCTET_STRING)
+        .ok_or_else(bad)?;
+    let seed = der::expect(der::read_all(outer.content)?, der::OCTET_STRING, "seed")?.content;
+    if seed.len() != 32 {
+        return Err(bad());
+    }
+    let mut out = vec![
+        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04,
+        0x20,
+    ];
+    out.extend_from_slice(seed);
+    Ok(out)
+}
+
 /// Writes a new private key file with mode 0600. An existing file is never replaced.
 pub fn write_new(path: &std::path::Path, pem_text: &str) -> Result<(), String> {
     use std::io::Write as _;
@@ -206,6 +245,62 @@ pub fn write_new(path: &std::path::Path, pem_text: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn new_ed25519_keys_are_pkcs8_v1_and_v2_still_loads() {
+        let (k, text) = PrivateKey::generate(NewAlg::Ed25519).unwrap();
+        let der = pem_blocks(&text, "PRIVATE KEY").unwrap().remove(0);
+        // SEQUENCE, length 46, version INTEGER 0: v1, no public key field.
+        assert_eq!(&der[..5], &[0x30, 0x2e, 0x02, 0x01, 0x00]);
+        assert_eq!(der.len(), 48);
+        // A v2 document (as ring and newer tools write it) still loads, to the same key.
+        let rng = SystemRandom::new();
+        let v2 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+        assert_eq!(v2.as_ref()[4], 0x01, "ring writes v2");
+        let from_v2 = PrivateKey::from_pkcs8(v2.as_ref()).unwrap();
+        let from_v1 = PrivateKey::from_pkcs8(&ed25519_v1(v2.as_ref()).unwrap()).unwrap();
+        assert_eq!(from_v1.public(), from_v2.public());
+        let sig = k.sign(b"x").unwrap();
+        k.public().verify("EdDSA", b"x", &sig).unwrap();
+    }
+
+    /// When an `openssl` binary is on the PATH (it is on CI), it must read the files that `prego keys new`
+    /// writes, and give the same public key.
+    #[test]
+    fn openssl_reads_new_key_files() {
+        let Ok(v) = std::process::Command::new("openssl")
+            .arg("version")
+            .output()
+        else {
+            eprintln!("no openssl on the PATH: skipped");
+            return;
+        };
+        eprintln!("{}", String::from_utf8_lossy(&v.stdout).trim());
+        let dir = std::env::temp_dir().join(format!("prego-openssl-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for alg in [NewAlg::Ed25519, NewAlg::Es256] {
+            let (k, text) = PrivateKey::generate(alg).unwrap();
+            let path = dir.join(format!("{alg:?}.pem"));
+            write_new(&path, &text).unwrap();
+            let out = std::process::Command::new("openssl")
+                .args(["pkey", "-pubout", "-outform", "DER", "-in"])
+                .arg(&path)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{alg:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            assert_eq!(
+                &PublicJwk::from_spki(&out.stdout).unwrap(),
+                k.public(),
+                "{alg:?}"
+            );
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn generate_sign_verify_and_reload() {

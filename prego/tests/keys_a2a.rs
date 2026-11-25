@@ -499,7 +499,7 @@ fn keys_new_then_signed_push_then_get_verify() {
         sts_ok(),
         MockResponse::json(
             404,
-            r#"{"error":{"code":"not_found","message":"not found"}}"#,
+            r#"{"error":{"code":"not_found","message":"not found","request_id":"req_404"}}"#,
         ),
     ]));
     let r = run_in(
@@ -582,7 +582,7 @@ fn a2a_get_without_a_grant_names_the_set_grant() {
         sts_ok(),
         MockResponse::json(
             404,
-            r#"{"error":{"code":"not_found","message":"not found"}}"#,
+            r#"{"error":{"code":"not_found","message":"not found","request_id":"req_404"}}"#,
         ),
     ]);
     let r = run_in(
@@ -598,8 +598,8 @@ fn a2a_get_without_a_grant_names_the_set_grant() {
     assert_eq!(r.code, 1);
     assert!(
         r.stderr.contains(
-            "read on a2a set acme/agents/support (type A2A Agent Cards) is missing, or the set does not exist; ask \
-             an admin of acme for a grant"
+            "prego: read on a2a set acme/agents/support (type A2A Agent Cards) is missing; ask an admin of acme \
+             for a grant ("
         ),
         "{}",
         r.stderr
@@ -631,4 +631,38 @@ fn a2a_push_without_signatures_says_how_to_sign() {
         r.stderr
     );
     assert!(server.requests().is_empty());
+}
+
+/// Staging keys-e2e G: `keys get` by a principal without a grant. The registry 404 carries a request id; the
+/// message names the missing grant first (ADR-0061 section 3.6).
+#[test]
+fn keys_get_without_a_grant_names_the_key_grant() {
+    let dir = temp_dir("keys-nogrant");
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::json(
+            404,
+            r#"{"error":{"code":"not_found","message":"not found","request_id":"req_g"}}"#,
+        ),
+    ]);
+    let r = run_in(
+        &dir,
+        &[
+            "keys",
+            "get",
+            "acme/release-keys/signer",
+            "--sts-url",
+            &sts(&server),
+        ],
+    );
+    assert_eq!(r.code, 1);
+    assert!(
+        r.stderr.starts_with(
+            "prego: read on key acme/release-keys/signer (type Keys and Certificates) is missing; ask an admin of \
+             acme for a grant ("
+        ),
+        "{}",
+        r.stderr
+    );
+    assert!(r.stderr.contains("request req_g"), "{}", r.stderr);
 }

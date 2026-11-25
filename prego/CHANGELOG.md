@@ -38,6 +38,15 @@ Version 1.3.0 (minor). Not released yet.
   <ref> (type Keys and Certificates); ask an admin of <tenant> for a grant". `upgrade` converts an A2A 0.3 card to
   1.0 offline (no account needed), prints each change, stops at a field it cannot map with certainty (JSON
   pointer), and writes `agent-card.json` next to the input by default; the output is unsigned.
+- `prego keys new --alg ed25519` writes the private key as PKCS #8 v1 (RFC 5208, RFC 8410 section 7: no public key
+  field), so OpenSSL 3.0 (for example on Debian bookworm) and other tools read it; ring writes v2, which OpenSSL 3.0
+  refuses. `--sign` and `--key-file` read v1 and v2. ES256 files were already v1. A test runs `openssl pkey` on new
+  key files when `openssl` is on the PATH (staging e2e on registry 1.30.0).
+- A 404 on a key item or a card set gives the grant text of ADR-0061 section 3.6 and ADR-0062 section 5 first, also
+  when the registry answer has a request id: "read on key <ref> (type Keys and Certificates) is missing; ask an
+  admin of <tenant> for a grant", "read on a2a set <ref> (type A2A Agent Cards) is missing; ask an admin of
+  <tenant> for a grant", then the registry detail in brackets. Before, the request id at the end hid the grant text
+  (staging e2e keys-e2e step G).
 - Signing on this computer with ring (already in the tree through rustls): EdDSA (Ed25519), ES256, ES384, PS256 and
   RS256 verify; Ed25519, ES256, ES384 and PS256 signing from PKCS #8 key files.
 - A missing grant names the grant and the item: "read on a2a set <ref> (type A2A Agent Cards) is missing ...",

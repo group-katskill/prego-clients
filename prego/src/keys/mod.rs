@@ -167,20 +167,27 @@ fn api(globals: &[&str], tenant: &str, env: &dyn Env) -> Result<Api, String> {
 /// The text for a missing grant on a key item (ADR-0061 section 3.6, ADR-0062 section 5).
 pub fn missing_grant(action: &str, r: &SnipRef) -> String {
     format!(
-        "{action} on key {} (type Keys and Certificates) is missing, or the key item does not exist; \
-         ask an admin of {} for a grant",
+        "{action} on key {} (type Keys and Certificates) is missing; ask an admin of {} for a grant",
         r.long(),
         r.tenant
     )
 }
 
-/// Adds the grant text to a `not found, or you have no grant` error.
-fn grant_hint(e: String, r: &SnipRef, action: &str) -> String {
-    if e.ends_with("not found, or you have no grant for it") {
-        format!("{e}: {}", missing_grant(action, r))
-    } else {
-        e
+/// The text of the generic 404 of [`crate::snippet::api_error`]: no item, or no grant (the registry does not say which).
+pub(crate) const NOT_FOUND: &str = "not found, or you have no grant for it";
+
+/// Puts the grant text first when `e` is the 404 error, with the registry detail (and request id) after it.
+pub(crate) fn with_grant(e: String, grant: String) -> String {
+    if !e.contains(NOT_FOUND) {
+        return e;
     }
+    let detail = e.strip_prefix("prego: ").unwrap_or(&e);
+    format!("prego: {grant} ({detail})")
+}
+
+/// The grant text for a 404 on a key item (ADR-0061 section 3.6).
+fn grant_hint(e: String, r: &SnipRef, action: &str) -> String {
+    with_grant(e, missing_grant(action, r))
 }
 
 fn error(res: &FullResponse, what: &str, r: &SnipRef, action: &str) -> String {
@@ -832,8 +839,19 @@ mod tests {
         let r = SnipRef::parse("acme/release-keys/signer").unwrap();
         assert_eq!(
             missing_grant("read", &r),
-            "read on key acme/release-keys/signer (type Keys and Certificates) is missing, or the key item \
-             does not exist; ask an admin of acme for a grant"
+            "read on key acme/release-keys/signer (type Keys and Certificates) is missing; ask an admin of acme \
+             for a grant"
+        );
+        // A 404 from the registry carries a request id: the grant text comes first all the same.
+        let e = "prego: acme/release-keys/signer@current: not found, or you have no grant for it (request r1)";
+        assert_eq!(
+            grant_hint(e.into(), &r, "read"),
+            "prego: read on key acme/release-keys/signer (type Keys and Certificates) is missing; ask an admin of \
+             acme for a grant (acme/release-keys/signer@current: not found, or you have no grant for it (request r1))"
+        );
+        assert_eq!(
+            grant_hint("prego: x: 500 boom".into(), &r, "read"),
+            "prego: x: 500 boom"
         );
     }
 }
