@@ -98,6 +98,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Jump links land below the sticky header (two rows on narrow screens, one row from 900px). */
+  scroll-padding-top: 128px;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -219,9 +221,15 @@ code {
 }
 .header-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 0 16px;
   min-height: 64px;
+}
+@media (min-width: 900px) {
+  .header-inner {
+    flex-wrap: nowrap;
+  }
 }
 .brand {
   display: inline-flex;
@@ -253,23 +261,118 @@ code {
     display: inline;
   }
 }
+/* Narrow screens: the navigation is a second row under the brand that wraps; it never scrolls sideways. */
 .site-nav {
-  display: none;
-  gap: 22px;
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  padding: 0 0 12px;
 }
-.site-nav a {
+.site-nav a,
+.nav-menu > summary {
   color: var(--ink-2);
   text-decoration: none;
   font-size: 0.95rem;
 }
-.site-nav a:hover {
+.site-nav > a:hover,
+.nav-menu > summary:hover {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 5px;
 }
 @media (min-width: 900px) {
   .site-nav {
-    display: flex;
+    order: 0;
+    flex-basis: auto;
+    flex-wrap: nowrap;
+    gap: 22px;
+    padding: 0;
+  }
+}
+
+/* The Artifacts menu: a <details> disclosure. */
+.nav-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  list-style: none;
+}
+.nav-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.nav-menu[open] > summary {
+  color: var(--accent);
+}
+.nav-menu-chevron {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s ease;
+}
+.nav-menu[open] .nav-menu-chevron {
+  transform: rotate(180deg);
+}
+/* The sticky header is the positioned box: on narrow screens the panel is as wide as the header content. */
+.nav-menu-list {
+  position: absolute;
+  top: 100%;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 32px rgba(12, 42, 107, 0.16);
+}
+.nav-menu-list a {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.nav-menu-list a:hover,
+.nav-menu-list a:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  text-decoration: none;
+}
+.nav-menu-list li:first-child a {
+  font-weight: 600;
+}
+.nav-menu-list li:first-child {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+}
+@media (min-width: 640px) {
+  .nav-menu-list {
+    left: 32px;
+    right: auto;
+    width: 280px;
+  }
+}
+@media (min-width: 900px) {
+  .nav-menu {
+    position: relative;
+  }
+  .nav-menu-list {
+    top: calc(100% + 12px);
+    left: 0;
   }
 }
 
@@ -646,5 +749,11 @@ th {
   }
   * {
     transition: none !important;
+  }
+}
+
+@media (min-width: 900px) {
+  html {
+    scroll-padding-top: 80px;
   }
 }

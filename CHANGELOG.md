@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Site: the top navigation has 7 entries, not 17: Install, Log in, an Artifacts menu, Identity sources, Guides,
+  Docs, Security. The Artifacts menu lists All types and the 12 types (a section of the page, or the
+  `artifact-types/` folder of a type that has no section). It is a `details` disclosure, so it works without
+  JavaScript; `site/nav.js` adds Escape (the focus goes back to the menu button), outside click and focus-out.
+  On narrow screens the navigation is a second row that wraps (before, it was hidden), and jump links land below
+  the sticky header. Safety rules is a card under Guides. The footer navigation does not change.
 - PREGO-43 (registry 1.30.0): SPIFFE machine identity (`SPIFFE_ENDPOINT_SOCKET`, `PREGO_SVID_FILE`) is also on the
   Org plan. Every SPIFFE plan line now says "the Org or Publisher plan (or a Trial)"; Indie and Consumer do not have
   it; OIDC stays on every plan. `README.md`, `PROTOCOL.md` section 5, `docs/openapi.yaml` (description text only),

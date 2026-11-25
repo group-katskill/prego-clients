@@ -18,6 +18,7 @@
     <link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="theme.js"></script>
+    <script src="nav.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -40,20 +41,31 @@
           <span class="brand-by">clients</span>
         </a>
         <nav class="site-nav" aria-label="Sections">
-          <a href="#types">Types</a>
           <a href="#install">Install</a>
           <a href="#login">Log in</a>
-          <a href="#configure">Cargo</a>
-          <a href="#oci">Images</a>
-          <a href="#go">Go</a>
-          <a href="#npm">npm</a>
-          <a href="#vars">Variables</a>
-          <a href="#snippets">Snippets</a>
-          <a href="#adapters">Adapters</a>
-          <a href="#keys">Keys</a>
-          <a href="#a2a">A2A</a>
+          <!-- A details disclosure: it works without JavaScript; nav.js adds Escape, outside click and focus-out. -->
+          <details class="nav-menu">
+            <summary>
+              Artifacts
+              <svg class="nav-menu-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" /></svg>
+            </summary>
+            <ul class="nav-menu-list">
+              <li><a href="#types">All types</a></li>
+              <li><a href="#configure">Crates</a></li>
+              <li><a href="#oci">Containers and OCI</a></li>
+              <li><a href="#go">Go modules</a></li>
+              <li><a href="#npm">npm</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/python">Python</a></li>
+              <li><a href="#vars">Release Variables</a></li>
+              <li><a href="#snippets">Snippets</a></li>
+              <li><a href="#adapters">Adapters</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/context">Context</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/sqlite-snapshots">SQLite snapshots</a></li>
+              <li><a href="#keys">Keys and Certificates</a></li>
+              <li><a href="#a2a">A2A Agent Cards</a></li>
+            </ul>
+          </details>
           <a href="#sources">Identity sources</a>
-          <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
           <a href="https://docs.prego.k8skill.com" title="Full docs: sign in with your Prego account; open from the console's Docs link">Docs</a>
           <a href="#security">Security</a>
@@ -604,6 +616,10 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
             (sign in with your Prego account; open from the console's Docs link).
           </p>
           <ul class="cards">
+            <li class="card">
+              <h3><a href="#safety">Safety rules</a></h3>
+              <p>What the clients never do with a token, and how they keep TLS and the login session safe.</p>
+            </li>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Consumer quickstart</a></h3>
               <p>Use Prego crates on your laptop with an API key, in about five minutes.</p>
