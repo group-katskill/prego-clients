@@ -236,7 +236,7 @@ oci_hosts = ["oci.example.test", "oci2.example.test"]
 
     #[test]
     fn load_reads_the_file() {
-        let dir = std::env::temp_dir().join(format!("prego-auth-cfg-{}", std::process::id()));
+        let dir = crate::testing::TempDir::new("prego-auth-cfg");
         std::fs::create_dir_all(dir.join("prego")).unwrap();
         std::fs::write(dir.join("prego/config.toml"), "tenant = \"acme\"\n").unwrap();
         let env = MapEnv::new().with("XDG_CONFIG_HOME", &dir.to_string_lossy());
@@ -247,6 +247,5 @@ oci_hosts = ["oci.example.test", "oci2.example.test"]
         std::fs::write(dir.join("prego/config.toml"), "token = \"x\"\n").unwrap();
         let e = FileConfig::load(&env).unwrap_err().to_string();
         assert!(e.contains("config.toml"), "{e}");
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

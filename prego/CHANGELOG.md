@@ -6,7 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-Version 1.3.0 (minor). Not released yet.
+### Tests
+
+- No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When
+  the test ends, also after a failure, the guard overwrites each file with zeros and removes the directory. The
+  directories hold test private keys, tokens and session files. Before, the tests of `prego keys`, `prego a2a`,
+  `prego adapter`, `prego login` and the Python commands left `prego-keys-a2a-*`, `prego-keys-*`,
+  `prego-keyfile-*`, `prego-adapter-*`, `prego-login-*` and `prego-py-*` in the system temp directory. The other
+  tests (cli, context, env, go, npm, oci, snippet, sqlite, docker config, Go token cache) removed theirs only when
+  they passed.
+
+## [1.3.0] - 2026-11-25
+
+Version 1.3.0 (minor).
 
 ### Added
 

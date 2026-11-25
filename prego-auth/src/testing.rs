@@ -186,3 +186,93 @@ fn read_request(reader: &mut impl BufRead) -> Option<MockRequest> {
         raw: body,
     })
 }
+
+/// A temp directory for one test: `<name>-<pid>` in the system temp directory, empty when it is made. It is
+/// removed when it goes out of scope, also when the test panics. Before the removal, each file in it is
+/// overwritten with zeros and synced, because tests put key files, tokens and session files in it. Give each
+/// test its own `name`: tests run in parallel in one process.
+pub struct TempDir(std::path::PathBuf);
+
+impl TempDir {
+    pub fn new(name: &str) -> TempDir {
+        let dir = std::env::temp_dir().join(format!("{name}-{}", std::process::id()));
+        scrub(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        TempDir(dir)
+    }
+
+    /// The path as a string, for environment variables and arguments.
+    pub fn str(&self) -> String {
+        self.0.to_string_lossy().into_owned()
+    }
+}
+
+impl std::ops::Deref for TempDir {
+    type Target = std::path::Path;
+    fn deref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl AsRef<std::path::Path> for TempDir {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        scrub(&self.0);
+    }
+}
+
+/// Overwrites each regular file under `dir` with zeros, then removes `dir`. Symbolic links are removed, not
+/// followed. Errors are ignored: this is cleanup.
+pub fn scrub(dir: &std::path::Path) {
+    fn zero_files(dir: &std::path::Path) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let Ok(t) = e.file_type() else { continue };
+            if t.is_dir() {
+                zero_files(&e.path());
+            } else if t.is_file() {
+                if let (Ok(m), Ok(mut f)) = (
+                    e.metadata(),
+                    std::fs::OpenOptions::new().write(true).open(e.path()),
+                ) {
+                    let _ = f.write_all(&vec![0u8; m.len() as usize]);
+                    let _ = f.sync_all();
+                }
+            }
+        }
+    }
+    zero_files(dir);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[cfg(test)]
+mod temp_dir_tests {
+    use super::TempDir;
+
+    #[test]
+    fn removed_on_drop_and_on_panic() {
+        let path = {
+            let d = TempDir::new("prego-scrub-drop");
+            std::fs::create_dir_all(d.join("sub")).unwrap();
+            std::fs::write(d.join("sub/k.pem"), "secret").unwrap();
+            d.to_path_buf()
+        };
+        assert!(!path.exists());
+        let r = std::panic::catch_unwind(|| {
+            let d = TempDir::new("prego-scrub-panic");
+            std::fs::write(d.join("k.pem"), "secret").unwrap();
+            panic!("test panic");
+        });
+        assert!(r.is_err());
+        assert!(!std::env::temp_dir()
+            .join(format!("prego-scrub-panic-{}", std::process::id()))
+            .exists());
+    }
+}

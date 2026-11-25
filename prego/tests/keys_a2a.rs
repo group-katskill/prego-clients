@@ -7,7 +7,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use prego_auth::testing::{MockResponse, MockServer};
+use prego_auth::testing::{MockResponse, MockServer, TempDir};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
@@ -56,11 +56,8 @@ fn run_offline(dir: &Path, args: &[&str]) -> Run {
     }
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-keys-a2a-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+fn temp_dir(name: &str) -> TempDir {
+    TempDir::new(&format!("prego-keys-a2a-{name}"))
 }
 
 fn vectors() -> PathBuf {

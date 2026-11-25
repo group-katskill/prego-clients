@@ -450,14 +450,21 @@ mod tests {
         }
     }
 
-    fn chain(dir: &str) -> (Chain, Arc<MemStore>, Arc<MemStore>, Arc<AtomicBool>) {
+    #[allow(clippy::type_complexity)]
+    fn chain(
+        dir: &str,
+    ) -> (
+        Chain,
+        Arc<MemStore>,
+        Arc<MemStore>,
+        Arc<AtomicBool>,
+        crate::testing::TempDir,
+    ) {
         let ss = Arc::new(MemStore::default());
         let kernel = Arc::new(MemStore::default());
         let locked = Arc::new(AtomicBool::new(false));
-        let marker = std::env::temp_dir()
-            .join(format!("prego-marker-{dir}-{}", std::process::id()))
-            .join("session-stores.json");
-        let _ = std::fs::remove_file(&marker);
+        let tmp = crate::testing::TempDir::new(&format!("prego-marker-{dir}"));
+        let marker = tmp.join("session-stores.json");
         let c = Chain::new(
             vec![
                 Box::new(Lockable {
@@ -473,12 +480,12 @@ mod tests {
             ],
             Some(marker),
         );
-        (c, ss, kernel, locked)
+        (c, ss, kernel, locked, tmp)
     }
 
     #[test]
     fn a_refused_write_goes_to_the_next_store_and_the_old_value_is_never_read() {
-        let (c, ss, kernel, locked) = chain("refused");
+        let (c, ss, kernel, locked, _tmp) = chain("refused");
         c.save("k", "rt-1").unwrap();
         assert_eq!(c.name(), "secret service");
         // The marker holds the store name and a hash of the key name, never the value.

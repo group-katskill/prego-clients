@@ -6,7 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-Version 1.3.0 with `prego` 1.3.0 (`prego keys`, `prego a2a`). Not released yet.
+### Tests
+
+- `testing::TempDir` (test support only, not a public API): a temp directory that is zeroed and removed when it
+  is dropped, also after a panic. The unit tests use it, so `prego-auth-http-*`, `prego-auth-test-*`,
+  `prego-lock-test-*` and `prego-marker-*` no longer stay in the system temp directory.
+
+## [1.3.0] - 2026-11-25
+
+Version 1.3.0 with `prego` 1.3.0 (`prego keys`, `prego a2a`).
 
 ### Added
 

@@ -1,6 +1,5 @@
 //! Runs the `prego` binary against a mock STS and checks its output.
 
-use std::path::PathBuf;
 use std::process::Command;
 
 use prego_auth::testing::{MockResponse, MockServer};
@@ -32,11 +31,9 @@ fn run(args: &[&str], env: &[(&str, &str)]) -> Run {
     }
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-cli-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+    prego_auth::testing::TempDir::new(&format!("prego-cli-{name}"))
 }
 
 fn sts_ok() -> MockResponse {

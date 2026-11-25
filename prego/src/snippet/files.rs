@@ -719,10 +719,12 @@ mod tests {
         }
     }
 
-    fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("prego-snip-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&d);
-        d
+    /// A path that does not exist yet, in a temp directory that is zeroed and removed when the guard is
+    /// dropped (also after a panic).
+    fn temp(name: &str) -> (prego_auth::testing::TempDir, PathBuf) {
+        let g = prego_auth::testing::TempDir::new(&format!("prego-snip-{name}"));
+        let d = g.join("d");
+        (g, d)
     }
 
     #[test]
@@ -980,7 +982,7 @@ mod tests {
 
     #[test]
     fn collect_reads_a_folder_and_a_file() {
-        let d = temp("collect");
+        let (_g, d) = temp("collect");
         std::fs::create_dir_all(d.join("sub")).unwrap();
         std::fs::write(d.join("sub/b.md"), "b\n").unwrap();
         std::fs::write(d.join("a.sh"), "a\n").unwrap();
@@ -1012,7 +1014,7 @@ mod tests {
 
     #[test]
     fn write_all_keeps_files_in_the_folder() {
-        let d = temp("write");
+        let (_g, d) = temp("write");
         assert!(prepare_folder(&d).unwrap());
         let files = vec![
             f("run.sh", MODE_EXEC, "echo\n"),
@@ -1033,7 +1035,7 @@ mod tests {
         // Not empty now.
         assert!(prepare_folder(&d).unwrap_err().contains("not empty"));
 
-        let d2 = temp("write-bad");
+        let (_g2, d2) = temp("write-bad");
         prepare_folder(&d2).unwrap();
         let bad = vec![
             f("ok.md", MODE_FILE, "x"),

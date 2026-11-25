@@ -7,7 +7,7 @@ mod support {
     pub mod mock_go;
 }
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use support::mock_go::{add_npm, MockGo};
@@ -43,11 +43,9 @@ fn prego(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Run {
     run_cmd(BIN, dir, args, env)
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-npm-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+    prego_auth::testing::TempDir::new(&format!("prego-npm-{name}"))
 }
 
 /// The environment for the mock: tenant, STS, npm host, API key, and a private HOME.
@@ -319,7 +317,7 @@ fn tool(name: &str) -> Option<String> {
 }
 
 /// A project that depends on `@acme/hello`, with the `.npmrc` from `prego setup npm`.
-fn project(m: &MockGo, env: &[(&str, &str)], name: &str) -> PathBuf {
+fn project(m: &MockGo, env: &[(&str, &str)], name: &str) -> prego_auth::testing::TempDir {
     let dir = temp_dir(name);
     std::fs::write(
         dir.join("package.json"),
@@ -441,9 +439,6 @@ fn live_npm_install_and_publish() {
     let r = run_cmd(&npm, &dir, &["install"], &refs(&bad));
     assert_ne!(r.code, 0);
     assert!(r.stderr.contains("401"), "{}", r.stderr);
-    for d in [dir, lib, home] {
-        std::fs::remove_dir_all(d).unwrap();
-    }
 }
 
 #[test]
@@ -492,7 +487,4 @@ fn live_pnpm_install() {
         regs.iter().all(|a| a.starts_with("Bearer regtok-")),
         "{regs:?}"
     );
-    for d in [dir, home] {
-        std::fs::remove_dir_all(d).unwrap();
-    }
 }

@@ -24,12 +24,12 @@ struct Run {
     stderr: String,
 }
 
-struct Dir(PathBuf);
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+struct Dir(prego_auth::testing::TempDir);
 
 impl Dir {
     fn new(name: &str) -> Dir {
-        let d = std::env::temp_dir().join(format!("prego-sqlite-t-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&d);
+        let d = prego_auth::testing::TempDir::new(&format!("prego-sqlite-t-{name}"));
         std::fs::create_dir_all(d.join("tmp")).unwrap();
         Dir(d)
     }
@@ -62,12 +62,6 @@ impl Dir {
     fn assert_tmp_clean(&self) {
         let left: Vec<_> = std::fs::read_dir(self.p("tmp")).unwrap().collect();
         assert!(left.is_empty(), "left in TMPDIR: {left:?}");
-    }
-}
-
-impl Drop for Dir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 

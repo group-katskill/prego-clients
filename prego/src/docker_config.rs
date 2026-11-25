@@ -190,11 +190,9 @@ mod tests {
     use super::*;
     use prego_auth::MapEnv;
 
-    fn dir(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("prego-docker-{name}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&d);
-        fs::create_dir_all(&d).unwrap();
-        d
+    /// A temp directory, zeroed and removed when the test ends (also after a panic).
+    fn dir(name: &str) -> prego_auth::testing::TempDir {
+        prego_auth::testing::TempDir::new(&format!("prego-docker-{name}"))
     }
 
     fn hosts() -> Vec<String> {

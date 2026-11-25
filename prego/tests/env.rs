@@ -1,6 +1,5 @@
 //! Runs `prego env` against a mock STS host that serves the token exchange and `/v1/vars/*`.
 
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use prego_auth::testing::{MockResponse, MockServer};
@@ -41,11 +40,9 @@ fn run(args: &[&str], stdin: Option<&str>) -> Run {
     }
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-env-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+    prego_auth::testing::TempDir::new(&format!("prego-env-{name}"))
 }
 
 fn sts_ok() -> MockResponse {

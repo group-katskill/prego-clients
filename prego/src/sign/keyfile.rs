@@ -276,9 +276,7 @@ mod tests {
             return;
         };
         eprintln!("{}", String::from_utf8_lossy(&v.stdout).trim());
-        let dir = std::env::temp_dir().join(format!("prego-openssl-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = prego_auth::testing::TempDir::new("prego-openssl");
         for alg in [NewAlg::Ed25519, NewAlg::Es256] {
             let (k, text) = PrivateKey::generate(alg).unwrap();
             let path = dir.join(format!("{alg:?}.pem"));
@@ -299,14 +297,11 @@ mod tests {
                 "{alg:?}"
             );
         }
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn generate_sign_verify_and_reload() {
-        let dir = std::env::temp_dir().join(format!("prego-keyfile-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = prego_auth::testing::TempDir::new("prego-keyfile");
         for alg in [NewAlg::Ed25519, NewAlg::Es256] {
             let (k, text) = PrivateKey::generate(alg).unwrap();
             assert!(text.starts_with("-----BEGIN PRIVATE KEY-----\n"));
