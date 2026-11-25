@@ -1,6 +1,6 @@
 [package]
 name = "prego"
-version = "1.2.0"
+version = "1.3.0"
 description = "Command-line tool for Prego by KatSkill: registry tokens, whoami, setup for Cargo, Docker and Go, chunked OCI image push, Go module publish and the GOAUTH helper."
 readme = "README.md"
 keywords = ["prego", "registry", "oci", "cargo", "go"]
@@ -20,7 +20,7 @@ spiffe = ["prego-auth/spiffe"]
 session = ["prego-auth/session"]
 
 [dependencies]
-prego-auth = { version = "1.2.0", path = "../prego-auth", default-features = false }
+prego-auth = { version = "1.3.0", path = "../prego-auth", default-features = false }
 # preserve_order keeps the key order of ~/.docker/config.json when `prego setup docker --write` changes it.
 base64 = "0.22"
 crc32fast = "1"
@@ -32,6 +32,9 @@ serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 icu_normalizer = { version = "2.4", default-features = false, features = ["compiled_data"] }
 # `prego oci push`: blob digests, and the docker save tar format.
 sha2 = "0.10"
+# `prego keys` and `prego a2a`: JWS signatures (Ed25519, ECDSA P-256/P-384, RSA) and key pairs. Already in the
+# tree through rustls.
+ring = "0.17"
 tar = { version = "0.4", default-features = false }
 # `prego setup python`: edits pyproject.toml and keeps its other lines and comments.
 toml_edit = { version = "0.25", default-features = false, features = ["parse", "display"] }
@@ -39,4 +42,4 @@ toml_edit = { version = "0.25", default-features = false, features = ["parse", "
 rusqlite = { version = "=0.41.1", default-features = false, features = ["bundled", "backup"] }
 
 [dev-dependencies]
-prego-auth = { version = "1.2.0", path = "../prego-auth", default-features = false, features = ["test-support"] }
+prego-auth = { version = "1.3.0", path = "../prego-auth", default-features = false, features = ["test-support"] }

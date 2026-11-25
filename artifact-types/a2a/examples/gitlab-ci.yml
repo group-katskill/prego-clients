@@ -1,0 +1,50 @@
+# gitlab-ci.yml: sign the A2A card set in agent-cards/ and push it to Prego from GitLab CI.
+# Copy the job into your .gitlab-ci.yml, or include this file.
+#
+# Console setup (once, by a tenant admin):
+#   - trust config: kind oidc, issuer https://gitlab.com (or your self-managed GitLab URL)
+#   - principal: kind oidc, claims_match {"project_path": "acme/agents", "ref_protected": "true"}
+#   - grant: publish on the card set acme/agents/support (type A2A Agent Cards)
+#   - grant: read on the key item acme/agents/release-keys (type Keys and Certificates)
+#
+# Signing key (once, on a laptop):
+#   prego keys new --alg ed25519 acme/agents/release-keys --out ./release-keys.private.pem
+#   Then put the content of release-keys.private.pem in a CI/CD variable of type "File", named A2A_SIGNING_KEY,
+#   protected (Settings, CI/CD, Variables). Delete the local copy, or keep it in your password manager.
+#
+# The CI secret holds the private key. Prego never sees it: prego signs the cards in the job and sends only the
+# signatures. The job stores no Prego secret: GitLab gives it a short-lived ID token in PREGO_ID_TOKEN.
+
+variables:
+  PREGO_VERSION: "1.3.0"
+  PREGO_TARGET: x86_64-unknown-linux-musl
+  PREGO_TENANT: acme
+  PREGO_EDGE_CODE: k7mq # the tenant's edge code from the console
+
+push-agent-cards:
+  image: alpine:3.20
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
+      changes:
+        - agent-cards/**/*
+  before_script:
+    # Install prego from the release and check its SHA-256 sum.
+    - apk add --no-cache curl
+    - base="https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v${PREGO_VERSION}"
+    - file="prego-${PREGO_TARGET}.tar.gz"
+    - curl -fsSLO "${base}/${file}"
+    - curl -fsSLO "${base}/${file}.sha256"
+    - sha256sum -c "${file}.sha256"
+    - tar -xzf "${file}" prego
+    - install -m 0755 prego /usr/local/bin/
+    - prego --version
+  script:
+    # A file variable holds the path of a file with the key, not the key.
+    - test -n "${A2A_SIGNING_KEY:-}" || { echo "Set the CI/CD file variable A2A_SIGNING_KEY" >&2; exit 1; }
+    - prego a2a check agent-cards
+    - prego a2a push agent-cards acme/agents/support --sign "$A2A_SIGNING_KEY" --key acme/agents/release-keys
+      --message "pipeline $CI_PIPELINE_ID, commit $CI_COMMIT_SHORT_SHA"
+    - prego a2a get acme/agents/support ./verified-cards --verify

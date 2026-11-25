@@ -1,0 +1,82 @@
+{
+  "name": "Legacy Bot",
+  "description": "An A2A 0.3 card.",
+  "url": "https://legacy.acme.test/a2a/v1",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {
+      "url": "https://legacy.acme.test/a2a/v1",
+      "transport": "JSONRPC"
+    },
+    {
+      "url": "https://legacy.acme.test/a2a/grpc",
+      "transport": "GRPC"
+    }
+  ],
+  "provider": {
+    "organization": "Acme Test",
+    "url": "https://acme.test"
+  },
+  "version": "1.4.0",
+  "documentationUrl": "https://acme.test/docs/legacy-bot",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "securitySchemes": {
+    "bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT"
+    },
+    "key": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-Acme-Key"
+    },
+    "oauth": {
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://auth.acme.test/token",
+          "scopes": {
+            "a:read": "Read"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth": [
+        "a:read"
+      ]
+    }
+  ],
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "legacy",
+      "name": "Legacy",
+      "description": "Old skill.",
+      "tags": [
+        "old"
+      ],
+      "examples": [
+        "hello"
+      ],
+      "security": [
+        {
+          "bearer": []
+        }
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": true
+}

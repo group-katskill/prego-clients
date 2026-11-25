@@ -1,0 +1,823 @@
+{
+  "root": "AgentCard",
+  "source": {
+    "proto": "schema/a2a-1.0.1.proto",
+    "schema": "schema/a2a-1.0.1.schema.json"
+  },
+  "messages": {
+    "AgentCard": {
+      "fields": [
+        {
+          "name": "name",
+          "json": "name",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "supported_interfaces",
+          "json": "supportedInterfaces",
+          "kind": "message:AgentInterface",
+          "required": true,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "provider",
+          "json": "provider",
+          "kind": "message:AgentProvider",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "version",
+          "json": "version",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "documentation_url",
+          "json": "documentationUrl",
+          "kind": "string",
+          "required": false,
+          "optional": true,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "capabilities",
+          "json": "capabilities",
+          "kind": "message:AgentCapabilities",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "security_schemes",
+          "json": "securitySchemes",
+          "kind": "map:string->message:SecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "security_requirements",
+          "json": "securityRequirements",
+          "kind": "message:SecurityRequirement",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "default_input_modes",
+          "json": "defaultInputModes",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "default_output_modes",
+          "json": "defaultOutputModes",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "skills",
+          "json": "skills",
+          "kind": "message:AgentSkill",
+          "required": true,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "signatures",
+          "json": "signatures",
+          "kind": "message:AgentCardSignature",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "icon_url",
+          "json": "iconUrl",
+          "kind": "string",
+          "required": false,
+          "optional": true,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentInterface": {
+      "fields": [
+        {
+          "name": "url",
+          "json": "url",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "protocol_binding",
+          "json": "protocolBinding",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "tenant",
+          "json": "tenant",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "protocol_version",
+          "json": "protocolVersion",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentProvider": {
+      "fields": [
+        {
+          "name": "url",
+          "json": "url",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "organization",
+          "json": "organization",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentCapabilities": {
+      "fields": [
+        {
+          "name": "streaming",
+          "json": "streaming",
+          "kind": "bool",
+          "required": false,
+          "optional": true,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "push_notifications",
+          "json": "pushNotifications",
+          "kind": "bool",
+          "required": false,
+          "optional": true,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "extensions",
+          "json": "extensions",
+          "kind": "message:AgentExtension",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "extended_agent_card",
+          "json": "extendedAgentCard",
+          "kind": "bool",
+          "required": false,
+          "optional": true,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "SecurityScheme": {
+      "fields": [
+        {
+          "name": "api_key_security_scheme",
+          "json": "apiKeySecurityScheme",
+          "kind": "message:APIKeySecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "scheme"
+        },
+        {
+          "name": "http_auth_security_scheme",
+          "json": "httpAuthSecurityScheme",
+          "kind": "message:HTTPAuthSecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "scheme"
+        },
+        {
+          "name": "oauth2_security_scheme",
+          "json": "oauth2SecurityScheme",
+          "kind": "message:OAuth2SecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "scheme"
+        },
+        {
+          "name": "open_id_connect_security_scheme",
+          "json": "openIdConnectSecurityScheme",
+          "kind": "message:OpenIdConnectSecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "scheme"
+        },
+        {
+          "name": "mtls_security_scheme",
+          "json": "mtlsSecurityScheme",
+          "kind": "message:MutualTlsSecurityScheme",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "scheme"
+        }
+      ]
+    },
+    "SecurityRequirement": {
+      "fields": [
+        {
+          "name": "schemes",
+          "json": "schemes",
+          "kind": "map:string->message:StringList",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentSkill": {
+      "fields": [
+        {
+          "name": "id",
+          "json": "id",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "name",
+          "json": "name",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "tags",
+          "json": "tags",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "examples",
+          "json": "examples",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "input_modes",
+          "json": "inputModes",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "output_modes",
+          "json": "outputModes",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        },
+        {
+          "name": "security_requirements",
+          "json": "securityRequirements",
+          "kind": "message:SecurityRequirement",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentCardSignature": {
+      "fields": [
+        {
+          "name": "protected",
+          "json": "protected",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "signature",
+          "json": "signature",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "header",
+          "json": "header",
+          "kind": "any",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "AgentExtension": {
+      "fields": [
+        {
+          "name": "uri",
+          "json": "uri",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "required",
+          "json": "required",
+          "kind": "bool",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "params",
+          "json": "params",
+          "kind": "any",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "APIKeySecurityScheme": {
+      "fields": [
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "location",
+          "json": "location",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "name",
+          "json": "name",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "HTTPAuthSecurityScheme": {
+      "fields": [
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scheme",
+          "json": "scheme",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "bearer_format",
+          "json": "bearerFormat",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "OAuth2SecurityScheme": {
+      "fields": [
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "flows",
+          "json": "flows",
+          "kind": "message:OAuthFlows",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "oauth2_metadata_url",
+          "json": "oauth2MetadataUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "OpenIdConnectSecurityScheme": {
+      "fields": [
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "open_id_connect_url",
+          "json": "openIdConnectUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "MutualTlsSecurityScheme": {
+      "fields": [
+        {
+          "name": "description",
+          "json": "description",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "StringList": {
+      "fields": [
+        {
+          "name": "list",
+          "json": "list",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": true,
+          "oneof": null
+        }
+      ]
+    },
+    "OAuthFlows": {
+      "fields": [
+        {
+          "name": "authorization_code",
+          "json": "authorizationCode",
+          "kind": "message:AuthorizationCodeOAuthFlow",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "flow"
+        },
+        {
+          "name": "client_credentials",
+          "json": "clientCredentials",
+          "kind": "message:ClientCredentialsOAuthFlow",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "flow"
+        },
+        {
+          "name": "implicit",
+          "json": "implicit",
+          "kind": "message:ImplicitOAuthFlow",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "flow"
+        },
+        {
+          "name": "password",
+          "json": "password",
+          "kind": "message:PasswordOAuthFlow",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "flow"
+        },
+        {
+          "name": "device_code",
+          "json": "deviceCode",
+          "kind": "message:DeviceCodeOAuthFlow",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": "flow"
+        }
+      ]
+    },
+    "AuthorizationCodeOAuthFlow": {
+      "fields": [
+        {
+          "name": "authorization_url",
+          "json": "authorizationUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "token_url",
+          "json": "tokenUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "refresh_url",
+          "json": "refreshUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scopes",
+          "json": "scopes",
+          "kind": "map:string->string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "pkce_required",
+          "json": "pkceRequired",
+          "kind": "bool",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "ClientCredentialsOAuthFlow": {
+      "fields": [
+        {
+          "name": "token_url",
+          "json": "tokenUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "refresh_url",
+          "json": "refreshUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scopes",
+          "json": "scopes",
+          "kind": "map:string->string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "ImplicitOAuthFlow": {
+      "fields": [
+        {
+          "name": "authorization_url",
+          "json": "authorizationUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "refresh_url",
+          "json": "refreshUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scopes",
+          "json": "scopes",
+          "kind": "map:string->string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "PasswordOAuthFlow": {
+      "fields": [
+        {
+          "name": "token_url",
+          "json": "tokenUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "refresh_url",
+          "json": "refreshUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scopes",
+          "json": "scopes",
+          "kind": "map:string->string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    },
+    "DeviceCodeOAuthFlow": {
+      "fields": [
+        {
+          "name": "device_authorization_url",
+          "json": "deviceAuthorizationUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "token_url",
+          "json": "tokenUrl",
+          "kind": "string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "refresh_url",
+          "json": "refreshUrl",
+          "kind": "string",
+          "required": false,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        },
+        {
+          "name": "scopes",
+          "json": "scopes",
+          "kind": "map:string->string",
+          "required": true,
+          "optional": false,
+          "repeated": false,
+          "oneof": null
+        }
+      ]
+    }
+  },
+  "not_in_schema": []
+}

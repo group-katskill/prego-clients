@@ -1,0 +1,24 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Tiny",
+  "description": "Tiny 0.3 card.",
+  "url": "https://tiny.acme.test/a2a",
+  "version": "0.0.1",
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "t",
+      "name": "T",
+      "description": "T.",
+      "tags": [
+        "t"
+      ]
+    }
+  ]
+}

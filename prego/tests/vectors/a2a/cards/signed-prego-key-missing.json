@@ -1,0 +1,46 @@
+{
+  "name": "Support Bot",
+  "description": "Answers questions about Acme orders.",
+  "supportedInterfaces": [
+    {
+      "url": "https://support.acme.test/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "extensions": [
+      {
+        "uri": "https://prego.k8skill.com/ext/a2a-source/v1",
+        "params": {
+          "tenant": "acme",
+          "namespace": "agents",
+          "set": "support"
+        }
+      }
+    ]
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "order-status",
+      "name": "Order status",
+      "description": "Tells the status of an order.",
+      "tags": [
+        "orders"
+      ]
+    }
+  ],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiJ5azZPcEpPTmduZDk2dEZ5dTV3VzlGQzdfendZb2VGLUxXNDNyZmRDclpvIn0",
+      "signature": "D47eilPVaJAF7Ku0Z052Py0jUnFWhOC2ltY4xpdmS9hnPLfVy08Itdnf5t3usDewIV4ortbAkXaXGvxFSn0sAQ"
+    }
+  ]
+}

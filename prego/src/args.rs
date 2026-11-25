@@ -106,6 +106,10 @@ pub enum Command {
     Env(crate::env::EnvCommand),
     /// `prego snippet ...`.
     Snippet(crate::snippet::SnippetCommand),
+    /// `prego keys ...`.
+    Keys(Box<crate::keys::KeysCommand>),
+    /// `prego a2a ...`.
+    A2a(Box<crate::a2a::A2aCommand>),
     /// `prego context ...`.
     Context(Box<crate::context::ContextCommand>),
     /// `prego sqlite ...`.
@@ -119,7 +123,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 37] = [
+const WITH_VALUE: [&str; 45] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -157,9 +161,17 @@ const WITH_VALUE: [&str; 37] = [
     "--keep",
     "--older-than",
     "--keep-count",
+    "--type",
+    "--entry",
+    "--not-after",
+    "--alg",
+    "--sign",
+    "--key",
+    "--key-file",
+    "--card",
 ];
 /// Options without a value.
-const FLAGS: [&str; 14] = [
+const FLAGS: [&str; 16] = [
     "--write",
     "--print",
     "--dry-run",
@@ -174,6 +186,8 @@ const FLAGS: [&str; 14] = [
     "--compact",
     "--force",
     "--yes",
+    "--verify",
+    "--no-source",
 ];
 
 /// Parses the arguments after the program name.
@@ -186,7 +200,8 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
 
     let mut it = args.iter();
     while let Some(arg) = it.next() {
-        let arg = arg.as_str();
+        // `-o <file>` is the short form of `--out <file>` (`prego a2a upgrade`).
+        let arg = if arg == "-o" { "--out" } else { arg.as_str() };
         match arg {
             "-h" | "--help" => return Ok(Parsed::Help),
             "-V" | "--version" => return Ok(Parsed::Version),
@@ -465,6 +480,10 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         }
         ["env", rest @ ..] => Command::Env(parse_env(rest, &opts, &allow)?),
         ["snippet", rest @ ..] => Command::Snippet(parse_snippet(rest, &opts, &flag, &allow)?),
+        ["keys", rest @ ..] => Command::Keys(Box::new(parse_keys(rest, &opts, &allow)?)),
+        ["a2a", rest @ ..] => {
+            Command::A2a(Box::new(parse_a2a(rest, &opts, &flag, &allow)?))
+        }
         ["context", rest @ ..] => Command::Context(Box::new(parse_context(rest, &opts, &flag, &allow)?)),
         ["sqlite", rest @ ..] => Command::Sqlite(Box::new(parse_sqlite(rest, &opts, &flag, &allow)?)),
         [] => return Ok(Parsed::Help),
@@ -726,6 +745,247 @@ fn parse_snippet(
             SnippetCommand::Hash {
                 source: source.to_string(),
                 tar: flag("--tar"),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
+}
+
+/// Options for `prego keys` and `prego a2a`: one value, a hash, a short text.
+struct Opt<'a> {
+    opts: &'a [(&'a str, String)],
+}
+
+impl Opt<'_> {
+    fn take(&self, name: &str) -> Vec<String> {
+        self.opts
+            .iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, v)| v.clone())
+            .collect()
+    }
+    fn one(&self, name: &str) -> Result<Option<String>, String> {
+        let mut v = self.take(name);
+        if v.len() > 1 {
+            return Err(format!("{name} can be given one time only"));
+        }
+        Ok(v.pop())
+    }
+    fn hash(&self, name: &str) -> Result<Option<String>, String> {
+        match self.one(name)? {
+            Some(h) if !crate::env::jcs::is_hash(&h) => Err(format!(
+                "{name} `{h}` is not a hash: use sha256:<64 lowercase hex>"
+            )),
+            h => Ok(h),
+        }
+    }
+    fn text(&self, name: &str, max: usize) -> Result<Option<String>, String> {
+        match self.one(name)? {
+            Some(m) if m.chars().count() > max => {
+                Err(format!("{name} is at most {max} characters"))
+            }
+            m => Ok(m),
+        }
+    }
+    fn tag(&self) -> Result<Option<String>, String> {
+        let tag = self.one("--tag")?;
+        if let Some(t) = &tag {
+            crate::snippet::reference::check_tag(t)?;
+        }
+        Ok(tag)
+    }
+    fn reason(&self) -> Result<String, String> {
+        self.text("--reason", 200)?
+            .filter(|s| !s.trim().is_empty())
+            .ok_or_else(|| "--reason <text> is required".to_string())
+    }
+}
+
+/// `prego keys <subcommand>` (ADR-0061 section 6).
+fn parse_keys(
+    words: &[&str],
+    opts: &[(&str, String)],
+    allow: &Allow<'_>,
+) -> Result<crate::keys::KeysCommand, String> {
+    use crate::keys::KeysCommand;
+    let o = Opt { opts };
+    let usage = "usage: prego keys push|get|ls|log|tag|rollback|revoke|fingerprint|new ... (see prego --help)";
+    Ok(match words {
+        ["push", files @ .., r] if !files.is_empty() => {
+            allow(
+                &[
+                    "--type",
+                    "--tag",
+                    "--message",
+                    "--if-current",
+                    "--not-after",
+                ],
+                &[],
+            )?;
+            KeysCommand::Push {
+                files: files.iter().map(|s| s.to_string()).collect(),
+                reference: r.to_string(),
+                kind: o.one("--type")?,
+                tag: o.tag()?,
+                message: o.text("--message", 200)?,
+                if_current: o.hash("--if-current")?,
+                not_after: o.one("--not-after")?,
+            }
+        }
+        ["get", r] => {
+            allow(&["--entry", "--expect"], &[])?;
+            KeysCommand::Get {
+                reference: r.to_string(),
+                entry: o.one("--entry")?,
+                expect: o.hash("--expect")?,
+            }
+        }
+        ["ls", scope] => {
+            allow(&[], &[])?;
+            KeysCommand::Ls {
+                scope: scope.to_string(),
+            }
+        }
+        ["log", r] => {
+            allow(&[], &[])?;
+            KeysCommand::Log {
+                reference: r.to_string(),
+            }
+        }
+        ["tag", r, tag] => {
+            allow(&[], &[])?;
+            KeysCommand::Tag {
+                reference: r.to_string(),
+                tag: tag.to_string(),
+            }
+        }
+        ["rollback", r] => {
+            allow(&["--to", "--reason"], &[])?;
+            KeysCommand::Rollback {
+                reference: r.to_string(),
+                to: o.one("--to")?.ok_or("--to <version> is required")?,
+                reason: o.reason()?,
+            }
+        }
+        ["revoke", r] => {
+            allow(&["--reason"], &[])?;
+            KeysCommand::Revoke {
+                reference: r.to_string(),
+                reason: o.reason()?,
+            }
+        }
+        ["fingerprint", file] => {
+            allow(&["--type"], &[])?;
+            KeysCommand::Fingerprint {
+                file: file.to_string(),
+                kind: o.one("--type")?,
+            }
+        }
+        ["new", r] => {
+            allow(&["--alg", "--out", "--message"], &[])?;
+            KeysCommand::New {
+                alg: o.one("--alg")?.ok_or("--alg ed25519|es256 is required")?,
+                reference: r.to_string(),
+                out: o.one("--out")?,
+                message: o.text("--message", 200)?,
+            }
+        }
+        _ => return Err(usage.into()),
+    })
+}
+
+/// `prego a2a <subcommand>` (ADR-0062 section 5).
+fn parse_a2a(
+    words: &[&str],
+    opts: &[(&str, String)],
+    flag: &dyn Fn(&str) -> bool,
+    allow: &Allow<'_>,
+) -> Result<crate::a2a::A2aCommand, String> {
+    use crate::a2a::A2aCommand;
+    let o = Opt { opts };
+    let usage =
+        "usage: prego a2a check|push|get|ls|log|diff|tag|rollback|upgrade ... (see prego --help)";
+    Ok(match words {
+        ["check", source] => {
+            allow(&["--key-file", "--key"], &[])?;
+            A2aCommand::Check {
+                source: source.to_string(),
+                key_file: o.one("--key-file")?,
+                key: o.one("--key")?,
+            }
+        }
+        ["push", source, r] => {
+            allow(
+                &["--sign", "--key", "--tag", "--message", "--if-current"],
+                &["--no-source"],
+            )?;
+            A2aCommand::Push {
+                source: source.to_string(),
+                reference: r.to_string(),
+                sign: o.one("--sign")?,
+                key: o.one("--key")?,
+                no_source: flag("--no-source"),
+                tag: o.tag()?,
+                message: o.text("--message", 200)?,
+                if_current: o.hash("--if-current")?,
+            }
+        }
+        ["get", r] | ["get", r, _] => {
+            allow(&["--card", "--expect"], &["--verify"])?;
+            let card = o.one("--card")?;
+            let folder = words.get(2).map(|s| s.to_string());
+            if card.is_some() && folder.is_some() {
+                return Err("--card prints one card on stdout: give no folder".into());
+            }
+            A2aCommand::Get {
+                reference: r.to_string(),
+                folder,
+                card,
+                expect: o.hash("--expect")?,
+                verify: flag("--verify"),
+            }
+        }
+        ["ls", scope] => {
+            allow(&[], &[])?;
+            A2aCommand::Ls {
+                scope: scope.to_string(),
+            }
+        }
+        ["log", r] => {
+            allow(&[], &[])?;
+            A2aCommand::Log {
+                reference: r.to_string(),
+            }
+        }
+        ["diff", r, from, to] => {
+            allow(&[], &[])?;
+            A2aCommand::Diff {
+                reference: r.to_string(),
+                from: from.to_string(),
+                to: to.to_string(),
+            }
+        }
+        ["tag", r, tag] => {
+            allow(&[], &[])?;
+            A2aCommand::Tag {
+                reference: r.to_string(),
+                tag: tag.to_string(),
+            }
+        }
+        ["rollback", r] => {
+            allow(&["--to", "--reason"], &[])?;
+            A2aCommand::Rollback {
+                reference: r.to_string(),
+                to: o.one("--to")?.ok_or("--to <version> is required")?,
+                reason: o.reason()?,
+            }
+        }
+        ["upgrade", file] => {
+            allow(&["--out"], &["--force"])?;
+            A2aCommand::Upgrade {
+                file: file.to_string(),
+                out: o.one("--out")?,
+                force: flag("--force"),
             }
         }
         _ => return Err(usage.into()),

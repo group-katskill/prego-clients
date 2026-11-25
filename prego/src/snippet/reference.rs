@@ -138,7 +138,7 @@ impl SnipRef {
     pub fn no_version(self, command: &str) -> Result<SnipRef, String> {
         if self.version.is_some() {
             return Err(format!(
-                "prego snippet {command} takes <tenant>/[<namespace>/]<snippet> without @<version>"
+                "prego: {command} takes <tenant>/[<namespace>/]<name> without @<version>"
             ));
         }
         Ok(self)

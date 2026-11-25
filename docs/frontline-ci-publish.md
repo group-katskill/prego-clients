@@ -120,7 +120,7 @@ You can also use the credential helper: run `prego setup docker --write` after t
 `docker login`. `docker-credential-prego` then gets a fresh identity token for each push.
 
 A layer larger than 95 MiB fails with `413` on `docker push`. Use `prego oci push` for such an image (see the
-[OCI quickstart](oci-quickstart.md)).
+[OCI quickstart](../artifact-types/oci/quickstart.md)).
 
 **Fan-out from a registry of record (the "frontline" step).** If the image is built elsewhere and lands in JFrog
 or Cloudsmith first, add a small job that your release starts (`repository_dispatch` from a webhook, or
@@ -162,7 +162,7 @@ from `prego setup npm --scope @acme`. It has the scope line and a `${PREGO_NPM_T
 
 The package scope (`@acme`) must be registered to your tenant in the console. Readers commit the same `.npmrc`
 and run installs through `prego exec -- npm install`, which sets `PREGO_NPM_TOKEN` for that one command. The
-[npm quickstart](npm-quickstart.md) has the details.
+[npm quickstart](../artifact-types/npm/quickstart.md) has the details.
 
 ### Go modules
 
@@ -255,7 +255,7 @@ tags and branches of that project can publish.
   `prego exec -- npm install`, `go build` with `GOAUTH`. The job's identity needs a `read` grant, and the job
   needs `PREGO_TENANT` and `PREGO_EDGE_CODE` as above.
 - **Kubernetes nodes** pull images with an `imagePullSecret` that holds a read-only API key (username = tenant,
-  password = `prk_...`). The [OCI quickstart](oci-quickstart.md) has the commands.
+  password = `prk_...`). The [OCI quickstart](../artifact-types/oci/quickstart.md) has the commands.
 - **Your customers** (Publisher plan) pull from their own Prego tenant through a cross-domain grant. Their machines
   sign in as themselves; you give out no tokens and rotate nothing.
 - **Usage.** Every plan has a monthly usage limit, shown in the console by package type. At 100%, pulls and

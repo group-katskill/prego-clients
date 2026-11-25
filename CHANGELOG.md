@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The shared ADR-0061 and ADR-0062 test vectors (`prego/tests/vectors/{signing,keys,a2a}/`), copied as data with
+  their READMEs from the Prego monorepo (branch `vectors/keys-a2a`); the generator scripts are not copied. NOTICE
+  names the pinned A2A v1.0.1 proto and schema in `prego/tests/vectors/a2a/schema/` (Apache-2.0, test data only).
+- All crates move to version 1.3.0 (`prego keys`, `prego a2a`). Not released yet.
+- Docs: `artifact-types/` with the supported artifact types and the plans that include them, one folder per type.
+  The per-type quickstarts moved there (`docs/*-quickstart.md`, `docs/context.md`, `docs/snippets.md`,
+  `docs/sqlite.md`, `docs/release-variables.md`); each old path keeps a one-line pointer file. The SPIFFE plan lines
+  of PREGO-35 moved with them. New Keys and Certificates and A2A Agent Cards quickstarts and examples; README and
+  site sections.
+
 ### Changed
 
 - Releases build Linux x86_64 binaries only, for now (the operator, 2026-11-25). Linux arm64 and macOS binaries

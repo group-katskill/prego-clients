@@ -1,0 +1,70 @@
+# .github/workflows/agent-cards.yml: sign the A2A card set in agent-cards/ and push it to Prego from GitHub Actions.
+#
+# Console setup (once, by a tenant admin):
+#   - trust config: kind oidc, issuer https://token.actions.githubusercontent.com
+#   - principal: kind oidc, claims_match {"repository": "acme/agents", "ref": "refs/heads/main"}
+#   - grant: publish on the card set acme/agents/support (type A2A Agent Cards)
+#   - grant: read on the key item acme/agents/release-keys (type Keys and Certificates)
+#
+# Signing key (once, on a laptop):
+#   prego keys new --alg ed25519 acme/agents/release-keys --out ./release-keys.private.pem
+#   gh secret set A2A_SIGNING_KEY < ./release-keys.private.pem
+#   Delete the local copy, or keep it in your password manager.
+#
+# The repository secret holds the private key. Prego never sees it: prego signs the cards in the job and sends
+# only the signatures. The job stores no Prego secret: prego asks GitHub for a short-lived OIDC token.
+
+name: agent-cards
+
+on:
+  push:
+    branches: [main]
+    paths: ["agent-cards/**"]
+
+permissions:
+  contents: read
+  id-token: write # lets the job request an OIDC token for Prego
+
+jobs:
+  push:
+    runs-on: ubuntu-24.04
+    env:
+      PREGO_VERSION: "1.3.0"
+      PREGO_TARGET: x86_64-unknown-linux-musl
+      PREGO_TENANT: acme
+      PREGO_EDGE_CODE: k7mq # the tenant's edge code from the console
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Install prego and check the SHA-256 sum of the archive.
+      - name: Install prego
+        run: |
+          base="https://github.com/group-katskill/prego-clients/releases/download/prego-clients-v${PREGO_VERSION}"
+          file="prego-${PREGO_TARGET}.tar.gz"
+          curl -fsSLO "${base}/${file}"
+          curl -fsSLO "${base}/${file}.sha256"
+          sha256sum -c "${file}.sha256"
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "${file}" -C "$HOME/.local/bin" prego
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check the cards
+        run: prego a2a check agent-cards
+
+      # The key goes to a file with mode 0600 in the runner's temporary folder, and the file is removed after the
+      # push. Nothing prints it.
+      - name: Sign and push
+        env:
+          A2A_SIGNING_KEY: ${{ secrets.A2A_SIGNING_KEY }}
+        run: |
+          test -n "$A2A_SIGNING_KEY" || { echo "Set the repository secret A2A_SIGNING_KEY" >&2; exit 1; }
+          key_file="$RUNNER_TEMP/a2a-signing-key.pem"
+          trap 'rm -f "$key_file"' EXIT
+          (umask 077 && printf '%s\n' "$A2A_SIGNING_KEY" > "$key_file")
+          prego a2a push agent-cards acme/agents/support --sign "$key_file" --key acme/agents/release-keys \
+            --message "run ${GITHUB_RUN_ID}, commit ${GITHUB_SHA}"
+
+      - name: Get and verify
+        run: prego a2a get acme/agents/support ./verified-cards --verify

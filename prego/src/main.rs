@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+mod a2a;
 mod adapter;
 mod admin;
 mod args;
@@ -9,14 +10,18 @@ mod context;
 mod docker_config;
 mod env;
 mod go;
+mod keys;
 mod login;
 mod npm;
 mod oci;
 mod python;
 mod setup;
+mod sign;
 mod snippet;
 mod sqlite;
 mod token;
+#[cfg(test)]
+mod vectors_tests;
 
 use args::{Command, Parsed};
 
@@ -150,6 +155,62 @@ Commands:
                                   the registry, offline
                                   A snippet that an agent reads is an instruction to that agent: pin it by
                                   hash (--expect) and grant read only on snippets you trust.
+  keys push <file>... <ref> [--type ssh|openpgp|jwk|pem-public-key|x509] [--tag <tag>]
+            [--message <text>] [--if-current <hash>] [--not-after <RFC 3339 time>]
+                                  push a new version of a key item: one entry for each file (SSH public key
+                                  line, OpenPGP public key, public JWK or JWK Set, PEM PUBLIC KEY, X.509
+                                  certificate or bundle). The files are the whole entry list of the new
+                                  version (a push replaces the list). Without --type, the type of each file
+                                  is found from its content. Every file is checked for private key material
+                                  first: a private key stops the push, and nothing is sent (the index in
+                                  Entry <index> counts from 0). Needs publish
+  keys get <ref>[@<version>] [--entry <index>] [--expect <hash>]
+                                  show the entries (type, algorithm, fingerprint, validity) and the revoke
+                                  state. --entry prints one entry as pushed
+  keys ls <tenant>[/<namespace>]  list the key items that you can read
+  keys log <ref>                  list the versions, newest first
+  keys tag <ref>@<version> <tag>  give a version a tag
+  keys rollback <ref> --to <version> --reason <text>
+                                  make another version the current one
+  keys revoke <ref> --reason <text>
+                                  revoke the key item (one-way). Signatures with its keys fail --verify.
+                                  Needs delete
+  keys fingerprint <file> [--type <type>]
+                                  print the fingerprint of each key or certificate, offline
+  keys new --alg ed25519|es256 <ref> [--out <file>] [--message <text>]
+                                  make a key pair here: the private key goes to <file> (default
+                                  ./<name>.private.pem, mode 0600, never replaced, never sent), the public
+                                  JWK to ./<name>.pub.jwk and to the key item (added to its current entries)
+                                  Keys and Certificates holds public keys and certificates only; Prego never
+                                  stores a private key.
+  a2a check <folder|file> [--key-file <file>] [--key <key ref>]
+                                  check A2A 1.0 Agent Cards offline (schema, then signatures with a local
+                                  key file, or with a key from Keys and Certificates)
+  a2a push <folder|file> <ref> [--sign <key file> --key <key ref>] [--no-source] [--tag <tag>]
+           [--message <text>] [--if-current <hash>]
+                                  push a new version of an A2A card set: <file>.json cards at the top level
+                                  (names [a-z0-9][a-z0-9._-]{0,127}.json), at most 100 cards, 64 KiB each,
+                                  1 MiB together. --sign signs each card (A2A signatures) and the set on this
+                                  computer with the private key file; --key is the key item that holds its
+                                  public key, in the tenant of the set. --sign adds the Prego source extension (tenant, namespace,
+                                  set) to each card first; --no-source leaves it out. Without --sign, the
+                                  cards and .prego/set.jws.json must be signed already. Needs publish
+  a2a get <ref>[@<version>] [<folder>] [--card <file>] [--expect <hash>] [--verify]
+                                  write the cards and .prego/set.jws.json to a new or empty folder (default
+                                  ./<set>). --card prints one card. --verify checks the set signature and a
+                                  signature on every card with the keys from Keys and Certificates (needs
+                                  read on the key item too)
+  a2a ls <tenant>[/<namespace>]   list the card sets that you can read
+  a2a log <ref>                   list the versions, newest first, with the signers
+  a2a diff <ref> <version> <version>
+                                  show the cards added, removed and changed
+  a2a tag <ref>@<version> <tag>   give a version a tag
+  a2a rollback <ref> --to <version> --reason <text>
+                                  make another version the current one
+  a2a upgrade <file> [-o <file>] [--force]
+                                  convert an A2A 0.3 card (also agent.json) to an A2A 1.0 card, offline. It
+                                  prints every change and stops at a field it cannot map with certainty.
+                                  Default output: agent-card.json next to the input. The output is unsigned
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
                                   save a checkpoint of agent context (memory, notes, plans, transcripts):
@@ -358,6 +419,8 @@ fn main() {
                 Command::NpmEnv => npm::npm_env(&globals, &env),
                 Command::Env(c) => env::run(&globals, &c, &env),
                 Command::Snippet(c) => snippet::run(&globals, &c, &env),
+                Command::Keys(c) => keys::run(&globals, &c, &env),
+                Command::A2a(c) => a2a::run(&globals, &c, &env),
                 Command::Context(c) => context::run(&globals, &c, &env),
                 Command::Sqlite(c) => sqlite::run(&globals, &c, &env),
                 Command::Exec {

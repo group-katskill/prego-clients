@@ -1,0 +1,64 @@
+{
+  "name": "Acme Billing Bot",
+  "description": "Explains Acme invoices and the lines on them.",
+  "supportedInterfaces": [
+    {
+      "url": "https://billing.example.com/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://billing.example.com/a2a/json",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Acme Example",
+    "url": "https://www.example.com"
+  },
+  "version": "2.1.0",
+  "capabilities": {
+    "streaming": false
+  },
+  "securitySchemes": {
+    "oauth": {
+      "openIdConnectSecurityScheme": {
+        "openIdConnectUrl": "https://auth.example.com/.well-known/openid-configuration"
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "schemes": {
+        "oauth": {
+          "list": [
+            "openid"
+          ]
+        }
+      }
+    }
+  ],
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "invoice-explain",
+      "name": "Explain an invoice",
+      "description": "Explains the lines of an invoice and why the total changed.",
+      "tags": [
+        "billing",
+        "invoices"
+      ],
+      "examples": [
+        "Why is invoice 1042 higher than last month?"
+      ]
+    }
+  ]
+}

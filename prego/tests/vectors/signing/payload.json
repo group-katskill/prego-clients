@@ -1,0 +1,90 @@
+[
+  {
+    "name": "snippet-two-files",
+    "set": {
+      "type": "snippet",
+      "tenant": "acme",
+      "namespace": "default",
+      "name": "deploy-scripts",
+      "hash": "sha256:9ead9110b89ee84ed956fca13b5a204d185819e78a830d66defae11a8de36f09",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "711a6108ba2ce6ca93dd47d6817f2361db10d8ab6eec89460b2dfc2c325efabe"
+        },
+        {
+          "path": "bin/deploy.sh",
+          "sha256": "b7bd55c11b781b0ccc43aa6e57f9dadf0660e9d1d4e27e0979ee43a407d454ae"
+        }
+      ]
+    },
+    "canonical": "{\"files\":[{\"path\":\"README.md\",\"sha256\":\"711a6108ba2ce6ca93dd47d6817f2361db10d8ab6eec89460b2dfc2c325efabe\"},{\"path\":\"bin/deploy.sh\",\"sha256\":\"b7bd55c11b781b0ccc43aa6e57f9dadf0660e9d1d4e27e0979ee43a407d454ae\"}],\"hash\":\"sha256:9ead9110b89ee84ed956fca13b5a204d185819e78a830d66defae11a8de36f09\",\"name\":\"deploy-scripts\",\"namespace\":\"default\",\"tenant\":\"acme\",\"type\":\"snippet\"}",
+    "sha256": "b097b06cae2354b9c684dd5096650593ce0bff4103c85ed93d02ca6faf855708"
+  },
+  {
+    "name": "a2a-dotted-file-names",
+    "set": {
+      "type": "a2a",
+      "tenant": "acme",
+      "namespace": "agents",
+      "name": "support",
+      "hash": "sha256:7a05422e0798750e0845e6d38705be7fefb98a325f3aaef789bf7754170e2045",
+      "files": [
+        {
+          "path": "acme.billing-bot.json",
+          "sha256": "0c95c7ece1ce1a9750275ef1c6d7ad6b278f70d66592207783ffe7d58474cc01"
+        },
+        {
+          "path": "acme.support-bot.json",
+          "sha256": "a18603086e5bdf9df88ccc9f5a083fed093e819976e87456b74dafcbd7011114"
+        }
+      ]
+    },
+    "canonical": "{\"files\":[{\"path\":\"acme.billing-bot.json\",\"sha256\":\"0c95c7ece1ce1a9750275ef1c6d7ad6b278f70d66592207783ffe7d58474cc01\"},{\"path\":\"acme.support-bot.json\",\"sha256\":\"a18603086e5bdf9df88ccc9f5a083fed093e819976e87456b74dafcbd7011114\"}],\"hash\":\"sha256:7a05422e0798750e0845e6d38705be7fefb98a325f3aaef789bf7754170e2045\",\"name\":\"support\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}",
+    "sha256": "4127062fa886c4ff1d55ff68b349d747f916a7c720ca36a7fe8150a40282307c"
+  },
+  {
+    "name": "key-version-three-entries",
+    "set": {
+      "type": "key",
+      "tenant": "acme",
+      "namespace": "default",
+      "name": "release-keys",
+      "hash": "sha256:2f06bcf4e8d96d66f0b8d972e1d9351a255f82ff4cf1a12b63c8d3642206547e",
+      "files": [
+        {
+          "path": "entries/0",
+          "sha256": "5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086"
+        },
+        {
+          "path": "entries/1",
+          "sha256": "8b5cc4df7eec7d32a7814eca4af047ae33b2d52342667715682e19c25b0b9faa"
+        },
+        {
+          "path": "entries/2",
+          "sha256": "ac0f09c0f8bf5e7a4b063d863255f16d8ce9abe600e288d934cf313bcbff63eb"
+        }
+      ]
+    },
+    "canonical": "{\"files\":[{\"path\":\"entries/0\",\"sha256\":\"5c88e7a226e11ad1204cb8d30cd5d6ff6cba69bc32da73134928e17c90c54086\"},{\"path\":\"entries/1\",\"sha256\":\"8b5cc4df7eec7d32a7814eca4af047ae33b2d52342667715682e19c25b0b9faa\"},{\"path\":\"entries/2\",\"sha256\":\"ac0f09c0f8bf5e7a4b063d863255f16d8ce9abe600e288d934cf313bcbff63eb\"}],\"hash\":\"sha256:2f06bcf4e8d96d66f0b8d972e1d9351a255f82ff4cf1a12b63c8d3642206547e\",\"name\":\"release-keys\",\"namespace\":\"default\",\"tenant\":\"acme\",\"type\":\"key\"}",
+    "sha256": "33cbde5151f9694b6f364bfc64fec24c2a539214dce5631d43bf4e0d063024ce"
+  },
+  {
+    "name": "non-ascii-path",
+    "set": {
+      "type": "snippet",
+      "tenant": "acme",
+      "namespace": "default",
+      "name": "docs",
+      "hash": "sha256:4bb54f07bcf598547acd1166bcb4141dabd8676a253fc87a194f1ecd2df47617",
+      "files": [
+        {
+          "path": "docs/café.md",
+          "sha256": "a860b858265b22dad3aaf1165cfc2936daf1d3d86e0b7b77e3cc07f59f96858f"
+        }
+      ]
+    },
+    "canonical": "{\"files\":[{\"path\":\"docs/café.md\",\"sha256\":\"a860b858265b22dad3aaf1165cfc2936daf1d3d86e0b7b77e3cc07f59f96858f\"}],\"hash\":\"sha256:4bb54f07bcf598547acd1166bcb4141dabd8676a253fc87a194f1ecd2df47617\",\"name\":\"docs\",\"namespace\":\"default\",\"tenant\":\"acme\",\"type\":\"snippet\"}",
+    "sha256": "61c3c52bb632e2333d14929528ab32a8e4168f74e202286cce8e623efe0f636e"
+  }
+]
