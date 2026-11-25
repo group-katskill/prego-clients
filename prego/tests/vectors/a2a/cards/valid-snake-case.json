@@ -1,0 +1,34 @@
+{
+  "name": "Snake Case Bot",
+  "description": "Uses the proto field names, which the pinned schema accepts.",
+  "supported_interfaces": [
+    {
+      "url": "https://snake.acme.test/a2a",
+      "protocol_binding": "HTTP+JSON",
+      "protocol_version": "1.0"
+    }
+  ],
+  "version": "0.1.0",
+  "capabilities": {
+    "push_notifications": true
+  },
+  "default_input_modes": [
+    "text/plain"
+  ],
+  "default_output_modes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "hiss",
+      "name": "Hiss",
+      "description": "Hisses.",
+      "tags": [
+        "test"
+      ],
+      "input_modes": [
+        "text/plain"
+      ]
+    }
+  ]
+}

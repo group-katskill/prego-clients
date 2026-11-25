@@ -54,7 +54,7 @@ fn require_plain_body(v: &Value) {
 }
 
 /// The largest JSON answer that is read (a diff has at most 1 MiB of diff text, escaped).
-const MAX_JSON: u64 = 4 * 1024 * 1024;
+pub(crate) const MAX_JSON: u64 = 4 * 1024 * 1024;
 /// The largest tarball that is read: the content, the headers and a gzip that does not compress.
 const MAX_TARBALL: u64 = files::MAX_VERSION_BYTES + 1024 * 1024;
 
@@ -241,32 +241,45 @@ pub(crate) fn seg(s: &str) -> String {
 }
 
 /// A file path in a URL: each segment encoded, `/` kept.
-fn file_path(path: &str) -> String {
+pub(crate) fn file_path(path: &str) -> String {
     path.split('/').map(seg).collect::<Vec<_>>().join("/")
 }
 
-/// The machine routes under `/v1/snippets/`.
-struct Api {
+/// The machine routes under `/v1/snippets/`, or, with [`Api::with_prefix`], under `/v1/keys/` and
+/// `/v1/a2a/`, which have the same shapes (ADR-0061 section 4, ADR-0062 section 3).
+pub(crate) struct Api {
     c: Connection,
+    prefix: &'static str,
 }
 
 impl Api {
     fn new(globals: &[&str], tenant: &str, env: &dyn Env) -> Result<Api, String> {
+        Api::with_prefix(globals, tenant, env, "snippets")
+    }
+
+    /// The routes under `/v1/<prefix>/`.
+    pub(crate) fn with_prefix(
+        globals: &[&str],
+        tenant: &str,
+        env: &dyn Env,
+        prefix: &'static str,
+    ) -> Result<Api, String> {
         Ok(Api {
             c: crate::env::connect(globals, tenant, true, env)?,
+            prefix,
         })
     }
 
     fn url(&self, path: &str) -> String {
-        format!("{}/v1/snippets/{path}", self.c.base)
+        format!("{}/v1/{}/{path}", self.c.base, self.prefix)
     }
 
     /// `<tenant>/<namespace>/<snippet>` encoded.
-    fn snippet(r: &SnipRef) -> String {
+    pub(crate) fn snippet(r: &SnipRef) -> String {
         format!("{}/{}/{}", seg(&r.tenant), seg(&r.namespace), seg(&r.name))
     }
 
-    fn send(
+    pub(crate) fn send(
         &self,
         method: &str,
         path: &str,
@@ -288,7 +301,7 @@ impl Api {
     }
 
     /// A `PUT` or `POST` with a JSON body; a 2xx JSON answer.
-    fn write_json(
+    pub(crate) fn write_json(
         &self,
         method: &str,
         path: &str,
@@ -309,7 +322,7 @@ impl Api {
     }
 
     /// A `GET` whose `200` body is read into memory, at most `max` bytes.
-    fn get_bytes(
+    pub(crate) fn get_bytes(
         &self,
         path: &str,
         accept: &str,
@@ -331,7 +344,7 @@ impl Api {
     }
 
     /// A `GET` with a `200` JSON answer. A `412 hash_mismatch` exits with [`EXIT_EXPECT`].
-    fn get_json(&self, path: &str, what: &str) -> Result<(FullResponse, Value), String> {
+    pub(crate) fn get_json(&self, path: &str, what: &str) -> Result<(FullResponse, Value), String> {
         let (res, body) = self.get_bytes(path, "application/json", MAX_JSON)?;
         if res.status != 200 {
             expect_exit(&res, what);
@@ -346,7 +359,7 @@ pub(crate) fn parse_json(bytes: &[u8], what: &str) -> Result<Value, String> {
 }
 
 /// On `412 hash_mismatch`, prints the message and exits with [`EXIT_EXPECT`]. Nothing was written yet.
-fn expect_exit(res: &FullResponse, what: &str) {
+pub(crate) fn expect_exit(res: &FullResponse, what: &str) {
     if res.status == 412 {
         let body: Value = serde_json::from_str(&res.body).unwrap_or(Value::Null);
         let hash = body["error"]["hash"]
@@ -359,13 +372,13 @@ fn expect_exit(res: &FullResponse, what: &str) {
     }
 }
 
-fn mismatch_exit(what: &str, local: &str, want: &str) -> ! {
+pub(crate) fn mismatch_exit(what: &str, local: &str, want: &str) -> ! {
     eprintln!("prego: {what}: the version hash is {local}, not the expected {want}");
     std::process::exit(EXIT_EXPECT);
 }
 
 /// The error text for a refused request. `404` means no snippet or no grant: the registry does not say which.
-fn api_error(res: &FullResponse, what: &str) -> String {
+pub(crate) fn api_error(res: &FullResponse, what: &str) -> String {
     let body: Value = serde_json::from_str(&res.body).unwrap_or(Value::Null);
     let err = &body["error"];
     let code = err["code"].as_str().or(err.as_str()).unwrap_or("");
@@ -670,7 +683,7 @@ fn get_tar(api: &Api, r: &SnipRef, out: Option<&str>, expect: Option<&str>) -> R
     Ok(())
 }
 
-fn write_bytes_atomic(path: &str, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn write_bytes_atomic(path: &str, bytes: &[u8]) -> Result<(), String> {
     let p = Path::new(path);
     let tmp = p.with_extension("prego-tmp");
     std::fs::write(&tmp, bytes).map_err(|e| format!("prego: {}: {e}", tmp.display()))?;
@@ -681,7 +694,12 @@ fn write_bytes_atomic(path: &str, bytes: &[u8]) -> Result<(), String> {
 }
 
 /// Follows `next` cursors. At most 1,000 pages.
-fn pages(api: &Api, base: &str, what: &str, mut each: impl FnMut(&Value)) -> Result<(), String> {
+pub(crate) fn pages(
+    api: &Api,
+    base: &str,
+    what: &str,
+    mut each: impl FnMut(&Value),
+) -> Result<(), String> {
     let mut after: Option<String> = None;
     for _ in 0..1000 {
         let mut q = vec![("limit", "100".to_string())];
@@ -756,7 +774,7 @@ fn log(api: &Api, r: &SnipRef) -> Result<(), String> {
     })
 }
 
-fn diff(api: &Api, r: &SnipRef, from: &str, to: &str) -> Result<(), String> {
+pub(crate) fn diff(api: &Api, r: &SnipRef, from: &str, to: &str) -> Result<(), String> {
     let what = format!("the diff of {} from {from} to {to}", r.long());
     let path = format!(
         "{}/diff?{}",
@@ -806,7 +824,7 @@ fn diff(api: &Api, r: &SnipRef, from: &str, to: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn set_tag(api: &Api, r: &SnipRef, tag: &str) -> Result<(), String> {
+pub(crate) fn set_tag(api: &Api, r: &SnipRef, tag: &str) -> Result<(), String> {
     let v = r.selector();
     let what = format!("tag {tag} on {}@{v}", r.long());
     let body = json!({ "version": reference::selector_json(v) });
@@ -829,7 +847,7 @@ fn set_tag(api: &Api, r: &SnipRef, tag: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn rollback(api: &Api, r: &SnipRef, to: &str, reason: &str) -> Result<(), String> {
+pub(crate) fn rollback(api: &Api, r: &SnipRef, to: &str, reason: &str) -> Result<(), String> {
     let what = format!("move the current version of {}", r.long());
     let body = json!({ "version": reference::selector_json(to), "reason": reason });
     let answer = api.write_json(

@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.3.0 with `prego` 1.3.0 (`prego keys`, `prego a2a`). Not released yet.
+
 ### Added
 
 - `Access::request_for(publish, namespaces)` (minor): one access item for each namespace of a device request,

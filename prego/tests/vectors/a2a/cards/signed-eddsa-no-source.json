@@ -1,0 +1,35 @@
+{
+  "name": "Support Bot",
+  "description": "Answers questions about Acme orders.",
+  "supportedInterfaces": [
+    {
+      "url": "https://support.acme.test/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "order-status",
+      "name": "Order status",
+      "description": "Tells the status of an order.",
+      "tags": [
+        "orders"
+      ]
+    }
+  ],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiJ5azZPcEpPTmduZDk2dEZ5dTV3VzlGQzdfendZb2VGLUxXNDNyZmRDclpvIiwicHJlZ29fa2V5IjoiYWNtZS9kZWZhdWx0L3JlbGVhc2Uta2V5cyJ9",
+      "signature": "0rDLDorprvpGLSG8up5OkR_CylaaKh0nyzWA2LWa_qu8Wth21OolRu8ozyQ6lVe_HrT9cAu1V9OhwppEu3wZAQ"
+    }
+  ]
+}

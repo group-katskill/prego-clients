@@ -1,0 +1,96 @@
+{
+  "name": "Empty Scopes",
+  "description": "Makes and explains Acme invoices.",
+  "supportedInterfaces": [
+    {
+      "url": "https://billing.acme.test/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://billing.acme.test/a2a/grpc",
+      "protocolBinding": "GRPC",
+      "protocolVersion": "1.0",
+      "tenant": "acme"
+    },
+    {
+      "url": "https://billing.acme.test/a2a/json",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Acme Test",
+    "url": "https://acme.test"
+  },
+  "version": "2.3.1",
+  "documentationUrl": "https://acme.test/docs/billing-bot",
+  "iconUrl": "https://acme.test/billing-bot.png",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "extendedAgentCard": true,
+    "extensions": [
+      {
+        "uri": "https://acme.test/ext/audit/v1",
+        "description": "Audit trail",
+        "required": true,
+        "params": {
+          "level": "full",
+          "keep_days": 30
+        }
+      }
+    ]
+  },
+  "securitySchemes": {
+    "device": {
+      "oauth2SecurityScheme": {
+        "flows": {
+          "deviceCode": {
+            "deviceAuthorizationUrl": "https://auth.acme.test/device",
+            "tokenUrl": "https://auth.acme.test/token",
+            "scopes": {}
+          }
+        }
+      }
+    }
+  },
+  "securityRequirements": [],
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "application/pdf"
+  ],
+  "skills": [
+    {
+      "id": "invoice-explain",
+      "name": "Explain invoice",
+      "description": "Explains the lines of an invoice.",
+      "tags": [
+        "billing",
+        "invoices"
+      ],
+      "examples": [
+        "Why is invoice 1042 higher than last month?"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ],
+      "securityRequirements": [
+        {
+          "schemes": {
+            "bearer": {
+              "list": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

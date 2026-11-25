@@ -1,0 +1,1074 @@
+{
+  "note": "Test input only. No file here holds a private key. See README.md.",
+  "schema": {
+    "file": "schema/a2a-1.0.1.schema.json",
+    "source_url": "https://a2a-protocol.org/v1.0.1/spec/a2a.json",
+    "sha256": "ba4b702b5edbdcbfe972c272484eb38e1fcd72af3c0b7eaa114b50e97455d8dd",
+    "proto": "schema/a2a-1.0.1.proto",
+    "proto_url": "https://raw.githubusercontent.com/a2aproject/A2A/3303592588e388e62e0f69f701af531d2f4e3991/specification/a2a.proto",
+    "proto_sha256": "e195bf96ab630c69797851970203e1b2b6b19528f2e9803b7d904b91a5104016",
+    "tag": "v1.0.1",
+    "commit": "3303592588e388e62e0f69f701af531d2f4e3991",
+    "fetched": "2026-11-24"
+  },
+  "source_extension_uri": "https://prego.k8skill.com/ext/a2a-source/v1",
+  "prego_key": "acme/default/release-keys",
+  "valid": [
+    {
+      "name": "valid-minimal",
+      "file": "valid-minimal.json",
+      "note": "only the REQUIRED fields"
+    },
+    {
+      "name": "valid-full",
+      "file": "valid-full.json",
+      "note": "every card field, all five security scheme kinds, an extension with params"
+    },
+    {
+      "name": "valid-snake-case",
+      "file": "valid-snake-case.json",
+      "note": "proto (snake_case) field names"
+    },
+    {
+      "name": "valid-explicit-defaults",
+      "file": "valid-explicit-defaults.json",
+      "note": "fields set to default values"
+    },
+    {
+      "name": "valid-empty-required-map",
+      "file": "valid-empty-required-map.json",
+      "note": "a REQUIRED map (scopes) that is empty"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing-name",
+      "file": "invalid-missing-name.json",
+      "error": "card_invalid",
+      "path": "/name",
+      "reason": "required field is missing"
+    },
+    {
+      "name": "empty-name",
+      "file": "invalid-empty-name.json",
+      "error": "card_invalid",
+      "path": "/name",
+      "reason": "required field is empty"
+    },
+    {
+      "name": "missing-capabilities",
+      "file": "invalid-missing-capabilities.json",
+      "error": "card_invalid",
+      "path": "/capabilities",
+      "reason": "required field is missing"
+    },
+    {
+      "name": "empty-skills",
+      "file": "invalid-empty-skills.json",
+      "error": "card_invalid",
+      "path": "/skills",
+      "reason": "required array is empty"
+    },
+    {
+      "name": "skill-missing-tags",
+      "file": "invalid-skill-missing-tags.json",
+      "error": "card_invalid",
+      "path": "/skills/0/tags",
+      "reason": "required field is missing"
+    },
+    {
+      "name": "interface-missing-protocol-version",
+      "file": "invalid-interface-missing-protocol-version.json",
+      "error": "card_invalid",
+      "path": "/supportedInterfaces/0/protocolVersion",
+      "reason": "required field is missing"
+    },
+    {
+      "name": "unknown-top-field",
+      "file": "invalid-unknown-top-field.json",
+      "error": "card_invalid",
+      "path": "/homepage",
+      "reason": "unknown field"
+    },
+    {
+      "name": "unknown-skill-field",
+      "file": "invalid-unknown-skill-field.json",
+      "error": "card_invalid",
+      "path": "/skills/0/priority",
+      "reason": "unknown field"
+    },
+    {
+      "name": "version-not-string",
+      "file": "invalid-version-not-string.json",
+      "error": "card_invalid",
+      "path": "/version",
+      "reason": "expected string"
+    },
+    {
+      "name": "streaming-not-bool",
+      "file": "invalid-streaming-not-bool.json",
+      "error": "card_invalid",
+      "path": "/capabilities/streaming",
+      "reason": "expected boolean"
+    },
+    {
+      "name": "scheme-two-members",
+      "file": "invalid-scheme-two-members.json",
+      "error": "card_invalid",
+      "path": "/securitySchemes/s1",
+      "reason": "exactly one of scheme must be set"
+    },
+    {
+      "name": "scheme-no-member",
+      "file": "invalid-scheme-no-member.json",
+      "error": "card_invalid",
+      "path": "/securitySchemes/s1",
+      "reason": "exactly one of scheme must be set"
+    },
+    {
+      "name": "oauth-two-flows",
+      "file": "invalid-oauth-two-flows.json",
+      "error": "card_invalid",
+      "path": "/securitySchemes/o/oauth2SecurityScheme/flows",
+      "reason": "exactly one of flow must be set"
+    },
+    {
+      "name": "oauth-flow-missing-token-url",
+      "file": "invalid-oauth-flow-missing-token-url.json",
+      "error": "card_invalid",
+      "path": "/securitySchemes/o/oauth2SecurityScheme/flows/clientCredentials/tokenUrl",
+      "reason": "required field is missing"
+    },
+    {
+      "name": "duplicate-alias",
+      "file": "invalid-duplicate-alias.json",
+      "error": "card_invalid",
+      "path": "/default_input_modes",
+      "reason": "duplicate field (defaultInputModes)"
+    },
+    {
+      "name": "top-level-array",
+      "file": "invalid-top-level-array.json",
+      "error": "card_invalid",
+      "path": "",
+      "reason": "expected object"
+    },
+    {
+      "name": "not-json",
+      "file": "invalid-not-json.json",
+      "error": "card_invalid",
+      "path": "",
+      "reason": "not valid JSON"
+    }
+  ],
+  "v03": [
+    {
+      "name": "full",
+      "file": "v03-full.json",
+      "error": "card_invalid",
+      "reason": "has protocolVersion \"0.3.0\"",
+      "message": "A2A 1.0 only. Card v03-full.json looks like A2A 0.3 (has protocolVersion \"0.3.0\"). Run `prego a2a upgrade v03-full.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "no-protocol-version",
+      "file": "v03-no-protocol-version.json",
+      "error": "card_invalid",
+      "reason": "has top-level url",
+      "message": "A2A 1.0 only. Card v03-no-protocol-version.json looks like A2A 0.3 (has top-level url). Run `prego a2a upgrade v03-no-protocol-version.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "preferred-transport",
+      "file": "v03-preferred-transport.json",
+      "error": "card_invalid",
+      "reason": "has preferredTransport",
+      "message": "A2A 1.0 only. Card v03-preferred-transport.json looks like A2A 0.3 (has preferredTransport). Run `prego a2a upgrade v03-preferred-transport.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "additional-interfaces",
+      "file": "v03-additional-interfaces.json",
+      "error": "card_invalid",
+      "reason": "has additionalInterfaces",
+      "message": "A2A 1.0 only. Card v03-additional-interfaces.json looks like A2A 0.3 (has additionalInterfaces). Run `prego a2a upgrade v03-additional-interfaces.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "authenticated-extended-card",
+      "file": "v03-authenticated-extended-card.json",
+      "error": "card_invalid",
+      "reason": "has supportsAuthenticatedExtendedCard",
+      "message": "A2A 1.0 only. Card v03-authenticated-extended-card.json looks like A2A 0.3 (has supportsAuthenticatedExtendedCard). Run `prego a2a upgrade v03-authenticated-extended-card.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "security",
+      "file": "v03-security.json",
+      "error": "card_invalid",
+      "reason": "has security, not securityRequirements",
+      "message": "A2A 1.0 only. Card v03-security.json looks like A2A 0.3 (has security, not securityRequirements). Run `prego a2a upgrade v03-security.json` to make a 1.0 card, then sign it again."
+    },
+    {
+      "name": "scheme-type-only",
+      "file": "v03-scheme-type-only.json",
+      "error": "card_invalid",
+      "reason": "security scheme key has type",
+      "message": "A2A 1.0 only. Card v03-scheme-type-only.json looks like A2A 0.3 (security scheme key has type). Run `prego a2a upgrade v03-scheme-type-only.json` to make a 1.0 card, then sign it again."
+    }
+  ],
+  "signed": [
+    {
+      "name": "eddsa-with-source",
+      "file": "signed-eddsa-with-source.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "eddsa-no-source",
+      "file": "signed-eddsa-no-source.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "es256-full-with-source",
+      "file": "signed-es256-full-with-source.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extendedAgentCard\":true,\"extensions\":[{\"description\":\"Audit trail\",\"params\":{\"keep_days\":30,\"level\":\"full\"},\"required\":true,\"uri\":\"https://acme.test/ext/audit/v1\"},{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}],\"pushNotifications\":false,\"streaming\":true},\"defaultInputModes\":[\"text/plain\",\"application/json\"],\"defaultOutputModes\":[\"application/json\",\"application/pdf\"],\"description\":\"Makes and explains Acme invoices.\",\"documentationUrl\":\"https://acme.test/docs/billing-bot\",\"iconUrl\":\"https://acme.test/billing-bot.png\",\"name\":\"Billing Bot\",\"provider\":{\"organization\":\"Acme Test\",\"url\":\"https://acme.test\"},\"securityRequirements\":[{\"schemes\":{\"oauth\":{\"list\":[\"invoices:read\"]}}},{\"schemes\":{\"mtls\":{}}}],\"securitySchemes\":{\"apikey\":{\"apiKeySecurityScheme\":{\"description\":\"Test API key header\",\"location\":\"header\",\"name\":\"X-Acme-Key\"}},\"bearer\":{\"httpAuthSecurityScheme\":{\"bearerFormat\":\"JWT\",\"scheme\":\"Bearer\"}},\"device\":{\"oauth2SecurityScheme\":{\"flows\":{\"deviceCode\":{\"deviceAuthorizationUrl\":\"https://auth.acme.test/device\",\"scopes\":{},\"tokenUrl\":\"https://auth.acme.test/token\"}}}},\"mtls\":{\"mtlsSecurityScheme\":{\"description\":\"Client certificate from the Acme test CA\"}},\"oauth\":{\"oauth2SecurityScheme\":{\"flows\":{\"clientCredentials\":{\"scopes\":{\"invoices:read\":\"Read invoices\"},\"tokenUrl\":\"https://auth.acme.test/token\"}},\"oauth2MetadataUrl\":\"https://auth.acme.test/.well-known/oauth-authorization-server\"}},\"oidc\":{\"openIdConnectSecurityScheme\":{\"openIdConnectUrl\":\"https://auth.acme.test/.well-known/openid-configuration\"}}},\"skills\":[{\"description\":\"Explains the lines of an invoice.\",\"examples\":[\"Why is invoice 1042 higher than last month?\"],\"id\":\"invoice-explain\",\"inputModes\":[\"text/plain\"],\"name\":\"Explain invoice\",\"outputModes\":[\"text/plain\"],\"securityRequirements\":[{\"schemes\":{\"bearer\":{}}}],\"tags\":[\"billing\",\"invoices\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://billing.acme.test/a2a/v1\"},{\"protocolBinding\":\"GRPC\",\"protocolVersion\":\"1.0\",\"tenant\":\"acme\",\"url\":\"https://billing.acme.test/a2a/grpc\"},{\"protocolBinding\":\"HTTP+JSON\",\"protocolVersion\":\"1.0\",\"url\":\"https://billing.acme.test/a2a/json\"}],\"version\":\"2.3.1\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "defaults-removed-before-signing",
+      "file": "signed-defaults-removed-before-signing.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}],\"streaming\":false},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"iconUrl\":\"\",\"name\":\"Defaults Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "snake-case-names",
+      "file": "signed-snake-case-names.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}],\"push_notifications\":true},\"default_input_modes\":[\"text/plain\"],\"default_output_modes\":[\"text/plain\"],\"description\":\"Uses the proto field names, which the pinned schema accepts.\",\"name\":\"Snake Case Bot\",\"skills\":[{\"description\":\"Hisses.\",\"id\":\"hiss\",\"input_modes\":[\"text/plain\"],\"name\":\"Hiss\",\"tags\":[\"test\"]}],\"supported_interfaces\":[{\"protocol_binding\":\"HTTP+JSON\",\"protocol_version\":\"1.0\",\"url\":\"https://snake.acme.test/a2a\"}],\"version\":\"0.1.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "two-signatures-rotation",
+      "file": "signed-two-signatures-rotation.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "one-good-one-unknown-key",
+      "file": "signed-one-good-one-unknown-key.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "unsigned",
+      "file": "signed-unsigned.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_required",
+      "reason": null,
+      "message": "A2A Agent Cards must be signed. Sign with `prego a2a push --sign <key file> --key <key ref>`; make a key with `prego keys new`."
+    },
+    {
+      "name": "empty-signatures",
+      "file": "signed-empty-signatures.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_required",
+      "reason": null,
+      "message": null
+    },
+    {
+      "name": "defaults-not-removed",
+      "file": "signed-defaults-not-removed.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}],\"streaming\":false},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"iconUrl\":\"\",\"name\":\"Defaults Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "bad_signature",
+      "message": null
+    },
+    {
+      "name": "changed-after-signing",
+      "file": "signed-changed-after-signing.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Changed after signing.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "bad_signature",
+      "message": null
+    },
+    {
+      "name": "kid-not-thumbprint",
+      "file": "signed-kid-not-thumbprint.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "kid_not_thumbprint",
+      "message": null
+    },
+    {
+      "name": "prego-key-missing",
+      "file": "signed-prego-key-missing.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "prego_key_missing",
+      "message": null
+    },
+    {
+      "name": "unknown-key-only",
+      "file": "signed-unknown-key-only.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"acme\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "key_not_found",
+      "message": null
+    },
+    {
+      "name": "source-mismatch",
+      "file": "signed-source-mismatch.json",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "signing_input": "{\"capabilities\":{\"extensions\":[{\"params\":{\"namespace\":\"agents\",\"set\":\"support\",\"tenant\":\"evil\"},\"uri\":\"https://prego.k8skill.com/ext/a2a-source/v1\"}]},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Answers questions about Acme orders.\",\"name\":\"Support Bot\",\"skills\":[{\"description\":\"Tells the status of an order.\",\"id\":\"order-status\",\"name\":\"Order status\",\"tags\":[\"orders\"]}],\"supportedInterfaces\":[{\"protocolBinding\":\"JSONRPC\",\"protocolVersion\":\"1.0\",\"url\":\"https://support.acme.test/a2a/v1\"}],\"version\":\"1.0.0\"}",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "source_mismatch",
+      "reason": null,
+      "message": "card signed-source-mismatch.json says it comes from evil/agents/support; this push is to acme/agents/support"
+    }
+  ],
+  "sets": [
+    {
+      "name": "two-cards-dotted-names",
+      "dir": "sets/two-cards-dotted-names",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "files": [
+        "acme.support-bot.json",
+        "acme.billing-bot.json"
+      ],
+      "hash_input": "{\"files\":[{\"mode\":\"0644\",\"path\":\"acme.billing-bot.json\",\"sha256\":\"6eaa9a4da229ef467e8fcd33eecd6e2d39666f131c86f794d658a028effce394\",\"size\":3826},{\"mode\":\"0644\",\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\",\"size\":1119}]}",
+      "hash": "sha256:95afc5da4cf7a79c349d21f3f59c3e2f3288c82cc5afebdda1e1cf262269b261",
+      "set_payload": "{\"files\":[{\"path\":\"acme.billing-bot.json\",\"sha256\":\"6eaa9a4da229ef467e8fcd33eecd6e2d39666f131c86f794d658a028effce394\"},{\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\"}],\"hash\":\"sha256:95afc5da4cf7a79c349d21f3f59c3e2f3288c82cc5afebdda1e1cf262269b261\",\"name\":\"support\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}",
+      "set_jws": "sets/two-cards-dotted-names/.prego/set.jws.json",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null
+    },
+    {
+      "name": "one-card",
+      "dir": "sets/one-card",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "files": [
+        "acme.support-bot.json"
+      ],
+      "hash_input": "{\"files\":[{\"mode\":\"0644\",\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\",\"size\":1119}]}",
+      "hash": "sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792",
+      "set_payload": "{\"files\":[{\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\"}],\"hash\":\"sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792\",\"name\":\"support\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}",
+      "set_jws": "sets/one-card/.prego/set.jws.json",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "valid",
+      "error": null,
+      "reason": null,
+      "json_body": {
+        "file": "acme.support-bot.json",
+        "card": {
+          "name": "Support Bot",
+          "description": "Answers questions about Acme orders.",
+          "supportedInterfaces": [
+            {
+              "url": "https://support.acme.test/a2a/v1",
+              "protocolBinding": "JSONRPC",
+              "protocolVersion": "1.0"
+            }
+          ],
+          "version": "1.0.0",
+          "capabilities": {
+            "extensions": [
+              {
+                "uri": "https://prego.k8skill.com/ext/a2a-source/v1",
+                "params": {
+                  "tenant": "acme",
+                  "namespace": "agents",
+                  "set": "support"
+                }
+              }
+            ]
+          },
+          "defaultInputModes": [
+            "text/plain"
+          ],
+          "defaultOutputModes": [
+            "text/plain"
+          ],
+          "skills": [
+            {
+              "id": "order-status",
+              "name": "Order status",
+              "description": "Tells the status of an order.",
+              "tags": [
+                "orders"
+              ]
+            }
+          ],
+          "signatures": [
+            {
+              "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiJ5azZPcEpPTmduZDk2dEZ5dTV3VzlGQzdfendZb2VGLUxXNDNyZmRDclpvIiwicHJlZ29fa2V5IjoiYWNtZS9kZWZhdWx0L3JlbGVhc2Uta2V5cyJ9",
+              "signature": "v_J5V1rVHC-I6L9uIkYIWD6w4UIPnEaZugxrhdRO2s95VCqtqMm_ZYfsb2VZGiQEFH5G8iCkiF7yUxl4hct1Dw"
+            }
+          ]
+        },
+        "set_signature": {
+          "payload": "eyJmaWxlcyI6W3sicGF0aCI6ImFjbWUuc3VwcG9ydC1ib3QuanNvbiIsInNoYTI1NiI6Ijk0NWY0NTViYmU5MWM3YmM1MjQ0ZDIzYTBjOTBiNThmOGIxMTg4OGUwNDU5ZTc4ODUwYWQwZjUxNGZlMDA1YzAifV0sImhhc2giOiJzaGEyNTY6MmU1YzgzYTA3ODVkZmE3N2ZiY2E2MmY0ZWRlYTMzOGFjZDBlM2FhNGU3NTI1NWUwYWUxYjdjNzdkMDAxZDc5MiIsIm5hbWUiOiJzdXBwb3J0IiwibmFtZXNwYWNlIjoiYWdlbnRzIiwidGVuYW50IjoiYWNtZSIsInR5cGUiOiJhMmEifQ",
+          "protected": "eyJhbGciOiJFZERTQSIsImtpZCI6InlrNk9wSk9OZ25kOTZ0Rnl1NXdXOUZDN196d1lvZUYtTFc0M3JmZENyWm8iLCJwcmVnb19rZXkiOiJhY21lL2RlZmF1bHQvcmVsZWFzZS1rZXlzIn0",
+          "signature": "3BMzVL054t2chGUxCsLcOnQE90n_393-Y-RccWr3nS8SrrQqUWGKz5iLF4yQsrvwIVMuraZ1Kth_TOwthwlZAQ"
+        },
+        "message": "first version"
+      }
+    },
+    {
+      "name": "set-signed-for-other-set",
+      "dir": "sets/set-signed-for-other-set",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "files": [
+        "acme.support-bot.json"
+      ],
+      "hash_input": "{\"files\":[{\"mode\":\"0644\",\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\",\"size\":1119}]}",
+      "hash": "sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792",
+      "set_payload": "{\"files\":[{\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\"}],\"hash\":\"sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792\",\"name\":\"billing\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}",
+      "set_jws": "sets/set-signed-for-other-set/.prego/set.jws.json",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_invalid",
+      "reason": "payload_mismatch"
+    },
+    {
+      "name": "set-unsigned",
+      "dir": "sets/set-unsigned",
+      "push": {
+        "tenant": "acme",
+        "namespace": "agents",
+        "set": "support"
+      },
+      "files": [
+        "acme.support-bot.json"
+      ],
+      "hash_input": "{\"files\":[{\"mode\":\"0644\",\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\",\"size\":1119}]}",
+      "hash": "sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792",
+      "set_payload": "{\"files\":[{\"path\":\"acme.support-bot.json\",\"sha256\":\"945f455bbe91c7bc5244d23a0c90b58f8b11888e0459e78850ad0f514fe005c0\"}],\"hash\":\"sha256:2e5c83a0785dfa77fbca62f4edea338acd0e3aa4e75255e0ae1b7c77d001d792\",\"name\":\"support\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}",
+      "set_jws": null,
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "tworQ5JnLDw58b9zBBoEO5Gn_RdaLTK59vNswYJT1w8"
+        },
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "yEwWammov03tDy4sMBmGfqtCjZUJ1_dfeQ1sSedxC98",
+          "y": "SmGrQyCnZEo10TjtCzoyOSFHad_8Wp71r2wUrYSQ5bI"
+        }
+      ],
+      "expect": "invalid",
+      "error": "signature_required",
+      "reason": null
+    }
+  ],
+  "upgrade": [
+    {
+      "name": "full-03",
+      "in": "upgrade/full-03/agent.json",
+      "in_file": "agent.json",
+      "out": "upgrade/full-03/agent-card.json",
+      "default_out_file": "agent-card.json",
+      "changes": [
+        {
+          "op": "remove",
+          "from": "/protocolVersion",
+          "to": null,
+          "note": "the card format is now 1.0"
+        },
+        {
+          "op": "move",
+          "from": "/url",
+          "to": "/supportedInterfaces/0/url",
+          "note": null
+        },
+        {
+          "op": "move",
+          "from": "/preferredTransport",
+          "to": "/supportedInterfaces/0/protocolBinding",
+          "note": null
+        },
+        {
+          "op": "add",
+          "from": null,
+          "to": "/supportedInterfaces/0/protocolVersion",
+          "note": "0.3: the agent still serves A2A 0.3 at this URL; change it when the agent serves 1.0"
+        },
+        {
+          "op": "remove",
+          "from": "/additionalInterfaces/0",
+          "to": null,
+          "note": "same URL and transport as the main interface"
+        },
+        {
+          "op": "move",
+          "from": "/additionalInterfaces/1",
+          "to": "/supportedInterfaces/1",
+          "note": "transport becomes protocolBinding; protocolVersion 0.3"
+        },
+        {
+          "op": "remove",
+          "from": "/capabilities/stateTransitionHistory",
+          "to": null,
+          "note": "not in A2A 1.0"
+        },
+        {
+          "op": "move",
+          "from": "/supportsAuthenticatedExtendedCard",
+          "to": "/capabilities/extendedAgentCard",
+          "note": null
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/bearer",
+          "to": "/securitySchemes/bearer/httpAuthSecurityScheme",
+          "note": "type http"
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/key",
+          "to": "/securitySchemes/key/apiKeySecurityScheme",
+          "note": "type apiKey; in becomes location"
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/oauth",
+          "to": "/securitySchemes/oauth/oauth2SecurityScheme",
+          "note": "type oauth2"
+        },
+        {
+          "op": "convert",
+          "from": "/security",
+          "to": "/securityRequirements",
+          "note": "each scope list becomes {list: [...]}"
+        },
+        {
+          "op": "convert",
+          "from": "/skills/0/security",
+          "to": "/skills/0/securityRequirements",
+          "note": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "name": "signed-03-drops-signatures",
+      "in": "upgrade/signed-03-drops-signatures/legacy.json",
+      "in_file": "legacy.json",
+      "out": "upgrade/signed-03-drops-signatures/agent-card.json",
+      "default_out_file": "agent-card.json",
+      "changes": [
+        {
+          "op": "remove",
+          "from": "/protocolVersion",
+          "to": null,
+          "note": "the card format is now 1.0"
+        },
+        {
+          "op": "move",
+          "from": "/url",
+          "to": "/supportedInterfaces/0/url",
+          "note": null
+        },
+        {
+          "op": "move",
+          "from": "/preferredTransport",
+          "to": "/supportedInterfaces/0/protocolBinding",
+          "note": null
+        },
+        {
+          "op": "add",
+          "from": null,
+          "to": "/supportedInterfaces/0/protocolVersion",
+          "note": "0.3: the agent still serves A2A 0.3 at this URL; change it when the agent serves 1.0"
+        },
+        {
+          "op": "remove",
+          "from": "/additionalInterfaces/0",
+          "to": null,
+          "note": "same URL and transport as the main interface"
+        },
+        {
+          "op": "move",
+          "from": "/additionalInterfaces/1",
+          "to": "/supportedInterfaces/1",
+          "note": "transport becomes protocolBinding; protocolVersion 0.3"
+        },
+        {
+          "op": "remove",
+          "from": "/capabilities/stateTransitionHistory",
+          "to": null,
+          "note": "not in A2A 1.0"
+        },
+        {
+          "op": "move",
+          "from": "/supportsAuthenticatedExtendedCard",
+          "to": "/capabilities/extendedAgentCard",
+          "note": null
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/bearer",
+          "to": "/securitySchemes/bearer/httpAuthSecurityScheme",
+          "note": "type http"
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/key",
+          "to": "/securitySchemes/key/apiKeySecurityScheme",
+          "note": "type apiKey; in becomes location"
+        },
+        {
+          "op": "convert",
+          "from": "/securitySchemes/oauth",
+          "to": "/securitySchemes/oauth/oauth2SecurityScheme",
+          "note": "type oauth2"
+        },
+        {
+          "op": "convert",
+          "from": "/security",
+          "to": "/securityRequirements",
+          "note": "each scope list becomes {list: [...]}"
+        },
+        {
+          "op": "convert",
+          "from": "/skills/0/security",
+          "to": "/skills/0/securityRequirements",
+          "note": null
+        },
+        {
+          "op": "remove",
+          "from": "/signatures",
+          "to": null,
+          "note": "the 1.0 card needs a new signature: sign it again"
+        }
+      ],
+      "error": null
+    },
+    {
+      "name": "minimal-default-transport",
+      "in": "upgrade/minimal-default-transport/agent.json",
+      "in_file": "agent.json",
+      "out": "upgrade/minimal-default-transport/agent-card.json",
+      "default_out_file": "agent-card.json",
+      "changes": [
+        {
+          "op": "remove",
+          "from": "/protocolVersion",
+          "to": null,
+          "note": "the card format is now 1.0"
+        },
+        {
+          "op": "move",
+          "from": "/url",
+          "to": "/supportedInterfaces/0/url",
+          "note": null
+        },
+        {
+          "op": "add",
+          "from": null,
+          "to": "/supportedInterfaces/0/protocolBinding",
+          "note": "JSONRPC: the 0.3 default when preferredTransport is not set"
+        },
+        {
+          "op": "add",
+          "from": null,
+          "to": "/supportedInterfaces/0/protocolVersion",
+          "note": "0.3: the agent still serves A2A 0.3 at this URL; change it when the agent serves 1.0"
+        }
+      ],
+      "error": null
+    },
+    {
+      "name": "two-oauth-flows-stops",
+      "in": "upgrade/two-oauth-flows-stops/agent.json",
+      "in_file": "agent.json",
+      "out": null,
+      "default_out_file": "agent-card.json",
+      "changes": [],
+      "error": {
+        "field": "/securitySchemes/o/flows",
+        "reason": "A2A 1.0 allows one OAuth flow per scheme; this scheme has 2. Split it into two schemes, then run the upgrade again."
+      }
+    },
+    {
+      "name": "unknown-field-stops",
+      "in": "upgrade/unknown-field-stops/agent.json",
+      "in_file": "agent.json",
+      "out": null,
+      "default_out_file": "agent-card.json",
+      "changes": [],
+      "error": {
+        "field": "/homepage",
+        "reason": "not an A2A 0.3 field; the upgrade cannot map it"
+      }
+    },
+    {
+      "name": "not-03-stops",
+      "in": "upgrade/not-03-stops/agent.json",
+      "in_file": "agent.json",
+      "out": null,
+      "default_out_file": "agent-card.json",
+      "changes": [],
+      "error": {
+        "field": "/protocolVersion",
+        "reason": "the upgrade reads A2A 0.3 cards only; this card says 0.2.5"
+      }
+    },
+    {
+      "name": "scheme-type-without-mapping-stops",
+      "in": "upgrade/scheme-type-without-mapping-stops/agent.json",
+      "in_file": "agent.json",
+      "out": null,
+      "default_out_file": "agent-card.json",
+      "changes": [],
+      "error": {
+        "field": "/securitySchemes/x/type",
+        "reason": "security scheme type custom has no A2A 1.0 form"
+      }
+    }
+  ]
+}

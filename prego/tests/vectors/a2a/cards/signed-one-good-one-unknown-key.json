@@ -1,0 +1,50 @@
+{
+  "name": "Support Bot",
+  "description": "Answers questions about Acme orders.",
+  "supportedInterfaces": [
+    {
+      "url": "https://support.acme.test/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "extensions": [
+      {
+        "uri": "https://prego.k8skill.com/ext/a2a-source/v1",
+        "params": {
+          "tenant": "acme",
+          "namespace": "agents",
+          "set": "support"
+        }
+      }
+    ]
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "order-status",
+      "name": "Order status",
+      "description": "Tells the status of an order.",
+      "tags": [
+        "orders"
+      ]
+    }
+  ],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiI2N1N5UTZFOHlhb0kwWER6bzJWQnd2d0hUdjYzYmprRnR6ZjZYeDhnTmwwIiwicHJlZ29fa2V5IjoiYWNtZS9kZWZhdWx0L3JlbGVhc2Uta2V5cyJ9",
+      "signature": "ycUbFCpvvsLuwatK-pkRu4YgDw50RzSFyiiNs7_KayEAZRaDedG3uuNl6qgkq1vrR07caXc1zFxsp6p4765oBQ"
+    },
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiJ5azZPcEpPTmduZDk2dEZ5dTV3VzlGQzdfendZb2VGLUxXNDNyZmRDclpvIiwicHJlZ29fa2V5IjoiYWNtZS9kZWZhdWx0L3JlbGVhc2Uta2V5cyJ9",
+      "signature": "v_J5V1rVHC-I6L9uIkYIWD6w4UIPnEaZugxrhdRO2s95VCqtqMm_ZYfsb2VZGiQEFH5G8iCkiF7yUxl4hct1Dw"
+    }
+  ]
+}

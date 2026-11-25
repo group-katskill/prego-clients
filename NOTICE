@@ -2,3 +2,7 @@ cargo-credential-prego, docker-credential-prego, prego and prego-auth. Copyright
 
 The prego binary includes SQLite (https://sqlite.org), compiled in through the crate libsqlite3-sys (MIT).
 The authors of SQLite have dedicated it to the public domain. See https://sqlite.org/copyright.html.
+
+prego/tests/vectors/a2a/schema/ holds test data only: a copy of the A2A 1.0.1 protocol definition
+(specification/a2a.proto) and its generated JSON schema from the A2A project (https://github.com/a2aproject/A2A,
+tag v1.0.1), Apache License 2.0, copyright the A2A project authors. It is not in any binary.

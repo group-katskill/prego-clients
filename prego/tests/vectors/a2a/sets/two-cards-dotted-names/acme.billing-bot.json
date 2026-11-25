@@ -1,0 +1,163 @@
+{
+  "name": "Billing Bot",
+  "description": "Makes and explains Acme invoices.",
+  "supportedInterfaces": [
+    {
+      "url": "https://billing.acme.test/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://billing.acme.test/a2a/grpc",
+      "protocolBinding": "GRPC",
+      "protocolVersion": "1.0",
+      "tenant": "acme"
+    },
+    {
+      "url": "https://billing.acme.test/a2a/json",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Acme Test",
+    "url": "https://acme.test"
+  },
+  "version": "2.3.1",
+  "documentationUrl": "https://acme.test/docs/billing-bot",
+  "iconUrl": "https://acme.test/billing-bot.png",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "extendedAgentCard": true,
+    "extensions": [
+      {
+        "uri": "https://acme.test/ext/audit/v1",
+        "description": "Audit trail",
+        "required": true,
+        "params": {
+          "level": "full",
+          "keep_days": 30
+        }
+      },
+      {
+        "uri": "https://prego.k8skill.com/ext/a2a-source/v1",
+        "params": {
+          "tenant": "acme",
+          "namespace": "agents",
+          "set": "support"
+        }
+      }
+    ]
+  },
+  "securitySchemes": {
+    "bearer": {
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "apikey": {
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Acme-Key",
+        "description": "Test API key header"
+      }
+    },
+    "oauth": {
+      "oauth2SecurityScheme": {
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.acme.test/token",
+            "scopes": {
+              "invoices:read": "Read invoices"
+            }
+          }
+        },
+        "oauth2MetadataUrl": "https://auth.acme.test/.well-known/oauth-authorization-server"
+      }
+    },
+    "device": {
+      "oauth2SecurityScheme": {
+        "flows": {
+          "deviceCode": {
+            "deviceAuthorizationUrl": "https://auth.acme.test/device",
+            "tokenUrl": "https://auth.acme.test/token",
+            "scopes": {}
+          }
+        }
+      }
+    },
+    "oidc": {
+      "openIdConnectSecurityScheme": {
+        "openIdConnectUrl": "https://auth.acme.test/.well-known/openid-configuration"
+      }
+    },
+    "mtls": {
+      "mtlsSecurityScheme": {
+        "description": "Client certificate from the Acme test CA"
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "schemes": {
+        "oauth": {
+          "list": [
+            "invoices:read"
+          ]
+        }
+      }
+    },
+    {
+      "schemes": {
+        "mtls": {
+          "list": []
+        }
+      }
+    }
+  ],
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "application/pdf"
+  ],
+  "skills": [
+    {
+      "id": "invoice-explain",
+      "name": "Explain invoice",
+      "description": "Explains the lines of an invoice.",
+      "tags": [
+        "billing",
+        "invoices"
+      ],
+      "examples": [
+        "Why is invoice 1042 higher than last month?"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ],
+      "securityRequirements": [
+        {
+          "schemes": {
+            "bearer": {
+              "list": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpPU0UiLCJraWQiOiJ5azZPcEpPTmduZDk2dEZ5dTV3VzlGQzdfendZb2VGLUxXNDNyZmRDclpvIiwicHJlZ29fa2V5IjoiYWNtZS9kZWZhdWx0L3JlbGVhc2Uta2V5cyJ9",
+      "signature": "ZR6Dg4kRyDETA4zw_4JybvUC_h8sN7SH0x6XKiQixQ_ATXpXpM2YXVbw-Abob__DKCaQ1u9nlebpgpZGV8E-Cg"
+    }
+  ]
+}

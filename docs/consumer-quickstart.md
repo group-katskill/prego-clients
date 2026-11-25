@@ -141,9 +141,9 @@ the console.
 
 ## Next steps
 
-- [oci-quickstart.md](oci-quickstart.md): push and pull images, Helm charts and signatures with the same identity.
+- [OCI quickstart](../artifact-types/oci/quickstart.md): push and pull images, Helm charts and signatures with the same identity.
 - [ci.md](ci.md): connect GitLab CI, GitHub Actions, SPIFFE or cloud workloads without an API key. The
-  Consumer plan does not have SPIFFE: SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or `PREGO_SVID_FILE`) needs the
+  Consumer plan does not have SPIFFE: SPIFFE (`SPIFFE_ENDPOINT_SOCKET` or `PREGO_SVID_FILE`) needs the Org or
   Publisher plan (or a Trial). Use OIDC instead.
 - [../PROTOCOL.md](../PROTOCOL.md): the STS contract, if you want to write your own client.
 - [openapi.yaml](openapi.yaml): the public API.

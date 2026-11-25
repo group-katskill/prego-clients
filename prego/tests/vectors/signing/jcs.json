@@ -1,0 +1,120 @@
+[
+  {
+    "name": "rfc8785-3.2.2-sample",
+    "input_text": "{\"numbers\":[333333333.33333329,1E30,4.50,2e-3,0.000000000000000000000000001],\"string\":\"\\u20ac$\\u000F\\u000aA'\\u0042\\u0022\\u005c\\\\\\\"\\/\",\"literals\":[null,true,false]}",
+    "input": {
+      "numbers": [
+        333333333.3333333,
+        1e+30,
+        4.5,
+        0.002,
+        1e-27
+      ],
+      "string": "€$\u000f\nA'B\"\\\\\"/",
+      "literals": [
+        null,
+        true,
+        false
+      ]
+    },
+    "canonical": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}"
+  },
+  {
+    "name": "rfc8785-3.2.3-sort-utf16",
+    "input_text": "{\"\\u20ac\":\"Euro Sign\",\"\\r\":\"Carriage Return\",\"\\ufb33\":\"Hebrew Letter Dalet With Dagesh\",\"1\":\"One\",\"\\ud83d\\ude00\":\"Emoji: Grinning Face\",\"\\u0080\":\"Control\",\"\\u00f6\":\"Latin Small Letter O With Diaeresis\"}",
+    "input": {
+      "1": "One",
+      "€": "Euro Sign",
+      "\r": "Carriage Return",
+      "דּ": "Hebrew Letter Dalet With Dagesh",
+      "😀": "Emoji: Grinning Face",
+      "": "Control",
+      "ö": "Latin Small Letter O With Diaeresis"
+    },
+    "canonical": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}"
+  },
+  {
+    "name": "nested-objects-and-arrays",
+    "input_text": "{ \"b\": [ {\"z\": 1, \"a\": 2}, [] , {} ], \"a\": { \"c\": null, \"b\": \"x\" } }",
+    "input": {
+      "b": [
+        {
+          "z": 1,
+          "a": 2
+        },
+        [],
+        {}
+      ],
+      "a": {
+        "c": null,
+        "b": "x"
+      }
+    },
+    "canonical": "{\"a\":{\"b\":\"x\",\"c\":null},\"b\":[{\"a\":2,\"z\":1},[],{}]}"
+  },
+  {
+    "name": "numbers-edge",
+    "input_text": "[0, -0, 1, -1, 1e21, 1e-7, 0.000001, 123456789012345680000, 9007199254740993, 5e-324, 1.7976931348623157e308, 0.1, 100, 1.5e2]",
+    "input": [
+      0,
+      0,
+      1,
+      -1,
+      1e+21,
+      1e-7,
+      0.000001,
+      123456789012345680000,
+      9007199254740992,
+      5e-324,
+      1.7976931348623157e+308,
+      0.1,
+      100,
+      150
+    ],
+    "canonical": "[0,0,1,-1,1e+21,1e-7,0.000001,123456789012345680000,9007199254740992,5e-324,1.7976931348623157e+308,0.1,100,150]"
+  },
+  {
+    "name": "strings-escape",
+    "input_text": "[\"\\u0000\\u001f\", \"\\t\\n\\r\\b\\f\", \"\\u007f\", \"\\u00e9\", \"\\u2028\\u2029\", \"\\ud834\\udd1e\", \"<>&\"]",
+    "input": [
+      "\u0000\u001f",
+      "\t\n\r\b\f",
+      "",
+      "é",
+      "  ",
+      "𝄞",
+      "<>&"
+    ],
+    "canonical": "[\"\\u0000\\u001f\",\"\\t\\n\\r\\b\\f\",\"\",\"é\",\"  \",\"𝄞\",\"<>&\"]"
+  },
+  {
+    "name": "empty-object",
+    "input_text": "{}",
+    "input": {},
+    "canonical": "{}"
+  },
+  {
+    "name": "empty-array",
+    "input_text": "[]",
+    "input": [],
+    "canonical": "[]"
+  },
+  {
+    "name": "prego-set-payload-like",
+    "input_text": "{\"type\":\"a2a\",\"tenant\":\"acme\",\"namespace\":\"agents\",\"name\":\"support\",\"hash\":\"sha256:00\",\"files\":[{\"sha256\":\"ab\",\"path\":\"b.json\"}]}",
+    "input": {
+      "type": "a2a",
+      "tenant": "acme",
+      "namespace": "agents",
+      "name": "support",
+      "hash": "sha256:00",
+      "files": [
+        {
+          "sha256": "ab",
+          "path": "b.json"
+        }
+      ]
+    },
+    "canonical": "{\"files\":[{\"path\":\"b.json\",\"sha256\":\"ab\"}],\"hash\":\"sha256:00\",\"name\":\"support\",\"namespace\":\"agents\",\"tenant\":\"acme\",\"type\":\"a2a\"}"
+  }
+]

@@ -18,6 +18,7 @@
     <link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="theme.js"></script>
+    <script src="nav.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -40,18 +41,31 @@
           <span class="brand-by">clients</span>
         </a>
         <nav class="site-nav" aria-label="Sections">
-          <a href="#types">Types</a>
           <a href="#install">Install</a>
           <a href="#login">Log in</a>
-          <a href="#configure">Cargo</a>
-          <a href="#oci">Images</a>
-          <a href="#go">Go</a>
-          <a href="#npm">npm</a>
-          <a href="#vars">Variables</a>
-          <a href="#snippets">Snippets</a>
-          <a href="#adapters">Adapters</a>
+          <!-- A details disclosure: it works without JavaScript; nav.js adds Escape, outside click and focus-out. -->
+          <details class="nav-menu">
+            <summary>
+              Artifacts
+              <svg class="nav-menu-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" /></svg>
+            </summary>
+            <ul class="nav-menu-list">
+              <li><a href="#types">All types</a></li>
+              <li><a href="#configure">Crates</a></li>
+              <li><a href="#oci">Containers and OCI</a></li>
+              <li><a href="#go">Go modules</a></li>
+              <li><a href="#npm">npm</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/python">Python</a></li>
+              <li><a href="#vars">Release Variables</a></li>
+              <li><a href="#snippets">Snippets</a></li>
+              <li><a href="#adapters">Adapters</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/context">Context</a></li>
+              <li><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/sqlite-snapshots">SQLite snapshots</a></li>
+              <li><a href="#keys">Keys and Certificates</a></li>
+              <li><a href="#a2a">A2A Agent Cards</a></li>
+            </ul>
+          </details>
           <a href="#sources">Identity sources</a>
-          <a href="#safety">Safety</a>
           <a href="#guides">Guides</a>
           <a href="https://docs.prego.k8skill.com" title="Full docs: sign in with your Prego account; open from the console's Docs link">Docs</a>
           <a href="#security">Security</a>
@@ -102,29 +116,32 @@
 
       <section class="section" id="types" aria-labelledby="types-title">
         <div class="wrap">
-          <h2 class="section-title display" id="types-title">Supported types</h2>
-          <p class="section-lede">Prego hosts these types. The <code>prego</code> tools work with all of them.</p>
+          <h2 class="section-title display" id="types-title">Supported artifact types</h2>
+          <p class="section-lede">Prego hosts these types. The <code>prego</code> tools work with all of them. Each type has a folder with what it is, the plans, the quickstart and the examples.</p>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th scope="col">Type</th><th scope="col">What it holds</th><th scope="col">Docs</th></tr>
+                <tr><th scope="col">Type</th><th scope="col">Command or tool</th><th scope="col">Plans that can publish</th></tr>
               </thead>
               <tbody>
-                  <tr><td><a href="#configure">Crates (Cargo)</a></td><td>Private Rust crates for Cargo, with the credential provider <code>cargo-credential-prego</code>.</td><td><a href="https://docs.prego.k8skill.com/crates">Docs</a></td></tr>
-                  <tr><td><a href="#go">Go modules</a></td><td>Private Go modules through <code>GOPROXY</code>, with <code>prego go-auth</code> and <code>prego go publish</code>.</td><td><a href="https://docs.prego.k8skill.com/go">Docs</a></td></tr>
-                  <tr><td><a href="#npm">npm</a></td><td>Scoped npm packages, and trusted publishing from CI.</td><td><a href="https://docs.prego.k8skill.com/npm">Docs</a></td></tr>
-                  <tr><td><a href="https://github.com/group-katskill/prego-clients#python-packages">Python</a></td><td>Private Python packages for uv, pip and Poetry.</td><td><a href="https://docs.prego.k8skill.com/python">Docs</a></td></tr>
-                  <tr><td><a href="#oci">Containers and OCI artifacts</a></td><td>Container images and other OCI artifacts, for example Helm charts and <code>.deb</code> files.</td><td><a href="https://docs.prego.k8skill.com/oci">Docs</a></td></tr>
-                  <tr><td><a href="#adapters">Adapters</a></td><td>AI model adapters (LoRA and other peft adapters) as safetensors.</td><td><a href="https://docs.prego.k8skill.com/adapters">Docs</a></td></tr>
-                  <tr><td><a href="#vars">Release Variables</a></td><td>Versioned sets of release settings, pinned by hash.</td><td><a href="https://docs.prego.k8skill.com/release-variables">Docs</a></td></tr>
-                  <tr><td><a href="#snippets">Snippets</a></td><td>Versioned sets of text files: scripts, prompts, agent skills and templates.</td><td><a href="https://docs.prego.k8skill.com/snippets">Docs</a></td></tr>
-                  <tr><td><a href="https://github.com/group-katskill/prego-clients#context">Context</a></td><td>Agent context that agents save before they compact or stop, and restore later.</td><td><a href="https://docs.prego.k8skill.com/context">Docs</a></td></tr>
-                  <tr><td><a href="https://github.com/group-katskill/prego-clients#share-a-sqlite-database">SQLite snapshots</a></td><td>Snapshots of SQLite database files that machines, agents and developers share. We are not your backup. We are for sharing.</td><td><a href="https://docs.prego.k8skill.com/sqlite-snapshots">Docs</a></td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/crates">Crates (Cargo)</a></td><td><code>cargo</code>, with <code>cargo-credential-prego</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/oci">Containers and OCI artifacts</a></td><td>Docker, Podman, crane, ORAS, Helm and cosign, with <code>docker-credential-prego</code>; <code>prego oci push</code></td><td>Trial, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/go">Go modules</a></td><td><code>go</code>, with <code>prego go-auth</code> and <code>prego go publish</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/npm">npm</a></td><td>npm, pnpm, Yarn and Bun, with <code>prego setup npm</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/python">Python</a></td><td>uv, pip and Poetry, with <code>prego setup python</code> and <code>prego python publish</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/release-variables">Release Variables</a></td><td><code>prego env</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/snippets">Snippets</a></td><td><code>prego snippet</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/adapters">Adapters</a></td><td><code>prego adapter</code> (preview)</td><td>Trial, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/context">Context</a></td><td><code>prego context</code></td><td>Trial, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/sqlite-snapshots">SQLite snapshots</a></td><td><code>prego sqlite</code></td><td>Trial, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/keys">Keys and Certificates</a></td><td><code>prego keys</code></td><td>Trial, Indie, Org, Publisher</td></tr>
+                  <tr><td><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/a2a">A2A Agent Cards</a></td><td><code>prego a2a</code></td><td>Trial, Indie, Org, Publisher</td></tr>
               </tbody>
             </table>
           </div>
           <p>
-            The plans that include each type are on the <a href="https://docs.prego.k8skill.com/limits">plan limits page</a>. The docs site needs a
+            The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
+            All limits are on the <a href="https://docs.prego.k8skill.com/limits">plan limits page</a>. The docs site needs a
             sign-in with your Prego account.
           </p>
         </div>
@@ -314,7 +331,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
           <p>
             Not in 1.0.0: public or anonymous images, <code>/v2/_catalog</code>, a pull-through cache, scanning or a
             signature policy (signatures are stored, not checked), webhooks, replication, and a kubelet credential
-            provider. See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a>.
+            provider. See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/oci/quickstart.md">OCI quickstart</a>.
           </p>
         </div>
       </section>
@@ -346,7 +363,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             For Go before 1.24, use <code>prego exec -- go build ./...</code>. An API key in a static
             <code>.netrc</code> is the last resort: from registry 1.6.0 it works only for a Go grant with
             <code>read</code> only whose switch "Allow this API key in .netrc" an admin turned on. See the
-            <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a>.
+            <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/go/quickstart.md">Go quickstart</a>.
           </p>
         </div>
       </section>
@@ -371,7 +388,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             <li>Create the free organization <code>@acme</code> on npmjs.com too, against dependency confusion.</li>
           </ul>
           <p>
-            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a>.
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/npm/quickstart.md">npm quickstart</a>.
           </p>
         </div>
       </section>
@@ -397,7 +414,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             <li>Every value in the env output is in single quotes. History, rollback and diff keep each version.</li>
           </ul>
           <p>
-            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/release-variables.md">Release Variables guide</a>.
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/release-variables/quickstart.md">Release Variables guide</a>.
           </p>
         </div>
       </section>
@@ -423,7 +440,7 @@ credential-provider = ["cargo-credential-prego", "--tenant", "acme"]</code></pre
             <li>Tags are written one time. Log, diff and rollback keep every version.</li>
           </ul>
           <p>
-            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/snippets.md">Snippets guide</a>.
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/snippets/quickstart.md">Snippets guide</a>.
           </p>
         </div>
       </section>
@@ -454,7 +471,74 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
             <li>A license is required. A version is written one time only. <code>prego adapter get</code> checks the SHA-256 of each file.</li>
           </ul>
           <p>
-            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a>.
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/adapters/quickstart.md">Adapters quickstart</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section section-band" id="keys" aria-labelledby="keys-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="keys-title">Keys and Certificates</h2>
+          <p class="section-lede">
+            prego 1.3.0 and later push and get the public keys and certificates of your team: SSH public keys and SSH
+            certificates, OpenPGP public keys, public JWKs, PEM public keys, and X.509 certificates and bundles.
+            Prego checks each entry by its type and records its fingerprint and validity.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego keys new --alg ed25519 acme/release-keys/signer --out ./signer.private.pem
+<span class="p">$ </span>prego keys push ~/.ssh/deploy_ed25519.pub acme/release-keys/deploy
+<span class="p">$ </span>prego keys push ca-bundle.pem acme/release-keys/internal-ca --type x509
+<span class="p">$ </span>prego keys fingerprint ~/.ssh/deploy_ed25519.pub   <span class="c"># offline</span>
+<span class="p">$ </span>prego keys revoke acme/release-keys/signer --reason "laptop lost"</code></pre>
+          </div>
+          <ul class="rules">
+            <li><strong>Keys and Certificates holds public keys and certificates only; Prego never stores a private key.</strong> <code>prego</code> checks every file first. A private key stops the push with &ldquo;Keys and Certificates holds public keys and certificates only. Entry &lt;index&gt; holds a private key (&lt;kind&gt;). &lt;hint&gt;&rdquo;, and nothing is sent.</li>
+            <li><code>prego keys new --alg ed25519|es256</code> makes a key pair here. The private key goes to <code>./&lt;name&gt;.private.pem</code> (mode 0600, never replaced, never sent). The public JWK goes to <code>./&lt;name&gt;.pub.jwk</code> and is added to the current entries of the key item.</li>
+            <li>Entry types: <code>ssh</code>, <code>openpgp</code>, <code>jwk</code>, <code>pem-public-key</code> and <code>x509</code>. Without <code>--type</code>, the type comes from the content.</li>
+            <li>Versions do not change; <code>get</code>, <code>ls</code>, <code>log</code>, <code>tag</code> and <code>rollback</code> work as for Snippets. A revoke is one-way: signatures with the revoked keys then fail <code>--verify</code>.</li>
+            <li>Trial, Indie, Org and Publisher publish. Consumer reads through grants. Indie cannot make grants to other tenants.</li>
+          </ul>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/keys/quickstart.md">Keys and Certificates quickstart</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="a2a" aria-labelledby="a2a-title">
+        <div class="wrap">
+          <h2 class="section-title display" id="a2a-title">A2A Agent Cards</h2>
+          <p class="section-lede">
+            prego 1.3.0 and later push and get A2A (Agent2Agent) Agent Cards: one card or a set of cards, as one
+            signed version that does not change. A2A 1.0 only. Every card and every set is signed on your computer
+            with a key from Keys and Certificates. Prego does not serve cards in public.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego a2a check ./cards   <span class="c"># offline: the A2A 1.0 schema</span>
+<span class="p">$ </span>prego a2a push ./cards acme/agents/support --sign ./signer.private.pem --key acme/release-keys/signer
+<span class="p">$ </span>prego a2a get acme/agents/support@stable ./support-cards --verify</code></pre>
+          </div>
+          <ul class="rules">
+            <li><code>--sign</code> signs each card (an A2A 1.0 signature) and the set on your computer. It first adds the Prego source extension <code>https://prego.k8skill.com/ext/a2a-source/v1</code> (tenant, namespace, set) to each card; <code>--no-source</code> leaves it out. Prego never gets the private key.</li>
+            <li>Card files are named <code>[a-z0-9][a-z0-9._-]{0,127}.json</code>, for example <code>acme.support-bot.json</code>. At most 100 cards, 64 KiB each, 1 MiB together.</li>
+            <li><code>--verify</code> needs <code>read</code> on the card set and <code>read</code> on the signing key item. A missing grant is named: &ldquo;read on a2a set acme/agents/support (type A2A Agent Cards) is missing; ask an admin of acme for a grant&rdquo; and &ldquo;verify needs read on key acme/release-keys/signer (type Keys and Certificates); ask an admin of acme for a grant&rdquo;.</li>
+            <li>Trial, Indie, Org and Publisher publish. Consumer reads through grants. On Indie, the cards stay in your tenant.</li>
+          </ul>
+          <h3 id="a2a-upgrade">Upgrade an A2A 0.3 card, with no account</h3>
+          <p>
+            <code>prego a2a upgrade</code> converts an A2A 0.3 card (also a legacy <code>agent.json</code>) to an A2A 1.0
+            card. It works offline and needs no Prego account. It prints each change, and stops and names the field
+            (a JSON pointer) when it cannot map one with certainty. The output goes to <code>agent-card.json</code> next to
+            the input, or to <code>-o &lt;file&gt;</code>. The output is unsigned.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
+            <pre><code><span class="p">$ </span>prego a2a upgrade ./agent.json   <span class="c"># writes ./agent-card.json, unsigned</span></code></pre>
+          </div>
+          <p>
+            See the <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/a2a/quickstart.md">A2A Agent Cards quickstart</a>
+            and the <a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types/a2a/examples">examples</a>: a sample card set, a sign-and-push script, and CI jobs for GitLab and GitHub Actions.
           </p>
         </div>
       </section>
@@ -470,12 +554,12 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
             <li class="card">
               <span class="card-tag">1</span>
               <h3>SPIFFE Workload API</h3>
-              <p>When <code>SPIFFE_ENDPOINT_SOCKET</code> is set. Fetches a JWT-SVID for the audience. Publisher plan or Trial.</p>
+              <p>When <code>SPIFFE_ENDPOINT_SOCKET</code> is set. Fetches a JWT-SVID for the audience. Org or Publisher plan, or Trial.</p>
             </li>
             <li class="card">
               <span class="card-tag">2</span>
               <h3>SVID file</h3>
-              <p>When <code>PREGO_SVID_FILE</code> is set. Reads a JWT-SVID, for spiffe-helper setups. Publisher plan or Trial.</p>
+              <p>When <code>PREGO_SVID_FILE</code> is set. Reads a JWT-SVID, for spiffe-helper setups. Org or Publisher plan, or Trial.</p>
             </li>
             <li class="card">
               <span class="card-tag">3</span>
@@ -533,32 +617,48 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
           </p>
           <ul class="cards">
             <li class="card">
+              <h3><a href="#safety">Safety rules</a></h3>
+              <p>What the clients never do with a token, and how they keep TLS and the login session safe.</p>
+            </li>
+            <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Consumer quickstart</a></h3>
               <p>Use Prego crates on your laptop with an API key, in about five minutes.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/oci/quickstart.md">OCI quickstart</a></h3>
               <p>Docker, Podman, crane, ORAS, Helm and cosign; multi-platform images; big layers; Kubernetes pull secrets; errors.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/go/quickstart.md">Go quickstart</a></h3>
               <p>From 0.4.0: private Go modules with <code>GOAUTH='prego go-auth'</code>, and <code>prego go publish</code> from the git tree of a tag. A module zip can be at most 300 MiB.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/npm/quickstart.md">npm quickstart</a></h3>
               <p>From 0.6.0: private scoped npm packages for npm, pnpm, Yarn and Bun. <code>prego setup npm</code> writes no token; trusted publishing from GitLab CI and GitHub Actions; dependency confusion.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/release-variables.md">Release Variables</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/release-variables/quickstart.md">Release Variables</a></h3>
               <p>From 0.8.0: <code>prego env</code> pulls and pushes plain release settings, pins them with <code>--expect</code>, and keeps history and rollback. Not for secrets.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/snippets.md">Snippets</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/snippets/quickstart.md">Snippets</a></h3>
               <p>From 1.0.0: <code>prego snippet</code> pushes and gets versioned text files for machines and agents, pinned by hash, with tags, diff and rollback.</p>
             </li>
             <li class="card">
-              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/adapters-quickstart.md">Adapters quickstart</a></h3>
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/adapters/quickstart.md">Adapters quickstart</a></h3>
               <p>From 0.10.0, Publisher plan: <code>prego adapter push</code> and <code>get</code> for LoRA adapters as checked safetensors, and loading with peft and vLLM.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/keys/quickstart.md">Keys and Certificates</a></h3>
+              <p>From 1.3.0: <code>prego keys</code> for public keys and certificates (SSH, OpenPGP, JWK, PEM, X.509), with fingerprints, versions and revoke. No private keys.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/a2a/quickstart.md">A2A Agent Cards</a></h3>
+              <p>From 1.3.0: <code>prego a2a</code> signs, pushes and verifies A2A 1.0 card sets. <code>prego a2a upgrade</code> converts 0.3 cards offline, with no account.</p>
+            </li>
+            <li class="card">
+              <h3><a href="https://github.com/group-katskill/prego-clients/tree/main/artifact-types">All artifact types</a></h3>
+              <p>One folder for each type: what it is, the plans, the quickstart and the examples.</p>
             </li>
             <li class="card">
               <h3><a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a></h3>
@@ -607,9 +707,9 @@ model = PeftModel.from_pretrained(base, "./adapters/support-bot")</code></pre>
           <a href="https://docs.prego.k8skill.com" title="Full docs: sign in with your Prego account; open from the console's Docs link">Docs</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/PROTOCOL.md">Protocol</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/consumer-quickstart.md">Quickstart</a>
-          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/oci-quickstart.md">OCI quickstart</a>
-          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/go-quickstart.md">Go quickstart</a>
-          <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/npm-quickstart.md">npm quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/oci/quickstart.md">OCI quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/go/quickstart.md">Go quickstart</a>
+          <a href="https://github.com/group-katskill/prego-clients/blob/main/artifact-types/npm/quickstart.md">npm quickstart</a>
           <a href="https://github.com/group-katskill/prego-clients/blob/main/docs/ci.md">CI guide</a>
           <a href="https://crates.io/crates/prego">crates.io</a>
           <a href="https://github.com/group-katskill/prego-clients/tree/main/site/fonts">Font licenses</a>

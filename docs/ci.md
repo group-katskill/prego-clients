@@ -104,7 +104,7 @@ If the job runs next to a SPIRE agent (or another SPIFFE Workload API), set `SPI
 provider fetches a JWT-SVID with audience `prego.k8skill.com`. With spiffe-helper, write the JWT-SVID to a file
 and set `PREGO_SVID_FILE` instead.
 
-SPIFFE needs the Publisher plan (or a Trial). Indie, Org and Consumer do not have SPIFFE machine identity:
+SPIFFE needs the Org or Publisher plan (or a Trial). Indie and Consumer do not have SPIFFE machine identity:
 use GitLab or GitHub OIDC, a token file or an API key there.
 
 Console: a trust config of kind `spiffe` with your trust domain (for example `prod.acme.io`) and its JWKS, and a
@@ -137,7 +137,7 @@ Entra ID issues tokens for an app registration, so the audience cannot be `prego
 
 The same CI identity can push images to `oci.prego.k8skill.com`. Console setup is the same as for crates, with a
 grant of `publish` on the repository (`ecosystem = oci`, or `any` to cover crates and images with one grant).
-The [OCI quickstart](oci-quickstart.md) has the image names, tools and errors.
+The [OCI quickstart](../artifact-types/oci/quickstart.md) has the image names, tools and errors.
 
 **GitLab CI:** `docker login` with the ID token on stdin. The token expires after the job (full file:
 [`examples/gitlab/docker-build.gitlab-ci.yml`](../examples/gitlab/docker-build.gitlab-ci.yml)):
@@ -205,7 +205,7 @@ npm ci
 ```
 
 To publish with no Prego tool and no stored secret, use npm trusted publishing (npm 11.5.1 and later, ID token
-audience `npm:npm.prego.k8skill.com`). The [npm quickstart](npm-quickstart.md) has the jobs.
+audience `npm:npm.prego.k8skill.com`). The [npm quickstart](../artifact-types/npm/quickstart.md) has the jobs.
 
 ## Manage Prego from CI
 

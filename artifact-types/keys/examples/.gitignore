@@ -1,0 +1,3 @@
+# Key files that `prego keys new` writes. Never commit a private key.
+*.private.pem
+*.pub.jwk

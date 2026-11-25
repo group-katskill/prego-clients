@@ -1,0 +1,81 @@
+[
+  {
+    "name": "test-ed25519",
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "JjVu0Mtq6IxTDAwKq-rIoixsJ3G1478_zBUoP0aKD30"
+    },
+    "thumbprint": "eTuDmYbWkkxSU_zueIHDcTUL-qW0Ey9JDmIIc6Xug_o"
+  },
+  {
+    "name": "test-ed25519-b",
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "CcSq-aamIpPYXL9n7-89bAKcgvU_8HphiSffWEToZgs"
+    },
+    "thumbprint": "FWOQtJEXeKhArP86lwIzp5uJICUuXtMMgaKImmtNUac"
+  },
+  {
+    "name": "test-p256",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "T8UOB5vgWhbF_prbAj4YIcTT-4QjGBpgUYB9mGjckPM",
+      "y": "EfmHlQ5hk0tMC7oLjoujh-XOetxg5XwzcjxHJpm9u8s"
+    },
+    "thumbprint": "6PvRXM6OVXv_FhKCcxsRtaSh8xxtw5rBWZv-fLObAK8"
+  },
+  {
+    "name": "test-p384",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-384",
+      "x": "judsCp2E4j_mgOZzbNMG5tBLvPotiYYwuJmg8-CdYYCe2Rkrv0dWjpTsguXrgKCp",
+      "y": "pCUbA6ojwQ04Rgt3LnYgzYJj_5N9gWthLSfpt0iZ3X_vI2Gj2iQntz6TxC9TVD_n"
+    },
+    "thumbprint": "kwLiB5qNZtE2TK08WMUIYx1qxB9EbfZG6aYrLlvrLbk"
+  },
+  {
+    "name": "test-rsa2048",
+    "jwk": {
+      "kty": "RSA",
+      "n": "p_4tZi7SAxm-V8NPxa1uVt00yAczZZhfMuRqiqBWNEHKsJg_N_jfu-YfS7uv8u6BMaf0oK5LTsLUzmVijhTn4lDsYFZa_HrXXuQegF7BRvV4q6bgdrUDBN6D0hff8kvuc0eHbu_f2ALBA7CTGRxdgmXzUrlR9Z8gs0Gb9LJ32M12_bM9bd4GQ6VglsM0Oe5Z4ukf1S_BxZ7velFKmLv0Ynjs5UQODTGMhJq-YXaEX7hmyNUReCz-MsB7F5d--c51qlj1I4yj0Q8_vbIf_7CbH99Grpu1g3nK_CqbIehRF7wkGLhgvz18svCT5HNv_SB8gj8rO43gDvILzw7sJBrRNQ",
+      "e": "AQAB"
+    },
+    "thumbprint": "Zm9ET9q1wmBh8lwvr3enuNtUCbl1e1lEP0fqnXLD_xg"
+  },
+  {
+    "name": "rfc8037-a3-ed25519",
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+    },
+    "thumbprint": "kPrK_qmxVWaYVA9wwBF6Iuo3vVzz7TxHCTwXBygrS4k"
+  },
+  {
+    "name": "extra-members-ignored",
+    "jwk": {
+      "kid": "release-2026",
+      "use": "sig",
+      "alg": "ES256",
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "T8UOB5vgWhbF_prbAj4YIcTT-4QjGBpgUYB9mGjckPM",
+      "y": "EfmHlQ5hk0tMC7oLjoujh-XOetxg5XwzcjxHJpm9u8s"
+    },
+    "thumbprint": "6PvRXM6OVXv_FhKCcxsRtaSh8xxtw5rBWZv-fLObAK8"
+  },
+  {
+    "name": "member-order-ignored",
+    "jwk": {
+      "y": "EfmHlQ5hk0tMC7oLjoujh-XOetxg5XwzcjxHJpm9u8s",
+      "x": "T8UOB5vgWhbF_prbAj4YIcTT-4QjGBpgUYB9mGjckPM",
+      "kty": "EC",
+      "crv": "P-256"
+    },
+    "thumbprint": "6PvRXM6OVXv_FhKCcxsRtaSh8xxtw5rBWZv-fLObAK8"
+  }
+]

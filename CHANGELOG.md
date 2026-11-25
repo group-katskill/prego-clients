@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Site: the top navigation has 7 entries, not 17: Install, Log in, an Artifacts menu, Identity sources, Guides,
+  Docs, Security. The Artifacts menu lists All types and the 12 types (a section of the page, or the
+  `artifact-types/` folder of a type that has no section). It is a `details` disclosure, so it works without
+  JavaScript; `site/nav.js` adds Escape (the focus goes back to the menu button), outside click and focus-out.
+  On narrow screens the navigation is a second row that wraps (before, it was hidden), and jump links land below
+  the sticky header. Safety rules is a card under Guides. The footer navigation does not change.
+- The supported artifact types tables (`README.md`, `artifact-types/README.md`, the site) use the order of the Artifacts
+  menu: Crates, Containers and OCI, Go modules, npm, Python, Release Variables, Snippets, Adapters, Context, SQLite
+  snapshots, Keys and Certificates, A2A Agent Cards.
+- PREGO-43 (registry 1.30.0): SPIFFE machine identity (`SPIFFE_ENDPOINT_SOCKET`, `PREGO_SVID_FILE`) is also on the
+  Org plan. Every SPIFFE plan line now says "the Org or Publisher plan (or a Trial)"; Indie and Consumer do not have
+  it; OIDC stays on every plan. `README.md`, `PROTOCOL.md` section 5, `docs/openapi.yaml` (description text only),
+  `docs/ci.md`, `docs/consumer-quickstart.md`, `docs/frontline-ci-publish.md`, the crate READMEs of
+  `cargo-credential-prego` and `docker-credential-prego`, `artifact-types/*/quickstart.md` and `site/index.html`.
+- The vector READMEs of `signing/` and `a2a/` follow the monorepo (d34ef55): default values are removed inside each
+  message value of a map, and `kid_not_thumbprint` may be reported as `key_not_found`. The vector data does not change,
+  and `prego` already follows both rules.
+- The shared ADR-0061 and ADR-0062 test vectors (`prego/tests/vectors/{signing,keys,a2a}/`), copied as data with
+  their READMEs from the Prego monorepo (branch `vectors/keys-a2a`); the generator scripts are not copied. NOTICE
+  names the pinned A2A v1.0.1 proto and schema in `prego/tests/vectors/a2a/schema/` (Apache-2.0, test data only).
+- All crates move to version 1.3.0 (`prego keys`, `prego a2a`). Not released yet.
+- Docs: `artifact-types/` with the supported artifact types and the plans that include them, one folder per type.
+  The per-type quickstarts moved there (`docs/*-quickstart.md`, `docs/context.md`, `docs/snippets.md`,
+  `docs/sqlite.md`, `docs/release-variables.md`); each old path keeps a one-line pointer file. The SPIFFE plan lines
+  of PREGO-35 moved with them. New Keys and Certificates and A2A Agent Cards quickstarts and examples; README and
+  site sections.
+
 ### Changed
 
 - Releases build Linux x86_64 binaries only, for now (the operator, 2026-11-25). Linux arm64 and macOS binaries

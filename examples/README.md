@@ -14,6 +14,10 @@ Copy-and-paste examples for tenant `acme`, namespace `default`. Replace both wit
 | [`ansible/`](ansible/playbook.yml) | Ansible: the same for a CI runner or developer machine. |
 | [`admin/`](admin/) | Manage grants and other tenant objects from CI with an admin token. No stored secret. |
 
+More examples are next to each type in [`artifact-types/`](../artifact-types/), for example
+[A2A Agent Cards](../artifact-types/a2a/examples/) (a sample card set, signing and CI jobs) and
+[Keys and Certificates](../artifact-types/keys/examples/).
+
 The examples pin prego-clients 0.7.0. From 0.6.0 the tools that request a token need the edge code of your
 tenant (`k7mq` in the examples; the console shows yours). The CI examples download the release binary and check
 its SHA-256 sum. `cargo install --locked cargo-credential-prego` also works.
@@ -32,4 +36,4 @@ No example stores a secret. CI jobs use their own OIDC token. The Kubernetes exa
 (`prk_REPLACE_ME`): keep the real key in your secret store. On a laptop, set `PREGO_API_KEY` in your shell
 (see [`docs/consumer-quickstart.md`](../docs/consumer-quickstart.md)).
 
-See [`docs/ci.md`](../docs/ci.md) and [`docs/oci-quickstart.md`](../docs/oci-quickstart.md) for the console setup that each CI example needs.
+See [`docs/ci.md`](../docs/ci.md) and [`artifact-types/oci/quickstart.md`](../artifact-types/oci/quickstart.md) for the console setup that each CI example needs.

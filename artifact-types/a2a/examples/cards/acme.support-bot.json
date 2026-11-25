@@ -1,0 +1,67 @@
+{
+  "name": "Acme Support Bot",
+  "description": "Answers questions about Acme orders and opens support tickets.",
+  "supportedInterfaces": [
+    {
+      "url": "https://support.example.com/a2a/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Acme Example",
+    "url": "https://www.example.com"
+  },
+  "version": "1.0.0",
+  "documentationUrl": "https://docs.example.com/agents/support-bot",
+  "capabilities": {
+    "streaming": true
+  },
+  "securitySchemes": {
+    "oauth": {
+      "openIdConnectSecurityScheme": {
+        "openIdConnectUrl": "https://auth.example.com/.well-known/openid-configuration"
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "schemes": {
+        "oauth": {
+          "list": [
+            "openid"
+          ]
+        }
+      }
+    }
+  ],
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "order-status",
+      "name": "Order status",
+      "description": "Tells the status of an order from its order number.",
+      "tags": [
+        "orders",
+        "support"
+      ],
+      "examples": [
+        "Where is order 1042?"
+      ]
+    },
+    {
+      "id": "open-ticket",
+      "name": "Open a ticket",
+      "description": "Opens a support ticket and returns its number.",
+      "tags": [
+        "tickets",
+        "support"
+      ]
+    }
+  ]
+}

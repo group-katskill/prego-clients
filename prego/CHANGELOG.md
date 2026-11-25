@@ -6,7 +6,55 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.3.0 (minor). Not released yet.
+
 ### Added
+
+- `prego keys` (ADR-0061, Keys and Certificates; needs the registry with ADR-0061): `push <file>... <ref>
+  [--type ssh|openpgp|jwk|pem-public-key|x509]`, `get [--entry <index>] [--expect <hash>]`, `ls`, `log`, `tag`,
+  `rollback`, `revoke --reason`, `fingerprint <file>` (offline) and `new --alg ed25519|es256 <ref>` (the private
+  key goes to a local file with mode 0600, never replaced and never sent; the public JWK is added to the current
+  entries of the item). Before any upload, every file is checked for private key material (PEM private key
+  labels, OpenSSH and OpenPGP private keys and secret-key packets, JWK private members, PKCS #12), also outside
+  the declared entry, and the push stops with the ADR-0061 item 2.4 message ("Keys and Certificates holds public
+  keys and certificates only. Entry <index> holds a private key (<kind>). <hint>"). Each entry is checked as its
+  type with the registry rules (RSA at least 3072 bits for ssh, 2048 for jwk and pem-public-key; no DSA; OpenPGP
+  v4 only; at most 100 certificates in an x509 entry). The version hash (ADR-0061 section 4a) is computed
+  offline. Fingerprints: `SHA256:<base64>` (ssh; the certified key for a certificate), the v4 hex fingerprint
+  (openpgp), `sha256:<hex>` of the DER (x509), the RFC 7638 thumbprint (jwk, pem-public-key).
+- `prego a2a` (ADR-0062, A2A Agent Cards; needs the registry with ADR-0062): `check <folder|file> [--key-file
+  <file>] [--key <ref>]` (offline A2A 1.0 check, then the signatures), `push <folder|file> <ref> --sign <key file>
+  --key <key ref> [--no-source]`, `get <ref>[@<v>] [<folder>] [--card <file>] [--expect <hash>] [--verify]`, `ls`,
+  `log`, `diff`, `tag`, `rollback`, and `upgrade <file> [-o <file>] [--force]`. A2A 1.0 only: the card rule of the
+  pinned A2A v1.0.1 proto (only known fields, REQUIRED fields set and not empty, oneof of security schemes and
+  OAuth flows); a 0.3 card gets "A2A 1.0 only. Card <file> looks like A2A 0.3 (<reason>). Run `prego a2a upgrade
+  <file>` ...". `push --sign` adds the source extension (`https://prego.k8skill.com/ext/a2a-source/v1`, tenant,
+  namespace, set) to each card, signs each card with an A2A 1.0 signature (JWS over the RFC 8785 form of the card
+  without `signatures` and without default values, A2A 1.0 section 8.4; protected header `alg`, `typ` JOSE, `kid`
+  = RFC 7638 thumbprint, `prego_key`) and the set (ADR-0061 section 3, `.prego/set.jws.json`), on this computer,
+  and checks before the push that the key is in Keys and Certificates and not revoked. `get --verify` checks the
+  set signature and a signature on every card with the keys from Keys and Certificates and the reader's own
+  grants; a revoked key fails with the date and reason; no read on the key item gives "verify needs read on key
+  <ref> (type Keys and Certificates); ask an admin of <tenant> for a grant". `upgrade` converts an A2A 0.3 card to
+  1.0 offline (no account needed), prints each change, stops at a field it cannot map with certainty (JSON
+  pointer), and writes `agent-card.json` next to the input by default; the output is unsigned.
+- `prego keys new --alg ed25519` writes the private key as PKCS #8 v1 (RFC 5208, RFC 8410 section 7: no public key
+  field), so OpenSSL 3.0 (for example on Debian bookworm) and other tools read it; ring writes v2, which OpenSSL 3.0
+  refuses. `--sign` and `--key-file` read v1 and v2. ES256 files were already v1. A test runs `openssl pkey` on new
+  key files when `openssl` is on the PATH (staging e2e on registry 1.30.0).
+- A 404 on a key item or a card set gives the grant text of ADR-0061 section 3.6 and ADR-0062 section 5 first, also
+  when the registry answer has a request id: "read on key <ref> (type Keys and Certificates) is missing; ask an
+  admin of <tenant> for a grant", "read on a2a set <ref> (type A2A Agent Cards) is missing; ask an admin of
+  <tenant> for a grant", then the registry detail in brackets. Before, the request id at the end hid the grant text
+  (staging e2e keys-e2e step G).
+- Signing on this computer with ring (already in the tree through rustls): EdDSA (Ed25519), ES256, ES384, PS256 and
+  RS256 verify; Ed25519, ES256, ES384 and PS256 signing from PKCS #8 key files.
+- A missing grant names the grant and the item: "read on a2a set <ref> (type A2A Agent Cards) is missing ...",
+  "read on key <ref> (type Keys and Certificates) is missing ...".
+- Tests: every case of the shared ADR-0061/0062 vectors (`tests/vectors/{signing,keys,a2a}/`: JCS, RFC 7638, set
+  payloads, JWS verify rules, key entries, private material, version hashes, the A2A card rule, 0.3 detection,
+  card and set signatures, upgrade), and `keys new` -> `a2a push --sign` -> `a2a get --verify` against a mock
+  registry.
 
 - `prego login --namespace <ns>` (minor): the login session asks for that namespace, not only `default`. Give it
   up to 10 times (one access item each; the same namespace two times is one item). `prego login` checks each slug

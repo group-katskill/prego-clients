@@ -11,7 +11,7 @@
 [![MSRV: 1.91](https://img.shields.io/badge/MSRV-1.91-orange)](Cargo.toml)
 
 Open source client tools for **Prego by KatSkill**, a private package registry with federated machine identity.
-They serve every Prego type: see [Supported types](#supported-types).
+They serve every Prego type: see [Supported artifact types](#supported-artifact-types).
 
 | Crate | Kind | What it does |
 | --- | --- | --- |
@@ -22,10 +22,10 @@ They serve every Prego type: see [Supported types](#supported-types).
 
 Website: <https://clients.prego.k8skill.com>. Releases: <https://github.com/group-katskill/prego-clients/releases>.
 
-Guides: [consumer quickstart](docs/consumer-quickstart.md) (crates on a laptop, API key),
-[OCI quickstart](docs/oci-quickstart.md) (images, Helm charts, signatures, Kubernetes),
-[Go quickstart](docs/go-quickstart.md) (Go modules, from 0.4.0),
-[npm quickstart](docs/npm-quickstart.md) (scoped npm packages, pnpm, Yarn, Bun, from 0.6.0), [CI guide](docs/ci.md)
+Guides: [consumer quickstart](docs/consumer-quickstart.md) (crates on a laptop, API key), a quickstart for each
+type in [`artifact-types/`](artifact-types/) (for example [OCI](artifact-types/oci/quickstart.md),
+[Go](artifact-types/go/quickstart.md), [npm](artifact-types/npm/quickstart.md),
+[Keys and Certificates](artifact-types/keys/quickstart.md) and [A2A Agent Cards](artifact-types/a2a/quickstart.md)), [CI guide](docs/ci.md)
 (GitLab, GitHub Actions, SPIFFE, cloud workloads), [frontline guide](docs/frontline-ci-publish.md) (publish
 from your own CI to Prego next to JFrog or Cloudsmith, and serve the fleet from Prego), [examples](examples/),
 and the public API as [OpenAPI](docs/openapi.yaml).
@@ -34,24 +34,30 @@ License: `Apache-2.0`. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Version 0.1.
 `MIT OR Apache-2.0`; from 0.1.1 on, the license is Apache-2.0 only.
 The code is open. The "Prego" name and logo are not licensed for reuse.
 
-## Supported types
+## Supported artifact types
 
-Prego hosts these types. The `prego` tools work with all of them.
+Prego hosts these types. The `prego` tools work with all of them. Each type has a folder in
+[`artifact-types/`](artifact-types/) with what it is, the plans, the quickstart and the examples.
 
-| Type | What it holds | Here | Docs |
-| --- | --- | --- | --- |
-| Crates (Cargo) | Private Rust crates for Cargo, with the credential provider `cargo-credential-prego`. | [Section](#configure-cargo) | [crates](https://docs.prego.k8skill.com/crates) |
-| Go modules | Private Go modules through `GOPROXY`, with `prego go-auth` and `prego go publish`. | [Section](#go-modules) | [go](https://docs.prego.k8skill.com/go) |
-| npm | Scoped npm packages, and trusted publishing from CI. | [Section](#npm-packages) | [npm](https://docs.prego.k8skill.com/npm) |
-| Python | Private Python packages for uv, pip and Poetry. | [Section](#python-packages) | [python](https://docs.prego.k8skill.com/python) |
-| Containers and OCI artifacts | Container images and other OCI artifacts, for example Helm charts and `.deb` files. | [Section](#push-and-pull-images) | [oci](https://docs.prego.k8skill.com/oci) |
-| Adapters | AI model adapters (LoRA and other peft adapters) as safetensors. | [Section](#adapters) | [adapters](https://docs.prego.k8skill.com/adapters) |
-| Release Variables | Versioned sets of release settings, pinned by hash. | [Section](#release-variables) | [release-variables](https://docs.prego.k8skill.com/release-variables) |
-| Snippets | Versioned sets of text files: scripts, prompts, agent skills and templates. | [Section](#snippets) | [snippets](https://docs.prego.k8skill.com/snippets) |
-| Context | Agent context that agents save before they compact or stop, and restore later. | [Section](#context) | [context](https://docs.prego.k8skill.com/context) |
-| SQLite snapshots | Snapshots of SQLite database files that machines, agents and developers share. We are not your backup. We are for sharing. | [Section](#share-a-sqlite-database) | [sqlite-snapshots](https://docs.prego.k8skill.com/sqlite-snapshots) |
+| Type | Command or tool | Plans that can publish |
+| --- | --- | --- |
+| [Crates (Cargo)](artifact-types/crates/) | `cargo`, with `cargo-credential-prego` | Trial, Indie, Org, Publisher |
+| [Containers and OCI artifacts](artifact-types/oci/) | Docker, Podman, crane, ORAS, Helm and cosign, with `docker-credential-prego`; `prego oci push` | Trial, Org, Publisher |
+| [Go modules](artifact-types/go/) | `go`, with `prego go-auth` and `prego go publish` | Trial, Indie, Org, Publisher |
+| [npm](artifact-types/npm/) | npm, pnpm, Yarn and Bun, with `prego setup npm` | Trial, Indie, Org, Publisher |
+| [Python](artifact-types/python/) | uv, pip and Poetry, with `prego setup python` and `prego python publish` | Trial, Indie, Org, Publisher |
+| [Release Variables](artifact-types/release-variables/) | `prego env` | Trial, Indie, Org, Publisher |
+| [Snippets](artifact-types/snippets/) | `prego snippet` | Trial, Indie, Org, Publisher |
+| [Adapters](artifact-types/adapters/) | `prego adapter` (preview) | Trial, Publisher |
+| [Context](artifact-types/context/) | `prego context` | Trial, Org, Publisher |
+| [SQLite snapshots](artifact-types/sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
+| [Keys and Certificates](artifact-types/keys/) | `prego keys` | Trial, Indie, Org, Publisher |
+| [A2A Agent Cards](artifact-types/a2a/) | `prego a2a` | Trial, Indie, Org, Publisher |
 
-The plans that include each type are on the [plan limits page](https://docs.prego.k8skill.com/limits). The docs site needs a sign-in with your Prego account.
+The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
+
+The full list of limits is on the [plan limits page](https://docs.prego.k8skill.com/limits). The docs site needs a
+sign-in with your Prego account.
 
 ## Full documentation
 
@@ -86,7 +92,7 @@ Prego registries accept only a short-lived **registry token** (15 minutes by def
 
 1. It finds a **subject token** on the machine: a SPIFFE JWT-SVID, a CI OIDC ID token, a token file, or an
    API key (`prk_...`). With none of them, it uses the `prego login` session, which gets the registry token
-   directly with a session refresh. SPIFFE needs the Publisher plan (or a Trial); OIDC works on every plan.
+   directly with a session refresh. SPIFFE needs the Org or Publisher plan (or a Trial); OIDC works on every plan.
 2. It sends the subject token to the Prego **STS** (`POST /v1/sts/token/e/<edge code>`, RFC 8693 token exchange).
 3. The STS checks the subject token against the trust config and principals of your tenant. It returns a
    registry token.
@@ -262,7 +268,7 @@ Prego has an OCI registry at `oci.prego.k8skill.com`. Image names are
 work with it through `docker-credential-prego` ([Configure Docker](#configure-docker)). Grants for images use
 `ecosystem = oci` with the actions `read`, `publish` and `delete`. One `any` grant covers images and crates.
 
-The [OCI quickstart](docs/oci-quickstart.md) has the steps for each tool, multi-platform images, cosign
+The [OCI quickstart](artifact-types/oci/quickstart.md) has the steps for each tool, multi-platform images, cosign
 signatures, big layers with `prego oci push`, a Kubernetes `imagePullSecret`, and the errors. CI jobs:
 [CI guide](docs/ci.md#build-and-push-images).
 
@@ -284,7 +290,7 @@ git tag v1.4.0 && prego go publish --dry-run && prego go publish
   Go's own file rules and hashes. A zip can be at most 300 MiB. Zips above 95 MiB go up in parts.
 - `prego exec -- go build ./...` is for Go before 1.24: a temporary `.netrc` with a registry token.
 
-The [Go quickstart](docs/go-quickstart.md) has the console setup, publishing, CI, the privacy note on module
+The [Go quickstart](artifact-types/go/quickstart.md) has the console setup, publishing, CI, the privacy note on module
 paths, and the errors. [PROTOCOL.md](PROTOCOL.md) section 9 has the helper contract.
 
 ## npm packages
@@ -304,12 +310,12 @@ prego exec -- npm publish
   `export PREGO_NPM_TOKEN="$(prego token)"`.
 - Create the free organization `@acme` on npmjs.com too, against dependency confusion.
 
-The [npm quickstart](docs/npm-quickstart.md) has the console setup, publishing, CI, trusted publishing, the
+The [npm quickstart](artifact-types/npm/quickstart.md) has the console setup, publishing, CI, trusted publishing, the
 dependency-confusion note and the errors. [PROTOCOL.md](PROTOCOL.md) section 10 has the client contract.
 
 ## Python packages
 
-From prego 0.9.0 and registry 1.9.0 (Org and Publisher plans). Prego serves private Python packages on
+From prego 0.9.0 and registry 1.9.0 (Trial, Indie, Org and Publisher plans). Prego serves private Python packages on
 `pypi.prego.k8skill.com`, one index for each namespace. Public packages still come from pypi.org.
 
 ```sh
@@ -324,7 +330,7 @@ prego python publish dist/*        # upload wheels and sdists (at most 90 MiB ea
   (`keyrings-prego/`, not on pypi.org yet).
 - Use uv or Poetry with the explicit index, against dependency confusion.
 
-The [Python guide](docs/python-quickstart.md) has pip, Poetry, publishing, CI and the errors.
+The [Python guide](artifact-types/python/quickstart.md) has pip, Poetry, publishing, CI and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 13 has the client contract.
 
 ## Adapters
@@ -347,7 +353,7 @@ prego adapter get acme/ml/support-bot:2026-11-14 ./adapters/support-bot
 - `prego adapter get` writes the files to a new or empty folder and checks the SHA-256 of each file. Load it with
   `PeftModel.from_pretrained(base, "./adapters/support-bot")` or vLLM `--lora-modules`.
 
-The [Adapters quickstart](docs/adapters-quickstart.md) has the console setup, the rules, loading, CI and the
+The [Adapters quickstart](artifact-types/adapters/quickstart.md) has the console setup, the rules, loading, CI and the
 errors.
 
 ## Release Variables
@@ -367,7 +373,7 @@ prego env rollback acme/releases/payments@1.4.0 --to 2 --reason "..."
 prego env hash release-vars.json                                                   # offline, RFC 8785
 ```
 
-The [Release Variables guide](docs/release-variables.md) has the levels, the merge, references, access, CI and
+The [Release Variables guide](artifact-types/release-variables/quickstart.md) has the levels, the merge, references, access, CI and
 the errors. [PROTOCOL.md](PROTOCOL.md) section 12 has the client contract.
 
 ## Snippets
@@ -388,7 +394,7 @@ prego snippet rollback acme/ops/deploy-scripts --to 6 --reason "..."
 prego snippet hash ./deploy-scripts                                            # offline
 ```
 
-The [Snippets guide](docs/snippets.md) has references, the file rules, the hash, CI and the errors.
+The [Snippets guide](artifact-types/snippets/quickstart.md) has references, the file rules, the hash, CI and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 14 has the client contract.
 
 ## Context
@@ -427,7 +433,7 @@ The same files as the latest checkpoint of the session make no new checkpoint, s
 refused save exits with 4 and keeps the checkpoint in `./.prego-context/`; make the hook report that exit code
 instead of failing the agent.
 
-The [Context guide](docs/context.md) has references, restore, tags, retention, the file rules and the errors.
+The [Context guide](artifact-types/context/quickstart.md) has references, restore, tags, retention, the file rules and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 15 has the client contract.
 
 ## Share a SQLite database
@@ -473,8 +479,53 @@ prego sqlite prune acme/fleet/lookup --older-than 7d   # remove old snapshots (a
 prego sqlite set acme/fleet/lookup --keep-count 10 --keep-days 14
 ```
 
-The [SQLite snapshots guide](docs/sqlite.md) has references, restore, rotation, the exit codes and the errors.
+The [SQLite snapshots guide](artifact-types/sqlite-snapshots/quickstart.md) has references, restore, rotation, the exit codes and the errors.
 [PROTOCOL.md](PROTOCOL.md) section 16 has the client contract.
+
+## Keys and Certificates
+
+From prego 1.3.0. Keys and Certificates holds the public keys and certificates of your team: SSH public keys and
+SSH certificates, OpenPGP public keys, public JWKs and JWK Sets, PEM `PUBLIC KEY` files, and X.509 certificates and
+bundles. Prego checks each entry by its type and records its fingerprint and validity. Versions do not change.
+
+**Keys and Certificates holds public keys and certificates only; Prego never stores a private key.** `prego keys`
+checks every file before the upload. A private key stops the push, and nothing is sent.
+
+```sh
+prego keys new --alg ed25519 acme/release-keys/signer --out ./signer.private.pem   # private key stays here (0600)
+prego keys push ~/.ssh/deploy_ed25519.pub acme/release-keys/deploy                 # the type comes from the content
+prego keys push ca-bundle.pem acme/release-keys/internal-ca --type x509
+prego keys get acme/release-keys/deploy                  # type, algorithm, fingerprint, validity, revoke state
+prego keys fingerprint ~/.ssh/deploy_ed25519.pub         # offline
+prego keys revoke acme/release-keys/signer --reason "laptop lost"   # one-way; signatures then fail --verify
+```
+
+The [Keys and Certificates quickstart](artifact-types/keys/quickstart.md) has the entry types, the private-key
+check, tags, rollback, revoke and the errors.
+
+## A2A Agent Cards
+
+From prego 1.3.0. A2A (Agent2Agent) Agent Cards describe an agent: its name, endpoints, skills and security schemes.
+Prego keeps a set of A2A 1.0 cards as one signed version that does not change. Every card and every set is signed
+with a key from Keys and Certificates. Prego does not serve cards in public.
+
+```sh
+prego a2a check ./cards                                         # offline: the A2A 1.0 schema
+prego a2a push ./cards acme/agents/support --sign ./signer.private.pem --key acme/release-keys/signer
+prego a2a get acme/agents/support@stable ./support-cards --verify
+prego a2a upgrade ./agent.json                                  # A2A 0.3 to 1.0, offline, no account needed
+```
+
+- `--sign` signs each card (an A2A 1.0 signature) and the set on your computer. Prego never gets the private key.
+  It also adds the Prego source extension (`https://prego.k8skill.com/ext/a2a-source/v1`: tenant, namespace, set)
+  to each card before it signs; `--no-source` leaves it out.
+- `--verify` needs `read` on the card set and `read` on the signing key item. A missing grant is named:
+  "verify needs read on key acme/release-keys/signer (type Keys and Certificates); ask an admin of acme for a grant".
+- `prego a2a upgrade` needs no Prego account. It prints each change, stops and names the field when it cannot map
+  one, and writes an unsigned card.
+
+The [A2A Agent Cards quickstart](artifact-types/a2a/quickstart.md) has the rules, CI and the errors.
+[`artifact-types/a2a/examples/`](artifact-types/a2a/examples/) has a sample card set, a script and CI jobs.
 
 ## Not in 1.0.0
 
@@ -517,6 +568,14 @@ prego context save ./.agent-memory acme/agents/a1 --trigger compact   # save age
 prego context restore acme/agents/a1 ./.agent-memory --expect sha256:...   # restore a pinned checkpoint (1.1.0)
 prego sqlite save ./app.db acme/fleet/lookup        # save a SQLite snapshot (1.2.0)
 prego sqlite restore acme/fleet/lookup ./lookup.db --expect sha256:...   # restore a pinned snapshot (1.2.0)
+prego keys new --alg ed25519 acme/release-keys/signer   # a key pair: private key local (0600), public JWK pushed (1.3.0)
+prego keys push deploy.pub acme/release-keys/deploy      # push public keys and certificates (1.3.0)
+prego keys get acme/release-keys/deploy                  # entries, fingerprints, validity, revoke state (1.3.0)
+prego keys fingerprint deploy.pub                        # fingerprints, offline (1.3.0)
+prego a2a check ./cards                                  # check A2A 1.0 Agent Cards, offline (1.3.0)
+prego a2a push ./cards acme/agents/support --sign ./signer.private.pem --key acme/release-keys/signer   # sign and push (1.3.0)
+prego a2a get acme/agents/support ./cards --verify       # get a card set and check the signatures (1.3.0)
+prego a2a upgrade ./agent.json                           # A2A 0.3 card to 1.0, offline, no account (1.3.0)
 ```
 
 `prego oci push <input> <image>`:
@@ -581,7 +640,7 @@ In `auto` mode the provider uses the first source that is present, in this order
 | 6 | `api-key` | `PREGO_API_KEY` is set | Prego API key `prk_...` |
 | 7 | `device` | none of the above, and you ran `prego login` (0.7.0) | none: a session refresh gives the registry token |
 
-The SPIFFE sources (`spiffe` and `svid-file`) need the Publisher plan (or a Trial). Indie, Org and
+The SPIFFE sources (`spiffe` and `svid-file`) need the Org or Publisher plan (or a Trial). Indie and
 Consumer do not have SPIFFE machine identity: use OIDC, a token file or an API key there.
 
 If no source is present, the error lists the sources that the provider checked.
