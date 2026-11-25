@@ -86,7 +86,7 @@
               <a class="btn btn-primary" href="#install">Install</a>
               <a class="btn btn-ghost" href="https://github.com/group-katskill/prego-clients">Source on GitHub</a>
             </div>
-            <p class="hero-note">Cargo 1.74 or later. Linux and Apple silicon macOS binaries on every release.</p>
+            <p class="hero-note">Cargo 1.74 or later. Linux x86_64 binaries on every release; Linux arm64 and macOS come after the 2.0 release.</p>
           </div>
           <div class="terminal" aria-label="Example">
             <div class="terminal-bar"><span></span><span></span><span></span><b>shell</b></div>
@@ -213,8 +213,7 @@
                 </thead>
                 <tbody>
                   <tr><td><code>x86_64-unknown-linux-musl</code></td><td>Static. No OpenSSL.</td></tr>
-                  <tr><td><code>aarch64-unknown-linux-musl</code></td><td>Static. No OpenSSL.</td></tr>
-                  <tr><td><code>aarch64-apple-darwin</code></td><td>Apple silicon. Not code-signed or notarized by Apple. No Intel macOS build.</td></tr>
+                  <tr><td>Linux arm64, macOS</td><td>After the 2.0 release. Until then, use <code>cargo install</code>.</td></tr>
                 </tbody>
               </table>
             </div>

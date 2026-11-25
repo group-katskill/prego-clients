@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Releases build Linux x86_64 binaries only, for now (the operator, 2026-11-25). Linux arm64 and macOS binaries
+  come after the 2.0 release; until then, use `cargo install`. The macOS CI job is off. `install.sh` stops on arm64
+  and macOS with that message. Earlier releases keep their arm64 and macOS binaries.
 - PREGO-35: SPIFFE machine identity (`SPIFFE_ENDPOINT_SOCKET`, `PREGO_SVID_FILE`) needs the Publisher plan
   (or a Trial). Indie, Org and Consumer do not have it; OIDC stays on every plan. `README.md`, `PROTOCOL.md`
   section 5, `cargo-credential-prego/README.md`, `docker-credential-prego/README.md`, `docs/snippets.md`,

@@ -49,12 +49,9 @@ jobs:
         include:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-24.04
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-24.04
-          # Built on macOS: the keychain code of `prego login` links the Security framework, which needs the
-          # macOS SDK. TODO: the binaries are not code-signed yet (the keychain asks "allow" on first use).
-          - target: aarch64-apple-darwin
-            os: macos-15
+          # x86_64 only for now (the operator, 2026-11-25): Linux arm64 and macOS builds come back after the 2.0
+          # release. To add them again, restore aarch64-unknown-linux-musl (ubuntu-24.04) and aarch64-apple-darwin
+          # (macos-15; the keychain code needs the macOS SDK).
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
