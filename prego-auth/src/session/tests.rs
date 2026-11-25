@@ -431,3 +431,58 @@ fn a_session_keeps_its_key_on_either_control_host_name() {
         "https://api.prego.k8skill.com/v1/sts/device/e/k7mq/token"
     );
 }
+
+#[test]
+fn request_without_a_namespace_keeps_the_old_body() {
+    let v = serde_json::to_value(Access::request(true)).unwrap();
+    assert_eq!(
+        v,
+        serde_json::json!([{"ecosystem": "any", "actions": ["read", "publish"]}])
+    );
+    assert_eq!(
+        Access::request_for(false, &[]).unwrap(),
+        Access::request(false)
+    );
+}
+
+#[test]
+fn request_for_namespaces_sends_one_item_each() {
+    let ns = vec!["releases".to_string(), "team-a".into(), "releases".into()];
+    let v = serde_json::to_value(Access::request_for(true, &ns).unwrap()).unwrap();
+    assert_eq!(
+        v,
+        serde_json::json!([
+            {"ecosystem": "any", "namespace": "releases", "actions": ["read", "publish"]},
+            {"ecosystem": "any", "namespace": "team-a", "actions": ["read", "publish"]}
+        ])
+    );
+}
+
+#[test]
+fn request_for_checks_the_slug_and_the_count() {
+    for good in ["default", "abc", "a1-b2", &format!("a{}", "b".repeat(39))] {
+        check_namespace(good).unwrap();
+    }
+    for bad in [
+        "",
+        "ab",
+        "Releases",
+        "1abc",
+        "abc-",
+        "-abc",
+        "a_bc",
+        "a/b",
+        "a.b",
+        "abc ",
+        &format!("a{}", "b".repeat(40)),
+    ] {
+        let e = Access::request_for(false, &[bad.to_string()]).unwrap_err();
+        assert!(e.contains("bad namespace"), "{bad}: {e}");
+    }
+    let ten: Vec<String> = (0..10).map(|i| format!("ns{i}x")).collect();
+    assert_eq!(Access::request_for(false, &ten).unwrap().len(), 10);
+    let mut eleven = ten.clone();
+    eleven.push("ns10x".into());
+    let e = Access::request_for(false, &eleven).unwrap_err();
+    assert!(e.contains("too many namespaces: 11"), "{e}");
+}

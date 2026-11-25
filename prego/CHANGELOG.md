@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `prego login --namespace <ns>` (minor): the login session asks for that namespace, not only `default`. Give it
+  up to 10 times (one access item each; the same namespace two times is one item). `prego login` checks each slug
+  with the rule of the server (`^[a-z][a-z0-9-]{1,38}[a-z0-9]$`) and the count before the request; a bad one
+  makes no request. No `--namespace` sends the same body as before (namespace `default`). `prego status` shows
+  the namespaces. Fixes: a login session could reach only namespace `default`.
+
 ## [1.2.0] - 2026-11-20
 
 ### Added

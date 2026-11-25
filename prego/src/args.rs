@@ -95,6 +95,8 @@ pub enum Command {
     Login {
         publish: bool,
         no_browser: bool,
+        /// `--namespace <ns>`, zero or more. None: namespace `default`.
+        namespaces: Vec<String>,
     },
     /// `prego logout`.
     Logout,
@@ -259,10 +261,11 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
 
     let command = match words.as_slice() {
         ["login"] => {
-            allow(&[], &["--publish", "--no-browser"])?;
+            allow(&["--namespace"], &["--publish", "--no-browser"])?;
             Command::Login {
                 publish: flag("--publish"),
                 no_browser: flag("--no-browser"),
+                namespaces: take("--namespace"),
             }
         }
         ["logout"] => {
@@ -1057,6 +1060,37 @@ mod tests {
                 },
             }
         );
+    }
+
+    #[test]
+    fn login_takes_namespaces() {
+        let login = |args: &[&str]| match p(args).unwrap() {
+            Parsed::Run { command, .. } => command,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            login(&["login"]),
+            Command::Login {
+                publish: false,
+                no_browser: false,
+                namespaces: vec![],
+            }
+        );
+        assert_eq!(
+            login(&[
+                "login",
+                "--publish",
+                "--namespace",
+                "rel",
+                "--namespace=team-a"
+            ]),
+            Command::Login {
+                publish: true,
+                no_browser: false,
+                namespaces: vec!["rel".into(), "team-a".into()],
+            }
+        );
+        assert!(p(&["login", "--registry", "x"]).is_err());
     }
 
     #[test]
