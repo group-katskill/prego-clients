@@ -1,10 +1,15 @@
 //! Runs the Python commands of `prego` against a mock server that is the STS and the Python host.
 
-use std::path::{Path, PathBuf};
+mod support {
+    pub mod temp_dir;
+}
+
+use std::path::Path;
 use std::process::Command;
 
 use prego_auth::testing::{MockResponse, MockServer};
 use serde_json::json;
+use support::temp_dir::TempDir;
 
 const BIN: &str = env!("CARGO_BIN_EXE_prego");
 const API_KEY: &str = "prk_test_python_secret";
@@ -18,10 +23,8 @@ struct Run {
     stderr: String,
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-py-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
+fn temp_dir(name: &str) -> TempDir {
+    let dir = TempDir::new(&format!("py-{name}"));
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

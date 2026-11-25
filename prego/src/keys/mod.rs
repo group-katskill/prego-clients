@@ -802,7 +802,7 @@ mod tests {
 
     #[test]
     fn private_key_is_refused_before_any_request() {
-        let dir = crate::sign::scrub_dir::ScrubDir::new("keys");
+        let dir = crate::scrub_dir::ScrubDir::new("keys");
         let pubf = dir.join("a.pub");
         std::fs::write(
             &pubf,

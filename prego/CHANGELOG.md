@@ -64,9 +64,11 @@ Version 1.3.0 (minor). Not released yet.
 
 ### Tests
 
-- The `prego keys` and `prego a2a` tests remove their temp directories when they end, also after a failure. Before
-  the removal, each file is overwritten with zeros, because the directories hold test private keys. Before, the
-  directories `prego-keys-a2a-*`, `prego-keys-*` and `prego-keyfile-*` stayed in the system temp directory.
+- The tests of `prego keys`, `prego a2a`, `prego adapter`, `prego login` and the Python commands remove their temp
+  directories when they end, also after a failure. Before the removal, each file is overwritten with zeros, because
+  the directories hold test private keys, tokens and session files. Before, the directories `prego-keys-a2a-*`,
+  `prego-keys-*`, `prego-keyfile-*`, `prego-adapter-*`, `prego-login-*` and `prego-py-*` stayed in the system temp
+  directory. The integration tests share the guard in `tests/support/temp_dir.rs`.
 
 ## [1.2.0] - 2026-11-20
 

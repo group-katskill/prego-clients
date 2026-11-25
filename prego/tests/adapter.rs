@@ -3,6 +3,7 @@
 
 mod support {
     pub mod mock_registry;
+    pub mod temp_dir;
 }
 
 use std::path::{Path, PathBuf};
@@ -10,6 +11,7 @@ use std::process::Command;
 
 use serde_json::Value;
 use support::mock_registry::{sha256, MockRegistry};
+use support::temp_dir::TempDir;
 
 const BIN: &str = env!("CARGO_BIN_EXE_prego");
 const API_KEY: &str = "prk_test_secret_value";
@@ -46,11 +48,8 @@ fn registry() -> MockRegistry {
     MockRegistry::start(&format!("acme:{API_KEY}"), 1024 * 1024)
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-adapter-it-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+fn temp_dir(name: &str) -> TempDir {
+    TempDir::new(&format!("adapter-it-{name}"))
 }
 
 /// A safetensors file with one F32 tensor of `n` elements.

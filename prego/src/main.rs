@@ -15,6 +15,8 @@ mod login;
 mod npm;
 mod oci;
 mod python;
+#[cfg(test)]
+mod scrub_dir;
 mod setup;
 mod sign;
 mod snippet;

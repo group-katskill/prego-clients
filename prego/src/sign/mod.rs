@@ -6,5 +6,3 @@ pub mod der;
 pub mod jwk;
 pub mod jws;
 pub mod keyfile;
-#[cfg(test)]
-pub mod scrub_dir;

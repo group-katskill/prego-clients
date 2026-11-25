@@ -276,7 +276,7 @@ mod tests {
             return;
         };
         eprintln!("{}", String::from_utf8_lossy(&v.stdout).trim());
-        let dir = crate::sign::scrub_dir::ScrubDir::new("openssl");
+        let dir = crate::scrub_dir::ScrubDir::new("openssl");
         for alg in [NewAlg::Ed25519, NewAlg::Es256] {
             let (k, text) = PrivateKey::generate(alg).unwrap();
             let path = dir.join(format!("{alg:?}.pem"));
@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     fn generate_sign_verify_and_reload() {
-        let dir = crate::sign::scrub_dir::ScrubDir::new("keyfile");
+        let dir = crate::scrub_dir::ScrubDir::new("keyfile");
         for alg in [NewAlg::Ed25519, NewAlg::Es256] {
             let (k, text) = PrivateKey::generate(alg).unwrap();
             assert!(text.starts_with("-----BEGIN PRIVATE KEY-----\n"));

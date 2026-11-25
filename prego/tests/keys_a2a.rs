@@ -3,6 +3,10 @@
 //! control hosts that serve the token exchange and `/v1/keys/*` and `/v1/a2a/*` in the shapes of the wire
 //! contract (ADR-0061 section 4a, ADR-0062 section 3a). Data comes from the shared vectors where it can.
 
+mod support {
+    pub mod temp_dir;
+}
+
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -10,6 +14,7 @@ use std::process::{Command, Stdio};
 use prego_auth::testing::{MockResponse, MockServer};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use support::temp_dir::TempDir;
 
 const BIN: &str = env!("CARGO_BIN_EXE_prego");
 // Payload {"sub":"prn_1","tid":"ten_1","exp":4102444800} (2100-01-01).
@@ -56,53 +61,8 @@ fn run_offline(dir: &Path, args: &[&str]) -> Run {
     }
 }
 
-/// A temp directory that is removed when it goes out of scope, also when the test panics. The tests put
-/// private key files in it, so each file is overwritten with zeros before the removal.
-struct TempDir(PathBuf);
-
-impl std::ops::Deref for TempDir {
-    type Target = Path;
-    fn deref(&self) -> &Path {
-        &self.0
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        scrub(&self.0);
-    }
-}
-
-fn scrub(dir: &Path) {
-    fn zero_files(dir: &Path) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for e in entries.flatten() {
-            let Ok(t) = e.file_type() else { continue };
-            if t.is_dir() {
-                zero_files(&e.path());
-            } else if t.is_file() {
-                if let (Ok(m), Ok(mut f)) = (
-                    e.metadata(),
-                    std::fs::OpenOptions::new().write(true).open(e.path()),
-                ) {
-                    use std::io::Write as _;
-                    let _ = f.write_all(&vec![0u8; m.len() as usize]);
-                    let _ = f.sync_all();
-                }
-            }
-        }
-    }
-    zero_files(dir);
-    let _ = std::fs::remove_dir_all(dir);
-}
-
 fn temp_dir(name: &str) -> TempDir {
-    let dir = std::env::temp_dir().join(format!("prego-keys-a2a-{name}-{}", std::process::id()));
-    scrub(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    TempDir(dir)
+    TempDir::new(&format!("keys-a2a-{name}"))
 }
 
 fn vectors() -> PathBuf {
