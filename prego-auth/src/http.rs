@@ -368,12 +368,13 @@ fn load_pem_bundle(path: &str) -> Result<Vec<Certificate<'static>>, String> {
 mod tests {
     use super::*;
 
-    fn temp_file(name: &str, content: &str) -> String {
-        let dir = std::env::temp_dir().join(format!("prego-auth-http-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+    /// A file in its own temp directory. The directory is removed when the returned guard is dropped.
+    fn temp_file(name: &str, content: &str) -> (crate::testing::TempDir, String) {
+        let dir = crate::testing::TempDir::new(&format!("prego-auth-http-{name}"));
         let path = dir.join(name);
         std::fs::write(&path, content).unwrap();
-        path.to_string_lossy().into_owned()
+        let path = path.to_string_lossy().into_owned();
+        (dir, path)
     }
 
     // PEM framing with arbitrary DER bytes. The parser checks the framing; rustls checks the DER later.
@@ -387,7 +388,7 @@ mod tests {
 
     #[test]
     fn loads_pem_bundle() {
-        let p = temp_file("two.pem", &format!("{PEM}{PEM}"));
+        let (_d, p) = temp_file("two.pem", &format!("{PEM}{PEM}"));
         assert_eq!(load_pem_bundle(&p).unwrap().len(), 2);
         assert!(Http::with_ca_file("test", Some(&p)).is_ok());
     }
@@ -397,7 +398,7 @@ mod tests {
         assert!(load_pem_bundle("/nonexistent/prego/ca.pem")
             .unwrap_err()
             .contains("cannot open"));
-        let empty = temp_file("empty.pem", "no pem here\n");
+        let (_d, empty) = temp_file("empty.pem", "no pem here\n");
         assert!(load_pem_bundle(&empty)
             .unwrap_err()
             .contains("no PEM certificate"));

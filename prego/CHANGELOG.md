@@ -6,7 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-Version 1.3.0 (minor). Not released yet.
+### Tests
+
+- No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When
+  the test ends, also after a failure, the guard overwrites each file with zeros and removes the directory. The
+  directories hold test private keys, tokens and session files. Before, the tests of `prego keys`, `prego a2a`,
+  `prego adapter`, `prego login` and the Python commands left `prego-keys-a2a-*`, `prego-keys-*`,
+  `prego-keyfile-*`, `prego-adapter-*`, `prego-login-*` and `prego-py-*` in the system temp directory. The other
+  tests (cli, context, env, go, npm, oci, snippet, sqlite, docker config, Go token cache) removed theirs only when
+  they passed.
+
+## [1.3.0] - 2026-11-25
+
+Version 1.3.0 (minor).
 
 ### Added
 
@@ -61,14 +73,6 @@ Version 1.3.0 (minor). Not released yet.
   with the rule of the server (`^[a-z][a-z0-9-]{1,38}[a-z0-9]$`) and the count before the request; a bad one
   makes no request. No `--namespace` sends the same body as before (namespace `default`). `prego status` shows
   the namespaces. Fixes: a login session could reach only namespace `default`.
-
-### Tests
-
-- The tests of `prego keys`, `prego a2a`, `prego adapter`, `prego login` and the Python commands remove their temp
-  directories when they end, also after a failure. Before the removal, each file is overwritten with zeros, because
-  the directories hold test private keys, tokens and session files. Before, the directories `prego-keys-a2a-*`,
-  `prego-keys-*`, `prego-keyfile-*`, `prego-adapter-*`, `prego-login-*` and `prego-py-*` stayed in the system temp
-  directory. The integration tests share the guard in `tests/support/temp_dir.rs`.
 
 ## [1.2.0] - 2026-11-20
 

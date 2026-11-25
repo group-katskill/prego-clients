@@ -3,18 +3,13 @@
 //! control hosts that serve the token exchange and `/v1/keys/*` and `/v1/a2a/*` in the shapes of the wire
 //! contract (ADR-0061 section 4a, ADR-0062 section 3a). Data comes from the shared vectors where it can.
 
-mod support {
-    pub mod temp_dir;
-}
-
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use prego_auth::testing::{MockResponse, MockServer};
+use prego_auth::testing::{MockResponse, MockServer, TempDir};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use support::temp_dir::TempDir;
 
 const BIN: &str = env!("CARGO_BIN_EXE_prego");
 // Payload {"sub":"prn_1","tid":"ten_1","exp":4102444800} (2100-01-01).
@@ -62,7 +57,7 @@ fn run_offline(dir: &Path, args: &[&str]) -> Run {
 }
 
 fn temp_dir(name: &str) -> TempDir {
-    TempDir::new(&format!("keys-a2a-{name}"))
+    TempDir::new(&format!("prego-keys-a2a-{name}"))
 }
 
 fn vectors() -> PathBuf {

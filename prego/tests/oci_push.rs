@@ -4,7 +4,7 @@ mod support {
     pub mod mock_registry;
 }
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use serde_json::{json, Value};
@@ -53,11 +53,9 @@ fn registry() -> MockRegistry {
     MockRegistry::start(&format!("acme:{API_KEY}"), MIB)
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-oci-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+    prego_auth::testing::TempDir::new(&format!("prego-oci-{name}"))
 }
 
 /// Bytes that are not all the same, so a wrong offset changes the digest.
@@ -503,7 +501,7 @@ fn input_and_reference_errors() {
             .env("PREGO_TENANT", "acme")
             .env("PREGO_API_KEY", API_KEY)
             .env("PREGO_OCI_HOSTS", hosts)
-            .env("HOME", &dir)
+            .env("HOME", &*dir)
             .output()
             .unwrap();
         (

@@ -34,12 +34,13 @@ mod tests {
 
     const JWT: &str = "eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJ4In0.c2ln";
 
-    fn temp_file(name: &str, content: &str) -> String {
-        let dir = std::env::temp_dir().join(format!("prego-auth-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+    /// A file in its own temp directory. The directory is removed when the returned guard is dropped.
+    fn temp_file(name: &str, content: &str) -> (crate::testing::TempDir, String) {
+        let dir = crate::testing::TempDir::new(&format!("prego-auth-test-{name}"));
         let path = dir.join(name);
         std::fs::write(&path, content).unwrap();
-        path.to_string_lossy().into_owned()
+        let path = path.to_string_lossy().into_owned();
+        (dir, path)
     }
 
     fn find(kind: SourceKind, var: &str, path: &str) -> Result<crate::SubjectToken, crate::Error> {
@@ -56,14 +57,14 @@ mod tests {
 
     #[test]
     fn svid_file_source() {
-        let p = temp_file("svid.jwt", &format!("{JWT}\n"));
+        let (_d, p) = temp_file("svid.jwt", &format!("{JWT}\n"));
         let t = find(SourceKind::SvidFile, "PREGO_SVID_FILE", &p).unwrap();
         assert_eq!(t.value.expose(), JWT);
     }
 
     #[test]
     fn token_file_source() {
-        let p = temp_file("token.jwt", JWT);
+        let (_d, p) = temp_file("token.jwt", JWT);
         let t = find(SourceKind::TokenFile, "PREGO_TOKEN_FILE", &p).unwrap();
         assert_eq!(t.kind, SourceKind::TokenFile);
         assert_eq!(t.value.expose(), JWT);
@@ -72,15 +73,15 @@ mod tests {
     #[test]
     fn missing_empty_and_large_files() {
         assert!(read_token("/nonexistent/prego/token").is_err());
-        let empty = temp_file("empty.jwt", " \n");
+        let (_e, empty) = temp_file("empty.jwt", " \n");
         assert!(read_token(&empty).unwrap_err().contains("empty"));
-        let big = temp_file("big.jwt", &"a".repeat(MAX_TOKEN_BYTES + 1));
+        let (_b, big) = temp_file("big.jwt", &"a".repeat(MAX_TOKEN_BYTES + 1));
         assert!(read_token(&big).unwrap_err().contains("more than"));
     }
 
     #[test]
     fn file_with_non_jwt_is_refused() {
-        let p = temp_file("junk.jwt", "hello");
+        let (_d, p) = temp_file("junk.jwt", "hello");
         let e = find(SourceKind::TokenFile, "PREGO_TOKEN_FILE", &p).unwrap_err();
         assert!(e.to_string().contains("not a JWT"), "{e}");
         assert!(!e.to_string().contains("hello"));

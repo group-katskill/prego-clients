@@ -672,13 +672,13 @@ pub(crate) mod tests {
         check_safetensors_header(header.as_bytes(), data)
     }
 
-    pub fn temp_dir(name: &str) -> crate::scrub_dir::ScrubDir {
-        crate::scrub_dir::ScrubDir::new(&format!("adapter-{name}"))
+    pub fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+        prego_auth::testing::TempDir::new(&format!("prego-adapter-{name}"))
     }
 
     pub const CONFIG: &str = r#"{"peft_type":"LORA","base_model_name_or_path":"meta-llama/Llama-3.1-8B-Instruct","r":16}"#;
 
-    fn adapter_dir(name: &str) -> crate::scrub_dir::ScrubDir {
+    fn adapter_dir(name: &str) -> prego_auth::testing::TempDir {
         let dir = temp_dir(name);
         std::fs::write(dir.join(CONFIG_FILE), CONFIG).unwrap();
         std::fs::write(dir.join("adapter_model.safetensors"), safetensors(16)).unwrap();

@@ -1,15 +1,10 @@
 //! `prego login`, `status`, `logout` and the login session as the last identity source, against a mock STS.
 //! The session goes to a test directory store (`PREGO_TEST_SESSION_DIR`, test builds only).
 
-mod support {
-    pub mod temp_dir;
-}
-
 use std::process::Command;
 
-use prego_auth::testing::{MockResponse, MockServer};
+use prego_auth::testing::{MockResponse, MockServer, TempDir};
 use serde_json::json;
-use support::temp_dir::TempDir;
 
 const BIN: &str = env!("CARGO_BIN_EXE_prego");
 const REG_1: &str = "eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkcm5fMSJ9.b25l";
@@ -36,7 +31,7 @@ fn run(args: &[&str], env: &[(&str, &str)]) -> Run {
 }
 
 fn temp_dir(name: &str) -> TempDir {
-    TempDir::new(&format!("login-{name}"))
+    TempDir::new(&format!("prego-login-{name}"))
 }
 
 fn start_answer() -> MockResponse {

@@ -85,11 +85,9 @@ fn run_in(dir: &Path, args: &[&str], env: &[(&str, &str)], stdin: Option<&str>) 
     }
 }
 
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("prego-go-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A temp directory, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> prego_auth::testing::TempDir {
+    prego_auth::testing::TempDir::new(&format!("prego-go-{name}"))
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -505,7 +503,7 @@ fn publish_chunked_gets_a_new_token_before_the_old_one_expires() {
     std::fs::remove_dir_all(&repo).unwrap();
 }
 
-fn private_dir(name: &str) -> PathBuf {
+fn private_dir(name: &str) -> prego_auth::testing::TempDir {
     use std::os::unix::fs::PermissionsExt;
     let d = temp_dir(name);
     std::fs::set_permissions(&d, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -888,7 +886,7 @@ fn live_go() {
             .args(["mod", "download", "-json", module])
             .env_clear()
             .env("PATH", std::env::var("PATH").unwrap_or_default())
-            .env("HOME", &work)
+            .env("HOME", &*work)
             .env("GOPATH", work.join("gopath"))
             .env("GOMODCACHE", work.join(format!("modcache-{}", proxy.len())))
             .env("GOCACHE", work.join("gocache"))

@@ -1,10 +1,10 @@
 //! Spawns the binary, speaks the Docker credential helper protocol, and checks the answers.
 
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
-use prego_auth::testing::{MockResponse, MockServer};
+use prego_auth::testing::{MockResponse, MockServer, TempDir};
 use serde_json::{json, Value};
 
 const BIN: &str = env!("CARGO_BIN_EXE_docker-credential-prego");
@@ -49,15 +49,9 @@ fn run(args: &[&str], input: &str, env: &[(&str, &str)]) -> Run {
     }
 }
 
-/// A new, empty directory for one test.
-fn temp_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "docker-credential-prego-{name}-{}",
-        std::process::id()
-    ));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A new, empty directory for one test, zeroed and removed when the test ends (also after a panic).
+fn temp_dir(name: &str) -> TempDir {
+    TempDir::new(&format!("docker-credential-prego-{name}"))
 }
 
 fn write(dir: &Path, name: &str, content: &str) -> String {

@@ -470,9 +470,7 @@ mod tests {
     #[test]
     fn cache_dir_checks() {
         use std::os::unix::fs::PermissionsExt;
-        let base = std::env::temp_dir().join(format!("prego-cache-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&base);
-        std::fs::create_dir_all(&base).unwrap();
+        let base = prego_auth::testing::TempDir::new("prego-cache-test");
         let env = MapEnv::new().with("XDG_RUNTIME_DIR", base.to_str().unwrap());
         let cache = Cache::open(&env, "k").expect("a new private dir");
         let mode = std::fs::metadata(base.join("prego"))

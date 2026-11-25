@@ -50,9 +50,15 @@ fn error(status: u16, code: &str) -> MockResponse {
     )
 }
 
-fn handle(store: &Arc<MemStore>) -> DeviceHandle {
-    let dir = std::env::temp_dir().join(format!("prego-lock-test-{}", std::process::id()));
-    DeviceHandle::with_store(store.clone(), Some(dir))
+/// A handle with its own lock directory. The directory is removed when the returned guard is dropped.
+fn handle(store: &Arc<MemStore>) -> (DeviceHandle, crate::testing::TempDir) {
+    static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = N.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let dir = crate::testing::TempDir::new(&format!("prego-lock-test-{n}"));
+    (
+        DeviceHandle::with_store(store.clone(), Some(dir.to_path_buf())),
+        dir,
+    )
 }
 
 fn refresh_token_in(store: &MemStore, config: &Config) -> String {
@@ -221,7 +227,7 @@ fn refresh_rotates_and_keeps_fresh_tokens() {
     ]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     let res = "https://cargo.example.test/t/acme/default/";
 
     // The poll's token has no resource. A token for a resource needs a refresh.
@@ -261,7 +267,7 @@ fn an_expired_token_is_refreshed() {
     ]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     // 900 s lifetime, 60 s margin: fresh until 1_000_840.
     let t = registry_token(&http(), &cfg, &device, None, &|| 1_000_840, &no_sleep).unwrap();
     assert_eq!(t.token.expose(), "reg-2");
@@ -280,7 +286,7 @@ fn an_ended_session_is_deleted() {
     ]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     let e =
         registry_token(&http(), &cfg, &device, Some("r"), &|| 1_000_000, &no_sleep).unwrap_err();
     assert_eq!(
@@ -306,7 +312,7 @@ fn an_ended_trial_keeps_the_session() {
     ]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     let e =
         registry_token(&http(), &cfg, &device, Some("r"), &|| 1_000_000, &no_sleep).unwrap_err();
     assert!(e.to_string().contains(trial), "{e}");
@@ -324,7 +330,7 @@ fn docker_gets_a_session_token_with_half_its_lifetime_left() {
     ]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     // reg-1: 900 s from 1_000_000. 500 s left is more than half: no request.
     let t = registry_token_for_docker(&http(), &cfg, &device, &|| 1_000_400, &no_sleep).unwrap();
     assert_eq!(t.token.expose(), "reg-1");
@@ -396,7 +402,7 @@ fn stored_record_debug_and_errors_hold_no_token() {
     let server = MockServer::start(vec![start_answer(), token_answer("reg-1", "rt-1", true)]);
     let store = Arc::new(MemStore::default());
     let cfg = logged_in(&server, &store);
-    let device = handle(&store);
+    let (device, _lock) = handle(&store);
     let shown = format!("{device:?} {:?}", status(&cfg, store.as_ref()).unwrap());
     assert!(
         !shown.contains("rt-1") && !shown.contains("reg-1"),

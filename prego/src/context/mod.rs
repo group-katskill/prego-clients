@@ -1013,8 +1013,8 @@ mod tests {
 
     #[test]
     fn keep_bundle_writes_new_private_files() {
-        let d = std::env::temp_dir().join(format!("prego-keep-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&d);
+        let g = prego_auth::testing::TempDir::new("prego-keep");
+        let d = g.join("d");
         let a = keep_bundle(&d, "agent", b"one").unwrap();
         let b = keep_bundle(&d, "agent", b"two").unwrap();
         assert_ne!(a, b);
