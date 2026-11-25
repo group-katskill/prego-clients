@@ -22,6 +22,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   it; OIDC stays on every plan. `README.md`, `PROTOCOL.md` section 5, `docs/openapi.yaml` (description text only),
   `docs/ci.md`, `docs/consumer-quickstart.md`, `docs/frontline-ci-publish.md`, the crate READMEs of
   `cargo-credential-prego` and `docker-credential-prego`, `artifact-types/*/quickstart.md` and `site/index.html`.
+- The vector READMEs of `signing/` and `a2a/` follow the monorepo (d34ef55): default values are removed inside each
+  message value of a map, and `kid_not_thumbprint` may be reported as `key_not_found`. The vector data does not change,
+  and `prego` already follows both rules.
 - The shared ADR-0061 and ADR-0062 test vectors (`prego/tests/vectors/{signing,keys,a2a}/`), copied as data with
   their READMEs from the Prego monorepo (branch `vectors/keys-a2a`); the generator scripts are not copied. NOTICE
   names the pinned A2A v1.0.1 proto and schema in `prego/tests/vectors/a2a/schema/` (Apache-2.0, test data only).

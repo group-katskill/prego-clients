@@ -37,7 +37,8 @@ public JWKs (`keys/TEST-ONLY-*.public.jwk.json`). A test that must make a signat
 5. `prego_key` must be present (`prego_key_missing`) and have the form `<tenant>/<namespace>/<name>`
    (`prego_key_invalid`).
 6. `kid` must be an RFC 7638 thumbprint (43 base64url characters). Else: `kid_not_thumbprint`. No key in `keys` with
-   that thumbprint: `key_not_found`.
+   that thumbprint: `key_not_found`. A verifier that finds the key by its thumbprint and does not check the `kid` form
+   first can report `kid_not_thumbprint` as `key_not_found`. The answer is still `422 signature_invalid`.
 7. The key type must fit `alg` (`EdDSA`: OKP Ed25519; `ES256`: EC P-256; `ES384`: EC P-384; `PS256`, `RS256`: RSA).
    Else: `alg_key_mismatch`.
 8. ECDSA signatures are raw `r || s` (64 bytes for ES256, 96 for ES384). A DER signature: `ecdsa_der`. `PS256` uses

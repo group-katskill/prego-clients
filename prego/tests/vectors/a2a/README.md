@@ -66,10 +66,17 @@ The message (ADR-0062 section 2.3): "A2A 1.0 only. Card <file> looks like A2A 0.
 - Signing input: RFC 8785 of the card without `signatures` and without the fields at their default value. A field
   that is not REQUIRED and has no `optional` keyword in the proto is removed when its value is `""`, `false`, `0`,
   `[]` or an empty map. An `optional` field stays when it is present. A REQUIRED field always stays. Message fields
-  stay. `any` content and map entries do not change. Field names stay as written (snake_case stays snake_case).
+  stay. Field names stay as written (snake_case stays snake_case).
+- The rule applies at every level: inside a message field, inside each item of a repeated message field, and inside
+  each message value of a map. A map keeps every entry (no key is removed), but a message value is cleaned like any
+  other message. Example: in `es256-full-with-source`, `securityRequirements[1].schemes.mtls` is `{"list": []}` in
+  the card and `{}` in the signing input. `any` content (`google.protobuf.Struct`, for example extension `params`)
+  and scalar map values do not change.
 - Detached JWS: each entry of `signatures` is `{protected, signature[, header]}`; the payload is the signing input.
 - Protected header: `{"alg", "typ": "JOSE", "kid": <RFC 7638 thumbprint>, "prego_key": "<tenant>/<namespace>/<name>"}`.
-  The header rules of `../signing/README.md` apply.
+  The header rules of `../signing/README.md` apply. A verifier that finds the key by its thumbprint (ADR-0061 section
+  3.4) can report the case `kid-not-thumbprint` as `key_not_found` (`../signing/README.md` rule 6). Both are `422
+  signature_invalid`.
 - A card is valid when at least one signature verifies with a key of the tenant. A signature by an unknown key is
   ignored when another one verifies.
 - Source extension (ADR-0062 section 2.9): an entry in `capabilities.extensions` with URI
