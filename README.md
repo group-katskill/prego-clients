@@ -134,7 +134,7 @@ curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/down
 sh install.sh                    # or: sh install.sh --version 0.4.0 --dir /usr/local/bin
 ```
 
-Or from [crates.io](https://crates.io/crates/prego) with Cargo (all five crates are there at 0.10.0, with the alias
+Or from [crates.io](https://crates.io/crates/prego) with Cargo (all five crates are there at 1.3.0, with the alias
 `prego-cli`; versions 0.4.0 to 0.7.0 are only on the GitHub releases):
 
 ```sh
