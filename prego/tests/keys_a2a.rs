@@ -56,11 +56,53 @@ fn run_offline(dir: &Path, args: &[&str]) -> Run {
     }
 }
 
-fn temp_dir(name: &str) -> PathBuf {
+/// A temp directory that is removed when it goes out of scope, also when the test panics. The tests put
+/// private key files in it, so each file is overwritten with zeros before the removal.
+struct TempDir(PathBuf);
+
+impl std::ops::Deref for TempDir {
+    type Target = Path;
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        scrub(&self.0);
+    }
+}
+
+fn scrub(dir: &Path) {
+    fn zero_files(dir: &Path) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let Ok(t) = e.file_type() else { continue };
+            if t.is_dir() {
+                zero_files(&e.path());
+            } else if t.is_file() {
+                if let (Ok(m), Ok(mut f)) = (
+                    e.metadata(),
+                    std::fs::OpenOptions::new().write(true).open(e.path()),
+                ) {
+                    use std::io::Write as _;
+                    let _ = f.write_all(&vec![0u8; m.len() as usize]);
+                    let _ = f.sync_all();
+                }
+            }
+        }
+    }
+    zero_files(dir);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+fn temp_dir(name: &str) -> TempDir {
     let dir = std::env::temp_dir().join(format!("prego-keys-a2a-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
+    scrub(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    dir
+    TempDir(dir)
 }
 
 fn vectors() -> PathBuf {
