@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- PREGO-35: SPIFFE machine identity (`SPIFFE_ENDPOINT_SOCKET`, `PREGO_SVID_FILE`) needs the Publisher plan
+  (or a Trial). Indie, Org and Consumer do not have it; OIDC stays on every plan. `README.md`, `PROTOCOL.md`
+  section 5, `cargo-credential-prego/README.md`, `docker-credential-prego/README.md`, `docs/snippets.md`,
+  `docs/consumer-quickstart.md`, `docs/frontline-ci-publish.md`, `docs/ci.md`, `docs/adapters-quickstart.md`,
+  `docs/context.md`, `docs/sqlite.md`, `docs/release-variables.md`, `site/index.html`, and the description text
+  of `docs/openapi.yaml` (no schema change).
 - Docs follow ADR-0056 Amendment 1 (plan limits 1.1.0): Indie has Python and no Context (`docs/context.md`, the
   Python quickstart error table); a delete can be restored for the restore period of the plan (Indie 3, Org 30,
   Publisher 90, Trial 3 days) and an owner can "Remove now" (`docs/npm-quickstart.md`, PROTOCOL.md 1.15.1
