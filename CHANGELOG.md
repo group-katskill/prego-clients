@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Releases build Linux x86_64 binaries only, for now (the operator, 2026-11-25). Linux arm64 and macOS binaries
+  come after the 2.0 release; until then, use `cargo install`. The macOS CI job is off. `install.sh` stops on arm64
+  and macOS with that message. Earlier releases keep their arm64 and macOS binaries.
 - Docs follow ADR-0056 Amendment 1 (plan limits 1.1.0): Indie has Python and no Context (`docs/context.md`, the
   Python quickstart error table); a delete can be restored for the restore period of the plan (Indie 3, Org 30,
   Publisher 90, Trial 3 days) and an owner can "Remove now" (`docs/npm-quickstart.md`, PROTOCOL.md 1.15.1

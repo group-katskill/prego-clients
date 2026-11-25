@@ -141,9 +141,10 @@ version, and it installs the same `prego` binary. Install one of the two, not bo
 Each [GitHub release](https://github.com/group-katskill/prego-clients/releases) (tag `prego-clients-vX.Y.Z`) has
 prebuilt binaries with SHA-256 sums for:
 
-- `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl` (static)
-- `aarch64-apple-darwin` (Apple silicon). There is no Intel macOS build. The macOS binary is not code-signed or
-  notarized by Apple. Use `cargo install` if macOS refuses to start it.
+- `x86_64-unknown-linux-musl` (static)
+
+Prebuilt binaries are Linux x86_64 only for now. Linux arm64 and macOS binaries come after the 2.0 release. On
+those systems, use `cargo install` (Cargo 1.74 or later). Earlier releases keep their arm64 and macOS binaries.
 
 `prego-clients-<target>.tar.gz` holds all three binaries. `<binary>-<target>.tar.gz` holds one binary, for CI
 jobs that need only one. `SHA256SUMS` lists all files. Check a download:

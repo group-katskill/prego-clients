@@ -6,7 +6,7 @@
 #
 # It downloads the release archive for this machine from GitHub, checks its SHA-256 sum, and copies the
 # three binaries to DIR (default: $PREGO_INSTALL_DIR, else ~/.local/bin). It needs curl, tar, and
-# sha256sum or shasum. It never uses sudo. Targets: Linux x86_64 and aarch64, macOS arm64.
+# sha256sum or shasum. It never uses sudo. Target: Linux x86_64 (Linux arm64 and macOS come after the 2.0 release).
 #
 # The SHA-256 check shows that the download is complete, not who made it. To check the origin too (0.3.0 and
 # later), check install.sh itself before you run it. Download SHA256SUMS and SHA256SUMS.sigstore.json from
@@ -52,8 +52,8 @@ os="$(uname -s)"
 arch="$(uname -m)"
 case "$os/$arch" in
   Linux/x86_64 | Linux/amd64) target="x86_64-unknown-linux-musl" ;;
-  Linux/aarch64 | Linux/arm64) target="aarch64-unknown-linux-musl" ;;
-  Darwin/arm64 | Darwin/aarch64) target="aarch64-apple-darwin" ;;
+  Linux/aarch64 | Linux/arm64 | Darwin/*)
+    fail "prebuilt binaries are Linux x86_64 only for now; $os $arch comes after the 2.0 release. Use: cargo install $BINARIES" ;;
   *) fail "no prebuilt binaries for $os $arch. Use: cargo install $BINARIES" ;;
 esac
 
