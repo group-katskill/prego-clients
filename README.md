@@ -42,13 +42,13 @@ Prego hosts these types. The `prego` tools work with all of them. Each type has 
 | Type | Command or tool | Plans that can publish |
 | --- | --- | --- |
 | [Crates (Cargo)](artifact-types/crates/) | `cargo`, with `cargo-credential-prego` | Trial, Indie, Org, Publisher |
+| [Containers and OCI artifacts](artifact-types/oci/) | Docker, Podman, crane, ORAS, Helm and cosign, with `docker-credential-prego`; `prego oci push` | Trial, Org, Publisher |
 | [Go modules](artifact-types/go/) | `go`, with `prego go-auth` and `prego go publish` | Trial, Indie, Org, Publisher |
 | [npm](artifact-types/npm/) | npm, pnpm, Yarn and Bun, with `prego setup npm` | Trial, Indie, Org, Publisher |
 | [Python](artifact-types/python/) | uv, pip and Poetry, with `prego setup python` and `prego python publish` | Trial, Indie, Org, Publisher |
-| [Containers and OCI artifacts](artifact-types/oci/) | Docker, Podman, crane, ORAS, Helm and cosign, with `docker-credential-prego`; `prego oci push` | Trial, Org, Publisher |
-| [Adapters](artifact-types/adapters/) | `prego adapter` (preview) | Trial, Publisher |
 | [Release Variables](artifact-types/release-variables/) | `prego env` | Trial, Indie, Org, Publisher |
 | [Snippets](artifact-types/snippets/) | `prego snippet` | Trial, Indie, Org, Publisher |
+| [Adapters](artifact-types/adapters/) | `prego adapter` (preview) | Trial, Publisher |
 | [Context](artifact-types/context/) | `prego context` | Trial, Org, Publisher |
 | [SQLite snapshots](artifact-types/sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](artifact-types/keys/) | `prego keys` | Trial, Indie, Org, Publisher |

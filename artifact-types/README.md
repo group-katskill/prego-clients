@@ -6,13 +6,13 @@ and where the examples are.
 | Type | Command or tool | Plans that can publish |
 | --- | --- | --- |
 | [Crates (Cargo)](crates/) | `cargo`, with `cargo-credential-prego` | Trial, Indie, Org, Publisher |
+| [Containers and OCI artifacts](oci/) | Docker, Podman, crane, ORAS, Helm and cosign, with `docker-credential-prego`; `prego oci push` | Trial, Org, Publisher |
 | [Go modules](go/) | `go`, with `prego go-auth` and `prego go publish` | Trial, Indie, Org, Publisher |
 | [npm](npm/) | npm, pnpm, Yarn and Bun, with `prego setup npm` | Trial, Indie, Org, Publisher |
 | [Python](python/) | uv, pip and Poetry, with `prego setup python` and `prego python publish` | Trial, Indie, Org, Publisher |
-| [Containers and OCI artifacts](oci/) | Docker, Podman, crane, ORAS, Helm and cosign, with `docker-credential-prego`; `prego oci push` | Trial, Org, Publisher |
-| [Adapters](adapters/) | `prego adapter` (preview) | Trial, Publisher |
 | [Release Variables](release-variables/) | `prego env` | Trial, Indie, Org, Publisher |
 | [Snippets](snippets/) | `prego snippet` | Trial, Indie, Org, Publisher |
+| [Adapters](adapters/) | `prego adapter` (preview) | Trial, Publisher |
 | [Context](context/) | `prego context` | Trial, Org, Publisher |
 | [SQLite snapshots](sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](keys/) | `prego keys` | Trial, Indie, Org, Publisher |
