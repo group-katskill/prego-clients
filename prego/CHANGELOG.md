@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Internal
+
+- `build` module (ADR-0066, for `prego build`; no command yet): the file set of a build (1 to 32 regular files,
+  unique names, no symbolic links) with the sha256 of each file, the part plan of an upload (at most 95 MiB parts),
+  the `--release-url` check (`https://`, at most 2,048 characters, no user name), the expiry window (3 to 360 days),
+  the promote label and the selectors of `get` (a build ID, `--commit`, `--run`, `--version`, `--latest [--ref]`).
+
 ### Tests
 
 - No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When

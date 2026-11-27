@@ -6,6 +6,7 @@ mod a2a;
 mod adapter;
 mod admin;
 mod args;
+mod build;
 mod context;
 mod docker_config;
 mod env;
