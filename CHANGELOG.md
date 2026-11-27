@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `artifact-types/crates/` and `artifact-types/npm/` READMEs: a "Stop dependency confusion" section. Crates: the
+  registry on every private dependency, cargo-deny `[sources]`, a `cargo metadata | jq` source check in CI, a clear
+  prefix, and no placeholder crates on crates.io. npm: the scope line in `.npmrc` and the free npmjs.com organization
+  for each scope.
 - `artifact-types/snippets/examples/`: two runbooks to share as snippets, an Ansible playbook (`ansible-deploy-web/`,
   with a role, an inventory example and a check run first) and a Python runbook (`python-rotate-logs/`, pinned
   requirements, a virtual environment, a dry run first). Each has the recommended `runbook.yaml` (`kind`,

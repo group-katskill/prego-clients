@@ -12,6 +12,23 @@ with a variable name only, never a token.
 - [npm packages](../../README.md#npm-packages) in the root README.
 - Full docs: <https://docs.prego.k8skill.com/npm> (sign in with your Prego account).
 
+## Stop dependency confusion
+
+If npm does not know where your scope is, it asks registry.npmjs.org. A person can publish a public package there with
+the same name as your private package. We call this attack dependency confusion. Do these two steps.
+
+1. **Put the scope line in the `.npmrc` of every project, and commit it.** Then npm asks only Prego for `@acme`
+   packages:
+
+   ```ini
+   @acme:registry=https://npm.prego.k8skill.com/t/acme/default/
+   ```
+
+   `prego setup npm --scope @acme` writes this line.
+
+2. **Create the free organization for each scope on npmjs.com,** for example `@acme`. Then nobody else can publish
+   `@acme` packages there. Do this also for a scope that you use only in Prego.
+
 ## Examples
 
 The [npm quickstart](quickstart.md#ci) has the CI jobs, and
