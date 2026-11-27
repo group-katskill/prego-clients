@@ -17,6 +17,7 @@ and where the examples are.
 | [SQLite snapshots](sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](keys/) | `prego keys` | Trial, Indie, Org, Publisher |
 | [A2A Agent Cards](a2a/) | `prego a2a` | Trial, Indie, Org, Publisher |
+| [API specs (OpenAPI, GraphQL)](apispec/) | `prego apispec` | Trial, Indie, Org, Publisher |
 
 The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
 

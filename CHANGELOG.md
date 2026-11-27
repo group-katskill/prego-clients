@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- README: "Verify where a version came from" (`prego verify`, ADR-0065), and the command in the CLI list.
+- `artifact-types/apispec/`: API specs (OpenAPI, GraphQL), ADR-0067 with Amendment 1. The README, the quickstart
+  (publish, get, diff, a GraphQL section, the checks and the errors), a sample OpenAPI 3.1 document, a sample GraphQL
+  schema (`examples/payments.graphql`), and CI jobs for GitHub Actions and GitLab that publish the document of a
+  release tag. The type tables of the README, `artifact-types/README.md` and the site, and the site's Artifacts menu,
+  list it. The README has an "API specs (OpenAPI, GraphQL)" section.
 - `artifact-types/crates/` and `artifact-types/npm/` READMEs: a "Stop dependency confusion" section. Crates: the
   registry on every private dependency, cargo-deny `[sources]`, a `cargo metadata | jq` source check in CI, a clear
   prefix, and no placeholder crates on crates.io. npm: the scope line in `.npmrc` and the free npmjs.com organization

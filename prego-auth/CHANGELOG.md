@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.4.0 with `prego` 1.4.0 (`prego verify`, `prego apispec`). Not released yet.
+
+### Added
+
+- `testing::MockServer::start_with` (test support only, not a public API): makes the responses from the base URL
+  of the server, for answers that hold absolute URLs on it (npm packuments, Python indexes, the cargo `dl`).
+
 ### Tests
 
 - `testing::TempDir` (test support only, not a public API): a temp directory that is zeroed and removed when it

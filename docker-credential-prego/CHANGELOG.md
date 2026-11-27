@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.4.0 with `prego` 1.4.0 (`prego verify`, `prego apispec`). Not released yet.
+
 ### Tests
 
 - The protocol tests use `prego_auth::testing::TempDir`, so `docker-credential-prego-*` directories no longer

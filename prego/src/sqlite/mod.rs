@@ -795,20 +795,48 @@ fn restore(
     force: bool,
 ) -> Result<(), String> {
     // The temporary file is removed (Partial is dropped) before the process exits.
-    match restore_inner(api, r, target, expect, force) {
-        Ok(()) => Ok(()),
+    match restore_inner(api, r, target, expect, force, false) {
+        Ok(_) => Ok(()),
         Err(Failure::Message(m)) => Err(m),
         Err(Failure::Exit(code)) => std::process::exit(code),
     }
 }
 
+/// For `prego verify`: the sequence number of the selected snapshot and the sha256 of its database file,
+/// after the snapshot is downloaded into a private temporary folder and checked (hashes and `quick_check`).
+/// The folder is removed.
+pub(crate) fn checked_snapshot(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &DbRef,
+) -> Result<(String, String), String> {
+    let api = Api::new(globals, &r.tenant, env)?;
+    let tmp = TempDir::new()?;
+    let target = tmp.path().join("snapshot.db");
+    match restore_inner(&api, r, &target, None, false, true) {
+        Ok((seq, got)) => Ok((seq, got.file)),
+        Err(Failure::Message(m)) => Err(m),
+        Err(Failure::Exit(EXIT_CHECK)) => Err(format!(
+            "prego verify: {}: the snapshot fails PRAGMA quick_check",
+            r.long()
+        )),
+        Err(Failure::Exit(code)) => Err(format!(
+            "prego verify: {}: the snapshot check stopped (exit {code})",
+            r.long()
+        )),
+    }
+}
+
+/// Downloads the selected snapshot to `target` and checks it. Returns the sequence number and the hashes of
+/// the content. `quiet` prints nothing (for `prego verify`).
 fn restore_inner(
     api: &Api,
     r: &DbRef,
     target: &Path,
     expect: Option<&str>,
     force: bool,
-) -> Result<(), Failure> {
+    quiet: bool,
+) -> Result<(String, Hashes), Failure> {
     let sel = r.selector();
     let what = format!("{}@{sel}", r.long());
     check_target(target, force)?;
@@ -1015,13 +1043,15 @@ fn restore_inner(
             let _ = d.sync_all();
         }
     }
-    eprintln!(
-        "{}@{seq} {hash} ({} bytes, quick_check ok)",
-        r.long(),
-        got.size
-    );
-    println!("{}", target.display());
-    Ok(())
+    if !quiet {
+        eprintln!(
+            "{}@{seq} {hash} ({} bytes, quick_check ok)",
+            r.long(),
+            got.size
+        );
+        println!("{}", target.display());
+    }
+    Ok((seq, got))
 }
 
 /// The target is a file path, and has no `-wal` or `-journal` file next to it unless `force`.

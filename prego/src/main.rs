@@ -5,6 +5,7 @@
 mod a2a;
 mod adapter;
 mod admin;
+mod apispec;
 mod args;
 mod context;
 mod docker_config;
@@ -22,6 +23,7 @@ mod sqlite;
 mod token;
 #[cfg(test)]
 mod vectors_tests;
+mod verify;
 
 use args::{Command, Parsed};
 
@@ -211,6 +213,47 @@ Commands:
                                   convert an A2A 0.3 card (also agent.json) to an A2A 1.0 card, offline. It
                                   prints every change and stops at a field it cannot map with certainty.
                                   Default output: agent-card.json next to the input. The output is unsigned
+  apispec push <file|folder> <ref>@<version> [--message <text>] [--tag <tag>]
+                                  publish an OpenAPI 3.0 or 3.1 document (JSON or YAML), or a GraphQL
+                                  schema (SDL: a .graphql or .gql file, or a folder of them joined in
+                                  path order), at most 4 MiB, as a new version of an API spec. A spec
+                                  keeps the format of its first version. <ref> is <tenant>/<spec> or
+                                  <tenant>/<namespace>/<spec>; the version is SemVer with no leading v.
+                                  Swagger 2.0, and GraphQL with a query, mutation, subscription or
+                                  fragment, are refused before the upload. The same bytes again: no
+                                  change. Needs publish on ecosystem apispec
+  apispec get <ref>[@<version>] [--format json|yaml|graphql] [--expect <hash>] [--out <file>]
+                                  write the document to stdout or --out (default: the highest version,
+                                  the bytes as published, checked against the version hash). OpenAPI:
+                                  --format json|yaml gives the other format as a conversion. GraphQL:
+                                  always the SDL as published
+  apispec diff <ref>@<version> <ref>@<version> [--json]
+                                  the registry's informational diff. OpenAPI: paths, operations,
+                                  parameters, request bodies, responses, security, servers,
+                                  info.version, deprecated, and schema <name> changed. GraphQL: types,
+                                  fields, arguments, enum values, union members, directives and
+                                  deprecations, by schema coordinate. It does not call a change
+                                  breaking
+  verify <type>:<tenant>/<namespace>/<name>[@<version>] [--repository <owner/repo>] [--ref <ref>]
+         [--sha <commit>] [--level ci_source|workload|person|api_key] [--hosted-runner] [--no-content]
+         [--keys <file>] [--registry <host>] [--kind publish|promote] [--json]
+                                  check the publish attestation of a version: the Prego signature (keys
+                                  from /.well-known/prego-attestation-keys.json, or --keys), that it names
+                                  this version, and the content digest, recomputed from a download. Then
+                                  print the facts: level, CI issuer, repository, ref, commit, run. Types:
+                                  cargo, npm, go, python, oci, snippet, context, sqlite, key, a2a, rv,
+                                  apispec.
+                                  Without @<version>: the latest version. oci: @<tag> or @sha256:<hex>.
+                                  rv: rv:<t>/<ns>/<package>@<package-version>[#<n>], or the name
+                                  _namespace, or rv:<t>/_tenant/_tenant. The options --repository, --ref,
+                                  --sha, --level and --hosted-runner are a policy: each must match.
+                                  python: each file of the release has its own attestation, checked
+                                  and printed one by one (files can come from different jobs).
+                                  --no-content needs @<version>. Exit codes: 0 verified; 1 a signature,
+                                  version, digest or policy mismatch; 3 no attestation (published before
+                                  attestations started); 2 a usage or network error. The attestation says
+                                  who published the bytes and from which pipeline, not that the bytes were
+                                  built from that source
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
                                   save a checkpoint of agent context (memory, notes, plans, transcripts):
@@ -322,7 +365,17 @@ fn main() {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     let parsed = match args::parse(&raw) {
         Ok(p) => p,
-        Err(m) => fail(&format!("prego: {m}. Run `prego --help`.")),
+        Err(m) => {
+            eprintln!("prego: {m}. Run `prego --help`.");
+            // `prego verify` keeps 1 for a mismatch; a usage error is 2.
+            let code =
+                if raw.iter().find(|a| !a.starts_with('-')).map(String::as_str) == Some("verify") {
+                    verify::EXIT_ERROR
+                } else {
+                    1
+                };
+            std::process::exit(code);
+        }
     };
     let env = prego_auth::ProcessEnv;
     let result = match parsed {
@@ -423,6 +476,14 @@ fn main() {
                 Command::A2a(c) => a2a::run(&globals, &c, &env),
                 Command::Context(c) => context::run(&globals, &c, &env),
                 Command::Sqlite(c) => sqlite::run(&globals, &c, &env),
+                Command::Apispec(c) => apispec::run(&globals, &c, &env),
+                Command::Verify(c) => match verify::run(&globals, &c, &env) {
+                    Ok(code) => std::process::exit(code),
+                    Err(e) => {
+                        eprintln!("{e}");
+                        std::process::exit(verify::EXIT_ERROR);
+                    }
+                },
                 Command::Exec {
                     command,
                     python: py,

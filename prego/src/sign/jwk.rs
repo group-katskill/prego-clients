@@ -53,7 +53,7 @@ impl Curve {
             Curve::P384 => "P-384",
         }
     }
-    fn len(self) -> usize {
+    pub fn len(self) -> usize {
         match self {
             Curve::P256 => 32,
             Curve::P384 => 48,

@@ -53,6 +53,7 @@ Prego hosts these types. The `prego` tools work with all of them. Each type has 
 | [SQLite snapshots](artifact-types/sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](artifact-types/keys/) | `prego keys` | Trial, Indie, Org, Publisher |
 | [A2A Agent Cards](artifact-types/a2a/) | `prego a2a` | Trial, Indie, Org, Publisher |
+| [API specs (OpenAPI, GraphQL)](artifact-types/apispec/) | `prego apispec` | Trial, Indie, Org, Publisher |
 
 The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
 
@@ -527,6 +528,50 @@ prego a2a upgrade ./agent.json                                  # A2A 0.3 to 1.0
 The [A2A Agent Cards quickstart](artifact-types/a2a/quickstart.md) has the rules, CI and the errors.
 [`artifact-types/a2a/examples/`](artifact-types/a2a/examples/) has a sample card set, a script and CI jobs.
 
+## Verify where a version came from
+
+From prego 1.4.0 and the registry with ADR-0065. At each publish, Prego writes a signed publish attestation from
+the identity that it checked at the front door: the CI issuer, the repository or project, the ref, the commit, the
+workflow and the run. `prego verify` checks it.
+
+```sh
+prego verify cargo:acme/default/payments@1.4.0
+prego verify npm:acme/default/@acme/hello --repository acme/hello --ref v1.2.0 --level ci_source --hosted-runner
+prego verify oci:acme/default/api@v1 --sha "$GITHUB_SHA" --json
+```
+
+- It checks the Prego signature with the public keys at
+  `https://api.prego.k8skill.com/.well-known/prego-attestation-keys.json` (or a local copy, `--keys <file>`), that
+  the attestation names this version, and the content digest, which it computes from a download of the content.
+- `--repository`, `--ref`, `--sha`, `--level` and `--hosted-runner` are a policy: each one must match.
+- Python: each file of a release has its own attestation (the wheels and the sdist can come from different jobs).
+  `prego verify` checks each file and prints its facts.
+- Exit codes: 0 verified; 1 a signature, version, digest or policy mismatch; 3 the version has no attestation
+  (published before attestations started); 2 a usage or network error.
+- The attestation says who published the bytes and from which pipeline. It does not say that the bytes were built
+  from that source: a CI job that is compromised can still publish bad bytes with a correct attestation.
+
+## API specs (OpenAPI, GraphQL)
+
+From prego 1.4.0 and the registry with ADR-0067. Versioned OpenAPI 3.0 and 3.1 documents and GraphQL schemas (SDL):
+one document per version, a SemVer label, a body that does not change, a stable URL, and an informational diff. A
+spec keeps the format of its first version.
+
+```sh
+prego apispec push ./openapi.yaml acme/payments-api@1.4.0 --tag stable
+prego apispec push ./schema acme/payments-graph@2.0.0          # a folder of .graphql files, joined in path order
+prego apispec get acme/payments-api@1.4.0 --out openapi.yaml
+prego apispec diff acme/payments-api@1.3.0 acme/payments-api@1.4.0
+```
+
+- Swagger 2.0 is refused before the upload. Bundle external `$ref`s first; Prego does not follow them.
+- GraphQL: the schema only. A query, mutation, subscription or fragment is refused before the upload.
+- The diff comes from the registry, the same as in the console. It says "added", "removed" or "changed", never
+  "breaking". OpenAPI: it does not look inside `components.schemas` ("schema `<name>` changed"). GraphQL: types,
+  fields, arguments, enum values, union members and directives, by schema coordinate (`Query.user(id:)`).
+
+The [API specs quickstart](artifact-types/apispec/quickstart.md) has the checks, CI and the errors.
+
 ## Not in 1.0.0
 
 Prego registry 1.0.0 does not have these:
@@ -576,6 +621,7 @@ prego a2a check ./cards                                  # check A2A 1.0 Agent C
 prego a2a push ./cards acme/agents/support --sign ./signer.private.pem --key acme/release-keys/signer   # sign and push (1.3.0)
 prego a2a get acme/agents/support ./cards --verify       # get a card set and check the signatures (1.3.0)
 prego a2a upgrade ./agent.json                           # A2A 0.3 card to 1.0, offline, no account (1.3.0)
+prego verify npm:acme/default/@acme/hello@1.2.0          # check the publish attestation and the content (1.4.0)
 ```
 
 `prego oci push <input> <image>`:

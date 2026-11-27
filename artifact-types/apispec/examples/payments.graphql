@@ -1,0 +1,36 @@
+"""The Payments API."""
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  "One payment by its ID."
+  payment(id: ID!): Payment
+  payments(first: Int = 20, after: String): [Payment!]!
+}
+
+type Mutation {
+  refund(paymentId: ID!, amount: Int): Refund!
+}
+
+type Payment {
+  id: ID!
+  amount: Int!
+  currency: Currency!
+  status: PaymentStatus!
+}
+
+type Refund {
+  id: ID!
+  payment: Payment!
+  amount: Int!
+}
+
+enum PaymentStatus {
+  PENDING
+  SETTLED
+  REFUNDED
+}
+
+scalar Currency
