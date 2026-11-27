@@ -121,12 +121,6 @@ pub struct VerifyCommand {
     pub registry: Option<String>,
 }
 
-/// The outcome before printing: the code and the messages for a mismatch.
-struct Outcome {
-    code: i32,
-    problems: Vec<String>,
-}
-
 pub fn run(globals: &[&str], cmd: &VerifyCommand, env: &dyn Env) -> Result<i32, String> {
     let target = Target::parse(&cmd.reference).map_err(|e| format!("prego verify: {e}"))?;
     cmd.policy.check_options()?;
@@ -178,9 +172,9 @@ pub fn run(globals: &[&str], cmd: &VerifyCommand, env: &dyn Env) -> Result<i32, 
     }
     .long();
 
-    // 2. The attestation.
+    // 2. The keys and the attestations: one per version, or one per file for Python (wire contract item 14).
     let api = Api::with_prefix(globals, &target.tenant, env, "attestations")?;
-    let mut path = format!(
+    let base_path = format!(
         "{}/{}/{}/{}/{}",
         seg(&target.tenant),
         seg(&target.namespace),
@@ -188,138 +182,239 @@ pub fn run(globals: &[&str], cmd: &VerifyCommand, env: &dyn Env) -> Result<i32, 
         seg(&target.name),
         seg(&version)
     );
-    if cmd.kind == "promote" {
-        path.push_str("?kind=promote");
-    }
-    let (res, body) = api.get_bytes(
-        &path,
-        "application/vnd.dsse.envelope.v1+json, application/json",
-        dsse::MAX_ENVELOPE as u64 + 1,
-    )?;
-    if res.status == 404 {
-        let v: Value = serde_json::from_str(&res.body).unwrap_or(Value::Null);
-        if v["error"]["code"].as_str() == Some("no_attestation") {
-            let msg = format!(
-                "prego verify: {shown}: no attestation (published before attestations started)"
-            );
-            if cmd.json {
-                println!(
-                    "{}",
-                    json!({"verified": false, "reference": what, "version": version, "attestation": null})
+    let per_file = target.typ == "python";
+    let mut files: Vec<Option<String>> = match (&content, per_file) {
+        (Some(c), true) => c.subjects.iter().map(|s| Some(s.name.clone())).collect(),
+        _ => vec![None],
+    };
+    let mut keys: Option<Vec<(String, crate::sign::jwk::PublicJwk)>> = None;
+    let mut results: Vec<FileResult> = Vec::new();
+    let mut i = 0;
+    while i < files.len() {
+        let file = files[i].clone();
+        i += 1;
+        let mut q: Vec<(&str, String)> = Vec::new();
+        if cmd.kind == "promote" {
+            q.push(("kind", "promote".into()));
+        }
+        if let Some(f) = &file {
+            q.push(("file", f.clone()));
+        }
+        let path = if q.is_empty() {
+            base_path.clone()
+        } else {
+            format!("{base_path}?{}", crate::env::query(&q))
+        };
+        let label = match &file {
+            Some(f) => format!("{shown} file {f}"),
+            None => shown.clone(),
+        };
+        let (res, body) = api.get_bytes(
+            &path,
+            "application/vnd.dsse.envelope.v1+json, application/json",
+            dsse::MAX_ENVELOPE as u64 + 1,
+        )?;
+        let err: Value = if res.status == 200 {
+            Value::Null
+        } else {
+            serde_json::from_str(&res.body).unwrap_or(Value::Null)
+        };
+        // A Python release with more files, read with --no-content: one attestation per file.
+        if res.status == 400 && per_file && file.is_none() {
+            if let Some(list) = err["error"]["files"].as_array().or(err["files"].as_array()) {
+                files.extend(
+                    list.iter()
+                        .filter_map(|f| f.as_str())
+                        .map(|f| Some(f.to_string())),
                 );
+                continue;
             }
-            eprintln!("{msg}");
-            return Ok(EXIT_NO_ATTESTATION);
         }
-    }
-    if res.status != 200 {
-        return Err(crate::snippet::api_error(
-            &res,
-            &format!("{shown} attestation"),
-        ));
-    }
-    let attestation_id = res
-        .header("x-prego-attestation-id")
-        .unwrap_or("")
-        .to_string();
-
-    // 3. The keys.
-    let key_bytes = match &cmd.keys {
-        Some(file) => {
-            std::fs::read(file).map_err(|e| format!("prego verify: --keys {file}: {e}"))?
+        if res.status == 404 && err["error"]["code"].as_str() == Some("no_attestation") {
+            results.push(FileResult {
+                file,
+                missing: true,
+                ..FileResult::default()
+            });
+            continue;
         }
-        None => api.get_root(KEYS_PATH, "application/json", 1024 * 1024)?,
-    };
-    let keys = dsse::parse_jwks(&key_bytes).map_err(|e| format!("prego verify: {e}"))?;
-
-    // 4. Check everything; collect the problems.
-    let mut out = Outcome {
-        code: 0,
-        problems: Vec::new(),
-    };
-    let mut key_id = String::new();
-    let mut st: Option<Statement> = None;
-    match dsse::Envelope::parse(&body).and_then(|e| e.verify(&keys).map(|k| (e, k))) {
-        Err(e) => out.problems.push(e),
-        Ok((env_, kid)) => {
-            key_id = kid;
-            match statement::parse(&env_.payload) {
-                Err(e) => out.problems.push(e),
-                Ok(s) => {
-                    if let Err(e) = s.check_target(
-                        &cmd.kind,
-                        &target.tenant,
-                        &target.namespace,
-                        &target.typ,
-                        &target.name,
-                        Some(&version),
-                    ) {
-                        out.problems.push(e);
+        if res.status != 200 {
+            return Err(crate::snippet::api_error(
+                &res,
+                &format!("{label} attestation"),
+            ));
+        }
+        if keys.is_none() {
+            let key_bytes = match &cmd.keys {
+                Some(f) => {
+                    std::fs::read(f).map_err(|e| format!("prego verify: --keys {f}: {e}"))?
+                }
+                None => api.get_root(KEYS_PATH, "application/json", 1024 * 1024)?,
+            };
+            keys = Some(dsse::parse_jwks(&key_bytes).map_err(|e| format!("prego verify: {e}"))?);
+        }
+        let mut r = FileResult {
+            attestation_id: res
+                .header("x-prego-attestation-id")
+                .unwrap_or("")
+                .to_string(),
+            file: file.clone(),
+            ..FileResult::default()
+        };
+        let keys = keys.as_deref().unwrap_or_default();
+        match dsse::Envelope::parse(&body).and_then(|e| e.verify(keys).map(|k| (e, k))) {
+            Err(e) => r.problems.push(e),
+            Ok((env_, kid)) => {
+                r.key_id = kid;
+                match statement::parse(&env_.payload) {
+                    Err(e) => r.problems.push(e),
+                    Ok(s) => {
+                        if let Err(e) = s.check_target(
+                            &cmd.kind,
+                            &target.tenant,
+                            &target.namespace,
+                            &target.typ,
+                            &target.name,
+                            Some(&version),
+                        ) {
+                            r.problems.push(e);
+                        }
+                        if let Some(c) = &content {
+                            // Python: this file only.
+                            let part = match &file {
+                                Some(f) => content::Content {
+                                    subjects: c
+                                        .subjects
+                                        .iter()
+                                        .filter(|x| &x.name == f)
+                                        .cloned()
+                                        .collect(),
+                                    ..c.clone()
+                                },
+                                None => c.clone(),
+                            };
+                            r.problems.extend(compare(&s, &part));
+                        }
+                        r.problems.extend(
+                            cmd.policy
+                                .failures(&s)
+                                .into_iter()
+                                .map(|f| format!("policy: {f}")),
+                        );
+                        r.facts = s.fact_lines();
                     }
-                    if let Some(c) = &content {
-                        out.problems.extend(compare(&s, c));
-                    }
-                    out.problems.extend(
-                        cmd.policy
-                            .failures(&s)
-                            .into_iter()
-                            .map(|f| format!("policy: {f}")),
-                    );
-                    st = Some(s);
                 }
             }
         }
+        results.push(r);
     }
-    if !out.problems.is_empty() {
-        out.code = EXIT_MISMATCH;
-    }
+    let code = if results.iter().any(|r| !r.problems.is_empty()) {
+        EXIT_MISMATCH
+    } else if results.iter().any(|r| r.missing) {
+        EXIT_NO_ATTESTATION
+    } else {
+        0
+    };
 
-    // 5. Print.
-    let facts = st.as_ref().map(Statement::fact_lines).unwrap_or_default();
-    if cmd.json {
+    // 3. Print.
+    let facts_json = |facts: &[(String, String)]| {
         let mut f = serde_json::Map::new();
-        for (k, v) in &facts {
+        for (k, v) in facts {
             f.insert(k.clone(), Value::String(v.clone()));
         }
-        println!(
-            "{}",
+        Value::Object(f)
+    };
+    if cmd.json {
+        let v = if per_file {
             json!({
-                "verified": out.code == 0,
+                "verified": code == 0,
                 "reference": what,
                 "version": version,
-                "attestation_id": attestation_id,
-                "key_id": key_id,
                 "content_checked": content.is_some(),
-                "facts": f,
-                "problems": out.problems,
+                "files": results.iter().map(|r| json!({
+                    "file": r.file,
+                    "attestation": !r.missing,
+                    "attestation_id": r.attestation_id,
+                    "key_id": r.key_id,
+                    "facts": facts_json(&r.facts),
+                    "problems": r.problems,
+                })).collect::<Vec<_>>(),
             })
-        );
+        } else {
+            let r = &results[0];
+            if r.missing {
+                json!({"verified": false, "reference": what, "version": version, "attestation": null})
+            } else {
+                json!({
+                    "verified": code == 0,
+                    "reference": what,
+                    "version": version,
+                    "attestation_id": r.attestation_id,
+                    "key_id": r.key_id,
+                    "content_checked": content.is_some(),
+                    "facts": facts_json(&r.facts),
+                    "problems": r.problems,
+                })
+            }
+        };
+        println!("{v}");
     } else {
-        let width = facts.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
-        for (k, v) in &facts {
-            println!("{k:width$}  {v}");
+        for (n, r) in results.iter().enumerate() {
+            if let Some(f) = &r.file {
+                if n > 0 {
+                    println!();
+                }
+                println!("file {f}");
+            }
+            let width = r.facts.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
+            for (k, v) in &r.facts {
+                println!("{k:width$}  {v}");
+            }
         }
     }
-    let name = &shown;
-    if out.code == 0 {
-        let checked = if content.is_some() {
-            "signature, version, content digest"
-        } else {
-            "signature, version (content not checked: --no-content)"
-        };
-        let policy = if cmd.policy == Policy::default() {
-            String::new()
-        } else {
-            ", policy".into()
-        };
-        eprintln!("prego verify: {name}: verified ({checked}{policy}) with key {key_id}");
+    let checked = if content.is_some() {
+        "signature, version, content digest"
     } else {
-        for p in &out.problems {
-            eprintln!("prego verify: {name}: {p}");
+        "signature, version (content not checked: --no-content)"
+    };
+    let policy = if cmd.policy == Policy::default() {
+        String::new()
+    } else {
+        ", policy".into()
+    };
+    for r in &results {
+        let name = match &r.file {
+            Some(f) => format!("{shown} file {f}"),
+            None => shown.clone(),
+        };
+        if r.missing {
+            eprintln!(
+                "prego verify: {name}: no attestation (published before attestations started)"
+            );
+        } else if r.problems.is_empty() {
+            eprintln!(
+                "prego verify: {name}: verified ({checked}{policy}) with key {}",
+                r.key_id
+            );
+        } else {
+            for p in &r.problems {
+                eprintln!("prego verify: {name}: {p}");
+            }
+            eprintln!("prego verify: {name}: NOT verified");
         }
-        eprintln!("prego verify: {name}: NOT verified");
     }
-    Ok(out.code)
+    Ok(code)
+}
+
+/// The check of one attestation: of the version, or of one Python file.
+#[derive(Debug, Default)]
+struct FileResult {
+    file: Option<String>,
+    missing: bool,
+    attestation_id: String,
+    key_id: String,
+    facts: Vec<(String, String)>,
+    problems: Vec<String>,
 }
 
 /// Compares the digests computed here with the subjects of the statement. Every computed subject must be in

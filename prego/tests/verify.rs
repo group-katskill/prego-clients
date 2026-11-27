@@ -525,31 +525,39 @@ fn npm_tarball_behind_a_download_link_gets_no_token() {
     assert_eq!(reqs[3].header("authorization"), None);
 }
 
+const WHL: &str = "acme_pay-1.0.0-py3-none-any.whl";
+const SDIST: &str = "acme-pay-1.0.0.tar.gz";
+
+/// The attestation of one Python file (wire contract item 14), with this uploader repository.
+fn python_file_statement(file: &str, bytes: &[u8], repository: &str) -> Value {
+    let mut st = package_statement(
+        "python",
+        "acme-pay",
+        "1.0.0",
+        json!([{"name": file, "digest": {"sha256": hex(&Sha256::digest(bytes))}}]),
+    );
+    st["predicate"]["identity"] = json!({"iss": "https://token.actions.githubusercontent.com",
+                                         "repository": repository});
+    st
+}
+
 #[test]
-fn python_every_file_of_the_version() {
+fn python_one_attestation_per_file() {
     let s = Signer::new();
     let whl = b"wheel bytes".to_vec();
     let sdist = b"sdist bytes".to_vec();
     let index = |base: &str| {
         json!({"files": [
-            {"filename": "acme_pay-1.0.0-py3-none-any.whl", "url": format!("{base}/files/a.whl"),
+            {"filename": WHL, "url": format!("{base}/files/a.whl"),
              "hashes": {"sha256": hex(&Sha256::digest(&whl))}},
             {"filename": "acme_pay-1.1.0-py3-none-any.whl", "url": format!("{base}/files/b.whl"),
              "hashes": {"sha256": "00"}},
-            {"filename": "acme-pay-1.0.0.tar.gz", "url": format!("{base}/files/a.tar.gz"),
+            {"filename": SDIST, "url": format!("{base}/files/a.tar.gz"),
              "hashes": {"sha256": hex(&Sha256::digest(&sdist))}},
         ]})
         .to_string()
     };
-    let st = package_statement(
-        "python",
-        "acme-pay",
-        "1.0.0",
-        json!([
-            {"name": "acme-pay-1.0.0.tar.gz", "digest": {"sha256": hex(&Sha256::digest(&sdist))}},
-            {"name": "acme_pay-1.0.0-py3-none-any.whl", "digest": {"sha256": hex(&Sha256::digest(&whl))}},
-        ]),
-    );
+    // The two files came from two jobs of different repositories.
     let server = MockServer::start_with(|base| {
         vec![
             sts_ok(),
@@ -557,8 +565,9 @@ fn python_every_file_of_the_version() {
             MockResponse::bytes(200, "application/octet-stream", whl.clone()),
             MockResponse::bytes(200, "application/octet-stream", sdist.clone()),
             sts_ok(),
-            attestation(s.envelope(&st)),
+            attestation(s.envelope(&python_file_statement(WHL, &whl, "acme/pay-wheels"))),
             MockResponse::json(200, &s.jwks()),
+            attestation(s.envelope(&python_file_statement(SDIST, &sdist, "acme/pay"))),
         ]
     });
     let r = run(
@@ -568,9 +577,19 @@ fn python_every_file_of_the_version() {
             "python:acme/default/Acme_Pay@1.0.0",
             "--registry",
             &host(&server),
+            "--json",
         ],
     );
     assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(&r.stdout).unwrap();
+    assert_eq!(v["verified"], true);
+    assert_eq!(v["files"][0]["file"], WHL);
+    assert_eq!(
+        v["files"][0]["facts"]["identity.repository"],
+        "acme/pay-wheels"
+    );
+    assert_eq!(v["files"][1]["file"], SDIST);
+    assert_eq!(v["files"][1]["facts"]["identity.repository"], "acme/pay");
     let reqs = server.requests();
     assert_eq!(reqs[1].target, "/t/acme/default/simple/acme-pay/");
     assert!(reqs[1]
@@ -579,6 +598,104 @@ fn python_every_file_of_the_version() {
         .starts_with("Basic "));
     assert_eq!(reqs[2].target, "/files/a.whl");
     assert_eq!(reqs[3].target, "/files/a.tar.gz");
+    assert_eq!(
+        reqs[5].target,
+        format!(
+            "/v1/attestations/acme/default/python/acme-pay/1.0.0?file={}",
+            WHL
+        )
+    );
+    assert_eq!(
+        reqs[7].target,
+        "/v1/attestations/acme/default/python/acme-pay/1.0.0?file=acme-pay-1.0.0.tar.gz"
+    );
+    // A policy that one file fails: exit 1, and the message names the file.
+    let server = MockServer::start_with(|base| {
+        vec![
+            sts_ok(),
+            MockResponse::json(200, &index(base)),
+            MockResponse::bytes(200, "application/octet-stream", whl.clone()),
+            MockResponse::bytes(200, "application/octet-stream", sdist.clone()),
+            sts_ok(),
+            attestation(s.envelope(&python_file_statement(WHL, &whl, "acme/pay-wheels"))),
+            MockResponse::json(200, &s.jwks()),
+            attestation(s.envelope(&python_file_statement(SDIST, &sdist, "acme/pay"))),
+        ]
+    });
+    let r = run(
+        &server,
+        &[
+            "verify",
+            "python:acme/default/acme-pay@1.0.0",
+            "--registry",
+            &host(&server),
+            "--repository",
+            "acme/pay",
+        ],
+    );
+    assert_eq!(r.code, 1, "{}", r.stderr);
+    assert!(
+        r.stderr.contains(&format!("python:acme/default/acme-pay@1.0.0 file {WHL}: policy: --repository acme/pay: the repository is acme/pay-wheels")),
+        "{}",
+        r.stderr
+    );
+    assert!(
+        r.stderr.contains(&format!("file {SDIST}: verified")),
+        "{}",
+        r.stderr
+    );
+}
+
+#[test]
+fn python_no_content_reads_the_file_list_and_a_missing_attestation_exits_3() {
+    let s = Signer::new();
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::json(
+            400,
+            &json!({"error": {"code": "bad_request", "message": "this release has 2 files; add ?file=<filename>",
+                              "files": [WHL, SDIST]}})
+            .to_string(),
+        ),
+        attestation(s.envelope(&python_file_statement(WHL, b"x", "acme/pay"))),
+        MockResponse::json(200, &s.jwks()),
+        MockResponse::json(404, r#"{"error":{"code":"no_attestation"}}"#),
+    ]);
+    let r = run(
+        &server,
+        &[
+            "verify",
+            "python:acme/default/acme-pay@1.0.0",
+            "--no-content",
+        ],
+    );
+    assert_eq!(r.code, 3, "{}", r.stderr);
+    assert!(
+        r.stdout.starts_with(&format!("file {WHL}\n")),
+        "{}",
+        r.stdout
+    );
+    assert!(
+        r.stderr.contains(&format!(
+            "file {WHL}: verified (signature, version (content not checked"
+        )),
+        "{}",
+        r.stderr
+    );
+    assert!(
+        r.stderr.contains(&format!("file {SDIST}: no attestation")),
+        "{}",
+        r.stderr
+    );
+    let reqs = server.requests();
+    assert_eq!(
+        reqs[1].target,
+        "/v1/attestations/acme/default/python/acme-pay/1.0.0"
+    );
+    assert_eq!(
+        reqs[2].target,
+        format!("/v1/attestations/acme/default/python/acme-pay/1.0.0?file={WHL}")
+    );
 }
 
 #[test]

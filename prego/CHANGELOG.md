@@ -17,7 +17,9 @@ Version 1.4.0 (minor). Not released yet.
   names this version, downloads the content and recomputes the subject digest, and prints the facts (level,
   CI issuer, repository, ref, commit, workflow, run). Types: `cargo`, `npm`, `go`, `python`, `oci`, `snippet`,
   `context`, `sqlite`, `key`, `a2a` and `rv` (Release Variables: `rv:<t>/<ns>/<package>@<package-version>#<n>`).
-  Without `@<version>`, the latest version; an OCI tag is resolved to the manifest digest. Policy options:
+  Without `@<version>`, the latest version; an OCI tag is resolved to the manifest digest. Python: each file of a
+  release has its own attestation (`?file=<filename>`), so verify checks and prints each file (the files can come
+  from different jobs); with `--no-content` it takes the file list from the registry. Policy options:
   `--repository`, `--ref`, `--sha`, `--level`, `--hosted-runner`. Also `--no-content`, `--registry <host>`,
   `--kind promote` (build artifacts, ADR-0066) and `--json`. A download that the registry answers with a storage link
   (`307`) is followed one time, without the token, so the token never goes to another host. Exit codes: 0 verified; 1 a signature, version,

@@ -543,6 +543,8 @@ prego verify oci:acme/default/api@v1 --sha "$GITHUB_SHA" --json
   `https://api.prego.k8skill.com/.well-known/prego-attestation-keys.json` (or a local copy, `--keys <file>`), that
   the attestation names this version, and the content digest, which it computes from a download of the content.
 - `--repository`, `--ref`, `--sha`, `--level` and `--hosted-runner` are a policy: each one must match.
+- Python: each file of a release has its own attestation (the wheels and the sdist can come from different jobs).
+  `prego verify` checks each file and prints its facts.
 - Exit codes: 0 verified; 1 a signature, version, digest or policy mismatch; 3 the version has no attestation
   (published before attestations started); 2 a usage or network error.
 - The attestation says who published the bytes and from which pipeline. It does not say that the bytes were built

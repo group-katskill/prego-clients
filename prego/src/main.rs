@@ -224,6 +224,8 @@ Commands:
                                   rv: rv:<t>/<ns>/<package>@<package-version>[#<n>], or the name
                                   _namespace, or rv:<t>/_tenant/_tenant. The options --repository, --ref,
                                   --sha, --level and --hosted-runner are a policy: each must match.
+                                  python: each file of the release has its own attestation, checked
+                                  and printed one by one (files can come from different jobs).
                                   --no-content needs @<version>. Exit codes: 0 verified; 1 a signature,
                                   version, digest or policy mismatch; 3 no attestation (published before
                                   attestations started); 2 a usage or network error. The attestation says
