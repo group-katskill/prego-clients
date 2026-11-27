@@ -502,8 +502,11 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
             allow(&["--format", "--expect", "--out"], &[])?;
             let o = Opt { opts: &opts };
             let format = one("--format")?;
-            if format.as_deref().is_some_and(|f| f != "json" && f != "yaml") {
-                return Err("--format is json or yaml".into());
+            if format
+                .as_deref()
+                .is_some_and(|f| f != "json" && f != "yaml" && f != "graphql")
+            {
+                return Err("--format is json, yaml (OpenAPI) or graphql".into());
             }
             Command::Apispec(Box::new(crate::apispec::ApispecCommand::Get {
                 reference: r.to_string(),

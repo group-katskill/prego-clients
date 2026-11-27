@@ -364,3 +364,149 @@ fn diff_prints_the_registry_changes() {
     assert_eq!(r.code, 1);
     assert_eq!(server.requests().len(), 4);
 }
+
+const SDL_A: &str = "type Payment { id: ID! amount: Int! }\n";
+const SDL_B: &str = "type Query { payment(id: ID!): Payment }\n";
+
+fn sdl_item(h: &str) -> Value {
+    json!({"id": "apv_2", "version": "1.0.0", "hash": h, "format": "graphql", "encoding": "sdl", "openapi": null,
+           "title": null, "info_version": null, "size_bytes": 10, "operation_count": 1, "pushed_by": "prn_1",
+           "pushed_at": "2026-11-26T10:00:00Z", "message": null, "secret_override": false, "tags": []})
+}
+
+#[test]
+fn push_a_graphql_folder_joined_in_path_order() {
+    let dir = TempDir::new("prego-apispec-sdl");
+    std::fs::create_dir_all(dir.join("schema/b")).unwrap();
+    std::fs::write(dir.join("schema/b/query.graphql"), SDL_B).unwrap();
+    std::fs::write(dir.join("schema/a.gql"), SDL_A.trim_end()).unwrap();
+    let joined = format!("{SDL_A}{SDL_B}");
+    let h = hash(joined.as_bytes());
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::json(
+            201,
+            &json!({"created": true, "version": sdl_item(&h)}).to_string(),
+        ),
+    ]);
+    let r = run(
+        &server,
+        &dir,
+        &["apispec", "push", "schema", "acme/payments-graph@1.0.0"],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(
+        r.stdout.contains(&format!(
+            "acme/default/payments-graph@1.0.0: published ({h}, GraphQL SDL, 1 root fields)"
+        )),
+        "{}",
+        r.stdout
+    );
+    let reqs = server.requests();
+    assert_eq!(
+        reqs[1].header("content-type").as_deref(),
+        Some("application/graphql")
+    );
+    assert_eq!(reqs[1].body, joined);
+}
+
+#[test]
+fn graphql_with_a_query_is_refused_before_the_upload() {
+    let dir = TempDir::new("prego-apispec-sdl-refuse");
+    std::fs::write(
+        dir.join("ops.graphql"),
+        "type Query { a: Int }\nquery GetA { a }\n",
+    )
+    .unwrap();
+    let server = MockServer::start(vec![]);
+    let r = run(
+        &server,
+        &dir,
+        &[
+            "apispec",
+            "push",
+            "ops.graphql",
+            "acme/payments-graph@1.0.0",
+        ],
+    );
+    assert_eq!(r.code, 1);
+    assert!(
+        r.stderr
+            .contains("ops.graphql: line 2, column 1: `query` starts an executable definition"),
+        "{}",
+        r.stderr
+    );
+    assert!(r.stderr.contains("Nothing was sent."), "{}", r.stderr);
+    assert!(server.requests().is_empty());
+}
+
+#[test]
+fn graphql_get_diff_and_a_format_mismatch() {
+    let dir = TempDir::new("prego-apispec-sdl-get");
+    let h = hash(SDL_A.as_bytes());
+    let diff = json!({
+        "from": {"version": "1.0.0", "hash": "sha256:a"}, "to": {"version": "1.1.0", "hash": "sha256:b"},
+        "changes": [
+            {"change": "added", "kind": "field", "name": "Payment.currency", "text": "field Payment.currency added"},
+            {"change": "changed", "kind": "argument", "name": "Query.payment(id:)", "text": "argument Query.payment(id:) changed"}
+        ],
+        "truncated": false
+    });
+    let server = MockServer::start(vec![
+        sts_ok(),
+        MockResponse::bytes(200, "application/graphql", SDL_A.as_bytes().to_vec())
+            .with_header("X-Prego-Apispec-Version", "1.0.0")
+            .with_header("X-Prego-Apispec-Hash", &h)
+            .with_header("X-Prego-Apispec-Format", "published"),
+        sts_ok(),
+        MockResponse::json(200, &diff.to_string()),
+        sts_ok(),
+        MockResponse::json(
+            400,
+            r#"{"error":{"code":"format_mismatch","message":"the spec is graphql; this version is openapi","format":"graphql","sent":"openapi"}}"#,
+        ),
+    ]);
+    let r = run(
+        &server,
+        &dir,
+        &[
+            "apispec",
+            "get",
+            "acme/payments-graph@1.0.0",
+            "--format",
+            "graphql",
+        ],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert_eq!(r.stdout, SDL_A);
+    assert_eq!(
+        server.requests()[1].target,
+        "/v1/apispec/acme/default/payments-graph/1.0.0?format=graphql"
+    );
+    let r = run(
+        &server,
+        &dir,
+        &[
+            "apispec",
+            "diff",
+            "acme/payments-graph@1.0.0",
+            "acme/payments-graph@1.1.0",
+        ],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    assert!(
+        r.stdout
+            .contains("+ field Payment.currency added\n~ argument Query.payment(id:) changed\n"),
+        "{}",
+        r.stdout
+    );
+    // An OpenAPI document to a GraphQL spec: the registry's message.
+    std::fs::write(dir.join("api.yaml"), DOC).unwrap();
+    let r = run(
+        &server,
+        &dir,
+        &["apispec", "push", "api.yaml", "acme/payments-graph@1.1.0"],
+    );
+    assert_eq!(r.code, 1);
+    assert!(r.stderr.contains("format_mismatch"), "{}", r.stderr);
+}

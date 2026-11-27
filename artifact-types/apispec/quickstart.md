@@ -1,8 +1,9 @@
-# API specs with `prego apispec`
+# API specs (OpenAPI, GraphQL) with `prego apispec`
 
 **From prego 1.4.0 and the registry with ADR-0067.**
 
-An API spec is a name in a namespace, for example `payments-api`. Each version is one OpenAPI document. This guide
+An API spec is a name in a namespace, for example `payments-api`. Each version is one OpenAPI document or one
+GraphQL schema (from ADR-0067 Amendment 1). This guide
 uses tenant `acme`, namespace `default` and the spec `payments-api`. Replace them with your own.
 
 ## Plans and access
@@ -51,6 +52,32 @@ prego apispec get acme/payments-api@stable --expect sha256:<hex>
 - The stable URL of a version is `https://api.prego.k8skill.com/v1/apispec/acme/default/payments-api/1.4.0`. It needs
   a registry token and a `read` grant.
 
+## GraphQL schemas
+
+```sh
+prego apispec push ./schema.graphql acme/payments-graph@1.0.0
+prego apispec push ./schema acme/payments-graph@1.1.0          # every .graphql and .gql file, joined in path order
+prego apispec get acme/payments-graph@1.1.0 --out schema.graphql
+```
+
+- A `.graphql` or `.gql` file, or a folder of them, is GraphQL SDL. `prego` joins the files of a folder in path
+  order (subfolders too) and sends one document; the registry takes one file.
+- An API spec holds the schema only. `prego` refuses a query, a mutation, a subscription, a shorthand `{ ... }` query
+  or a fragment before the upload, with the line and column:
+
+  ```text
+  ops.graphql: line 2, column 1: `query` starts an executable definition (a query, mutation, subscription or
+  fragment). An API spec holds the schema only ...
+  ```
+
+- The registry checks the schema: unique names, defined types, and extensions of defined types. An error names the
+  schema coordinate, for example `400 apispec_invalid User.email: ...`.
+- A spec keeps the format of its first version: an OpenAPI document to a GraphQL spec (or the other way) is refused
+  with `400 format_mismatch`.
+- `get` always gives the SDL as published. `--format json` or `yaml` applies to OpenAPI only.
+- The diff names each change by its schema coordinate: `field Payment.currency added`,
+  `argument Query.payment(id:) changed`, and types, enum values, union members, directives and deprecations.
+
 ## See what changed
 
 ```sh
@@ -74,6 +101,9 @@ schemes and requirements, servers, `info.version` and `deprecated`. A change in 
 | Message | What to do |
 | --- | --- |
 | `/swagger: Swagger 2.0 is not supported` | Convert the document to OpenAPI 3, then publish again. |
+| `` `query` starts an executable definition `` | Remove the operations and fragments; publish the schema only. |
+| `400 format_mismatch` | The spec has the other format. Use a new spec name for it. |
+| `400 not_sdl` | The registry found an operation or a fragment in the GraphQL document. |
 | `/openapi: ... is not 3.0.x or 3.1.x` | Set `openapi` to a 3.0 or 3.1 version. |
 | `bad version ...: SemVer 2.0 with no leading v` | Use `1.4.0`, not `v1.4.0`. |
 | `409 conflict` | The label has other bytes, is pending deletion, or was used before. Use a new label. |

@@ -212,21 +212,27 @@ Commands:
                                   convert an A2A 0.3 card (also agent.json) to an A2A 1.0 card, offline. It
                                   prints every change and stops at a field it cannot map with certainty.
                                   Default output: agent-card.json next to the input. The output is unsigned
-  apispec push <file> <ref>@<version> [--message <text>] [--tag <tag>]
-                                  publish an OpenAPI 3.0 or 3.1 document (JSON or YAML, at most 4 MiB) as
-                                  a new version of an API spec. <ref> is <tenant>/<spec> or
+  apispec push <file|folder> <ref>@<version> [--message <text>] [--tag <tag>]
+                                  publish an OpenAPI 3.0 or 3.1 document (JSON or YAML), or a GraphQL
+                                  schema (SDL: a .graphql or .gql file, or a folder of them joined in
+                                  path order), at most 4 MiB, as a new version of an API spec. A spec
+                                  keeps the format of its first version. <ref> is <tenant>/<spec> or
                                   <tenant>/<namespace>/<spec>; the version is SemVer with no leading v.
-                                  Swagger 2.0 is refused before the upload. The same bytes again: no
+                                  Swagger 2.0, and GraphQL with a query, mutation, subscription or
+                                  fragment, are refused before the upload. The same bytes again: no
                                   change. Needs publish on ecosystem apispec
-  apispec get <ref>[@<version>] [--format json|yaml] [--expect <hash>] [--out <file>]
+  apispec get <ref>[@<version>] [--format json|yaml|graphql] [--expect <hash>] [--out <file>]
                                   write the document to stdout or --out (default: the highest version,
-                                  the bytes as published, checked against the version hash). --format
-                                  gives the other format as a conversion
+                                  the bytes as published, checked against the version hash). OpenAPI:
+                                  --format json|yaml gives the other format as a conversion. GraphQL:
+                                  always the SDL as published
   apispec diff <ref>@<version> <ref>@<version> [--json]
-                                  the registry's informational diff at the API level: paths,
-                                  operations, parameters, request bodies, responses, security,
-                                  servers, info.version, deprecated, and schema <name> changed.
-                                  It does not call a change breaking
+                                  the registry's informational diff. OpenAPI: paths, operations,
+                                  parameters, request bodies, responses, security, servers,
+                                  info.version, deprecated, and schema <name> changed. GraphQL: types,
+                                  fields, arguments, enum values, union members, directives and
+                                  deprecations, by schema coordinate. It does not call a change
+                                  breaking
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
                                   save a checkpoint of agent context (memory, notes, plans, transcripts):

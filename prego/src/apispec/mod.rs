@@ -1,4 +1,5 @@
-//! `prego apispec`: versioned OpenAPI 3.0 and 3.1 documents (ADR-0067), on the machine routes
+//! `prego apispec`: versioned OpenAPI 3.0 and 3.1 documents and GraphQL schemas (ADR-0067 with Amendment 1), on the
+//! machine routes
 //! `/v1/apispec/<tenant>/<namespace>/<name>` (api.md section 15.2).
 //!
 //! The client checks a document before the upload only as far as it can without a full YAML parser: the
@@ -149,9 +150,9 @@ fn check_selector(v: &str) -> Result<(), String> {
 /// What the client can tell about a document before the upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Precheck {
-    /// `json` or `yaml`.
+    /// `json`, `yaml` or `sdl` (GraphQL).
     pub format: &'static str,
-    /// The `openapi` value.
+    /// The `openapi` value; empty for GraphQL.
     pub openapi: String,
 }
 
@@ -223,6 +224,262 @@ pub fn precheck(body: &[u8]) -> Result<Precheck, String> {
     Ok(Precheck { format, openapi })
 }
 
+/// A GraphQL schema file: `.graphql` or `.gql`.
+pub fn is_graphql_file(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    n.ends_with(".graphql") || n.ends_with(".gql")
+}
+
+/// The document to publish: a file, or a folder of `.graphql`/`.gql` files joined in path order (ADR-0067
+/// Amendment 1; the registry takes one SDL file). Returns the bytes and whether they are GraphQL SDL.
+pub fn read_document(path: &str) -> Result<(Vec<u8>, bool), String> {
+    let meta = std::fs::metadata(path).map_err(|e| format!("prego: {path}: {e}"))?;
+    if meta.is_file() {
+        let body = std::fs::read(path).map_err(|e| format!("prego: {path}: {e}"))?;
+        return Ok((body, is_graphql_file(path)));
+    }
+    if !meta.is_dir() {
+        return Err(format!("prego: {path}: not a file or a folder"));
+    }
+    let mut files = Vec::new();
+    collect_graphql(
+        std::path::Path::new(path),
+        std::path::Path::new(""),
+        &mut files,
+    )?;
+    if files.is_empty() {
+        return Err(format!(
+            "prego: {path}: the folder has no .graphql or .gql file. To publish OpenAPI, give the file"
+        ));
+    }
+    files.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
+    let mut body = Vec::new();
+    for (_, full) in files {
+        let mut part =
+            std::fs::read(&full).map_err(|e| format!("prego: {}: {e}", full.display()))?;
+        if std::str::from_utf8(&part).is_err() {
+            return Err(format!("prego: {}: not UTF-8", full.display()));
+        }
+        if !part.is_empty() && !part.ends_with(b"\n") {
+            part.push(b'\n');
+        }
+        body.extend(part);
+        if body.len() > MAX_DOCUMENT {
+            break;
+        }
+    }
+    Ok((body, true))
+}
+
+/// The `.graphql`/`.gql` files under `dir` (not following symbolic links), with their paths relative to the
+/// folder (`/` between parts).
+fn collect_graphql(
+    dir: &std::path::Path,
+    rel: &std::path::Path,
+    out: &mut Vec<(String, std::path::PathBuf)>,
+) -> Result<(), String> {
+    let full = dir.join(rel);
+    let entries =
+        std::fs::read_dir(&full).map_err(|e| format!("prego: {}: {e}", full.display()))?;
+    for e in entries {
+        let e = e.map_err(|e| format!("prego: {}: {e}", full.display()))?;
+        let t = e.file_type().map_err(|e| format!("prego: {}: {e}", e))?;
+        let name = e.file_name().to_string_lossy().into_owned();
+        let r = rel.join(&name);
+        if t.is_dir() {
+            collect_graphql(dir, &r, out)?;
+        } else if t.is_file() && is_graphql_file(&name) {
+            let key = r
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            out.push((key, dir.join(&r)));
+        }
+    }
+    Ok(())
+}
+
+/// Checks a GraphQL SDL document before the upload (ADR-0067 Amendment 1): UTF-8, at most 4 MiB, at least one
+/// definition, and no executable definition (an operation `query`, `mutation`, `subscription`, a shorthand
+/// `{ ... }` query, or a `fragment`). The registry does the full check. The error gives the line and column.
+pub fn precheck_sdl(body: &[u8]) -> Result<Precheck, String> {
+    if body.len() > MAX_DOCUMENT {
+        return Err(format!(
+            "the document has {} bytes; an API spec is at most 4 MiB",
+            body.len()
+        ));
+    }
+    let text = std::str::from_utf8(body).map_err(|_| "the document is not UTF-8".to_string())?;
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let tokens = sdl_tokens(text)?;
+    if tokens.iter().all(|t| t.depth > 0 || t.text.is_empty()) || tokens.is_empty() {
+        return Err("the document has no GraphQL type definition".into());
+    }
+    // A top-level token that starts an executable definition: an operation keyword or `fragment` where a
+    // definition starts, or a `{` with no type, schema or extension before it.
+    let mut prev: Option<&Tok> = None;
+    for t in tokens.iter().filter(|t| t.depth == 0) {
+        let at_start = match prev {
+            None => true,
+            Some(p) => p.text == "}",
+        };
+        let executable = at_start
+            && matches!(
+                t.text.as_str(),
+                "query" | "mutation" | "subscription" | "fragment" | "{"
+            );
+        if executable {
+            return Err(format!(
+                "line {}, column {}: `{}` starts an executable definition (a query, mutation, subscription or \
+                 fragment). An API spec holds the schema only (SDL: type, interface, union, enum, input, scalar, \
+                 directive, schema and extend definitions)",
+                t.line, t.col, t.text
+            ));
+        }
+        prev = Some(t);
+    }
+    Ok(Precheck {
+        format: "sdl",
+        openapi: String::new(),
+    })
+}
+
+/// A token of the top-level structure: a name or one punctuator, with the bracket depth before it.
+#[derive(Debug)]
+struct Tok {
+    text: String,
+    depth: usize,
+    line: usize,
+    col: usize,
+}
+
+/// The names and the `{`, `}` of a GraphQL document, with their depth. Strings, block strings and comments
+/// are skipped. A bracket that does not close or open in order is an error.
+fn sdl_tokens(text: &str) -> Result<Vec<Tok>, String> {
+    let chars: Vec<char> = text.chars().collect();
+    let (mut i, mut line, mut col) = (0usize, 1usize, 1usize);
+    let mut depth = 0usize;
+    let mut out = Vec::new();
+    let advance = |i: &mut usize, line: &mut usize, col: &mut usize, c: char| {
+        *i += 1;
+        if c == '\n' {
+            *line += 1;
+            *col = 1;
+        } else {
+            *col += 1;
+        }
+    };
+    while i < chars.len() {
+        let c = chars[i];
+        let (l0, c0) = (line, col);
+        if c == '#' {
+            while i < chars.len() && chars[i] != '\n' {
+                {
+                    let ch = chars[i];
+                    advance(&mut i, &mut line, &mut col, ch);
+                }
+            }
+        } else if c == '"' {
+            let block = chars.get(i + 1) == Some(&'"') && chars.get(i + 2) == Some(&'"');
+            let skip = if block { 3 } else { 1 };
+            for _ in 0..skip {
+                advance(&mut i, &mut line, &mut col, '"');
+            }
+            loop {
+                if i >= chars.len() {
+                    return Err(format!("line {l0}, column {c0}: a string does not end"));
+                }
+                let d = chars[i];
+                if block
+                    && d == '"'
+                    && chars.get(i + 1) == Some(&'"')
+                    && chars.get(i + 2) == Some(&'"')
+                {
+                    for _ in 0..3 {
+                        advance(&mut i, &mut line, &mut col, '"');
+                    }
+                    break;
+                }
+                if !block && d == '\\' {
+                    advance(&mut i, &mut line, &mut col, d);
+                    if i < chars.len() {
+                        {
+                            let ch = chars[i];
+                            advance(&mut i, &mut line, &mut col, ch);
+                        }
+                    }
+                    continue;
+                }
+                if !block && d == '"' {
+                    advance(&mut i, &mut line, &mut col, d);
+                    break;
+                }
+                if !block && d == '\n' {
+                    return Err(format!(
+                        "line {l0}, column {c0}: a string does not end on its line"
+                    ));
+                }
+                advance(&mut i, &mut line, &mut col, d);
+            }
+        } else if c == '{' || c == '(' || c == '[' {
+            if c == '{' {
+                out.push(Tok {
+                    text: "{".into(),
+                    depth,
+                    line,
+                    col,
+                });
+            }
+            depth += 1;
+            advance(&mut i, &mut line, &mut col, c);
+        } else if c == '}' || c == ')' || c == ']' {
+            depth = depth
+                .checked_sub(1)
+                .ok_or_else(|| format!("line {line}, column {col}: `{c}` closes nothing"))?;
+            if c == '}' {
+                out.push(Tok {
+                    text: "}".into(),
+                    depth,
+                    line,
+                    col,
+                });
+            }
+            advance(&mut i, &mut line, &mut col, c);
+        } else if c.is_ascii_alphabetic() || c == '_' {
+            let mut name = String::new();
+            while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '_') {
+                name.push(chars[i]);
+                {
+                    let ch = chars[i];
+                    advance(&mut i, &mut line, &mut col, ch);
+                }
+            }
+            out.push(Tok {
+                text: name,
+                depth,
+                line: l0,
+                col: c0,
+            });
+        } else {
+            // Other punctuators and numbers: they separate names, and `=`, `|`, `&`, `@`, `:` follow a name.
+            if !c.is_whitespace() && c != ',' {
+                out.push(Tok {
+                    text: c.to_string(),
+                    depth,
+                    line,
+                    col,
+                });
+            }
+            advance(&mut i, &mut line, &mut col, c);
+        }
+    }
+    if depth != 0 {
+        return Err("a `{`, `(` or `[` does not close".into());
+    }
+    Ok(out)
+}
+
 fn hex_sha256(b: &[u8]) -> String {
     Sha256::digest(b)
         .iter()
@@ -250,9 +507,13 @@ pub fn run(globals: &[&str], command: &ApispecCommand, env: &dyn Env) -> Result<
                 )
             })?;
             check_label(&version).map_err(|e| format!("prego apispec push: {e}"))?;
-            let body = std::fs::read(file).map_err(|e| format!("prego: {file}: {e}"))?;
-            let p = precheck(&body)
-                .map_err(|e| format!("prego apispec push: {file}: {e}. Nothing was sent."))?;
+            let (body, graphql) = read_document(file)?;
+            let p = if graphql {
+                precheck_sdl(&body)
+            } else {
+                precheck(&body)
+            }
+            .map_err(|e| format!("prego apispec push: {file}: {e}. Nothing was sent."))?;
             push(
                 &api(globals, &r.tenant, env)?,
                 &r,
@@ -319,10 +580,10 @@ fn push(
     if !q.is_empty() {
         path = format!("{path}?{}", query(&q));
     }
-    let content_type = if p.format == "json" {
-        "application/json"
-    } else {
-        "application/yaml"
+    let content_type = match p.format {
+        "json" => "application/json",
+        "sdl" => "application/graphql",
+        _ => "application/yaml",
     };
     let what = format!("{}@{version}", r.long());
     let res = api.send("PUT", &path, Some(content_type), Body::Bytes(body))?;
@@ -339,11 +600,18 @@ fn push(
         ));
     }
     if answer["created"] == true {
-        println!(
-            "{what}: published ({hash}, OpenAPI {}, {} operations)",
-            p.openapi,
-            text(&v["operation_count"])
-        );
+        if p.format == "sdl" {
+            println!(
+                "{what}: published ({hash}, GraphQL SDL, {} root fields)",
+                text(&v["operation_count"])
+            );
+        } else {
+            println!(
+                "{what}: published ({hash}, OpenAPI {}, {} operations)",
+                p.openapi,
+                text(&v["operation_count"])
+            );
+        }
     } else {
         println!("{what}: no change, the version has these bytes ({hash})");
     }
@@ -544,6 +812,71 @@ mod tests {
             .contains("4 MiB"));
         // A nested `openapi:` does not count.
         assert!(precheck(b"info:\n  openapi: 3.1.0\n").is_err());
+    }
+
+    #[test]
+    fn sdl_prechecks() {
+        let ok = "\"\"\"The payments.\"\"\"\nschema { query: Query mutation: Mutation }\n\
+                  type Query { payment(id: ID!): Payment }\n\
+                  type Mutation { refund(paymentId: ID!): Refund }\n\
+                  # a comment with query { x }\n\
+                  type Payment @key(fields: \"id\") { id: ID! amount: Int! }\n\
+                  type Refund { id: ID! }\n\
+                  union Result = Payment | Refund\n\
+                  directive @key(fields: String!) on OBJECT | INTERFACE\n\
+                  extend type Payment { note: String }\n";
+        assert_eq!(precheck_sdl(ok.as_bytes()).unwrap().format, "sdl");
+        let e = precheck_sdl(b"type Query { a: Int }\nquery Q { a }\n").unwrap_err();
+        assert!(
+            e.starts_with("line 2, column 1: `query` starts an executable definition"),
+            "{e}"
+        );
+        assert!(precheck_sdl(b"{ a }").unwrap_err().contains("`{` starts"));
+        assert!(precheck_sdl(b"type A { a: Int }\nfragment F on A { a }")
+            .unwrap_err()
+            .contains("`fragment`"));
+        assert!(precheck_sdl(b"mutation { a }")
+            .unwrap_err()
+            .contains("`mutation`"));
+        assert!(precheck_sdl(b"subscription S { a }")
+            .unwrap_err()
+            .contains("`subscription`"));
+        // A field named query, and a block string with braces, are fine.
+        precheck_sdl(
+            b"type Query { query: String }\n\"\"\"\n{ not a query }\n\"\"\"\nscalar Date\n",
+        )
+        .unwrap();
+        assert!(precheck_sdl(b"# only a comment\n")
+            .unwrap_err()
+            .contains("no GraphQL type definition"));
+        assert!(precheck_sdl(b"type A { a: Int ")
+            .unwrap_err()
+            .contains("does not close"));
+        assert!(precheck_sdl(b"type A { a: String @d(x: \"open) }").is_err());
+        assert!(precheck_sdl(&[0xff]).unwrap_err().contains("UTF-8"));
+    }
+
+    #[test]
+    fn graphql_folders_join_in_path_order() {
+        let d = prego_auth::testing::TempDir::new("prego-apispec-sdl-folder");
+        std::fs::create_dir_all(d.join("b")).unwrap();
+        std::fs::write(d.join("b/query.graphql"), "type Query { a: A }").unwrap();
+        std::fs::write(d.join("a.gql"), "type A { x: Int }\n").unwrap();
+        std::fs::write(d.join("README.md"), "not schema").unwrap();
+        let (body, graphql) = read_document(d.to_str().unwrap()).unwrap();
+        assert!(graphql);
+        assert_eq!(
+            String::from_utf8(body).unwrap(),
+            "type A { x: Int }\ntype Query { a: A }\n"
+        );
+        let (_, graphql) = read_document(d.join("a.gql").to_str().unwrap()).unwrap();
+        assert!(graphql);
+        let (_, graphql) = read_document(d.join("README.md").to_str().unwrap()).unwrap();
+        assert!(!graphql);
+        let empty = prego_auth::testing::TempDir::new("prego-apispec-sdl-empty");
+        assert!(read_document(empty.to_str().unwrap())
+            .unwrap_err()
+            .contains("no .graphql"));
     }
 
     #[test]

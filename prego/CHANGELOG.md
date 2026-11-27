@@ -17,6 +17,11 @@ Version 1.4.0 (minor). Not released yet.
   <ref>@<b> [--json]` prints the registry's informational diff at the API level, so the CLI and the console show the
   same list. Before the upload, `push` checks the size, the `openapi` field (3.0.x or 3.1.x) and refuses Swagger 2.0
   with the registry's hint; nothing is sent then. The registry does the full check.
+- `prego apispec` and GraphQL schemas (ADR-0067 Amendment 1): `push` takes a `.graphql` or `.gql` file, or a folder
+  of them joined in path order, and sends it as `application/graphql`. Before the upload it refuses an executable
+  definition (a query, mutation, subscription, shorthand query or fragment), with the line and column. `get
+  --format graphql`; a GraphQL version is always the SDL as published. The diff prints the GraphQL changes by
+  schema coordinate.
 
 ### Tests
 
