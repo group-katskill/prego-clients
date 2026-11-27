@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.4.0 (minor). Not released yet.
+
+### Added
+
+- `prego verify <type>:<tenant>/<namespace>/<name>[@<version>]` (ADR-0065 section 7; needs the registry with
+  ADR-0065, 1.32.0): gets the publish attestation of a version from
+  `/v1/attestations/{tenant}/{namespace}/{type}/{name}/{version}`, checks its DSSE signature (ES256) with the Prego
+  attestation keys from `/.well-known/prego-attestation-keys.json` (or a local file, `--keys`), checks that it
+  names this version, downloads the content and recomputes the subject digest, and prints the facts (level,
+  CI issuer, repository, ref, commit, workflow, run). Types: `cargo`, `npm`, `go`, `python`, `oci`, `snippet`,
+  `context`, `sqlite`, `key`, `a2a` and `rv` (Release Variables: `rv:<t>/<ns>/<package>@<package-version>#<n>`).
+  Without `@<version>`, the latest version; an OCI tag is resolved to the manifest digest. Python: each file of a
+  release has its own attestation (`?file=<filename>`), so verify checks and prints each file (the files can come
+  from different jobs); with `--no-content` it takes the file list from the registry. Policy options:
+  `--repository`, `--ref`, `--sha`, `--level`, `--hosted-runner`. Also `--no-content`, `--registry <host>`,
+  `--kind promote` (build artifacts, ADR-0066) and `--json`. A download that the registry answers with a storage link
+  (`307`) is followed one time, without the token, so the token never goes to another host. Exit codes: 0 verified; 1 a signature, version,
+  digest or policy mismatch; 3 no attestation (published before attestations started); 2 a usage or network
+  error. The attestation says who published the bytes and from which pipeline. It does not say that the bytes
+  were built from that source.
+
+### Changed
+
+- The Go module zip reader stops at 500 MiB of uncompressed content (the Go module limit), so a zip bomb from a
+  registry stops early. `prego verify` uses it for the `h1:` hash.
+
 ### Tests
 
 - No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When

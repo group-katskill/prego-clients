@@ -517,6 +517,40 @@ fn push(
     Ok(())
 }
 
+/// For `prego verify`: the version number of a set (the current one, or `number`) and its hash, computed here
+/// from the variables (JCS). A hash in the answer that differs is an error.
+pub(crate) fn checked_set(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &Ref,
+    number: Option<u64>,
+) -> Result<(String, String), String> {
+    let api = Api::new(globals, r, env)?;
+    let set = api.set(r, number)?;
+    let local = jcs::hash(&Value::Object(plain(&set["variables"])?))?;
+    if let Some(server) = set["hash"].as_str() {
+        if server != local {
+            return Err(format!(
+                "prego: {}: the hash in the answer ({server}) is not the hash of the variables ({local})",
+                r.long()
+            ));
+        }
+    }
+    let n = set
+        .get("number")
+        .filter(|v| !v.is_null())
+        .or(set.get("current_version"))
+        .map(text)
+        .unwrap_or_default();
+    if n.is_empty() {
+        return Err(format!(
+            "prego: {}: the answer has no version number",
+            r.long()
+        ));
+    }
+    Ok((n, local))
+}
+
 fn set_id(set: &Value) -> Result<String, String> {
     set["id"]
         .as_str()

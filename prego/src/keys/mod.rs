@@ -439,6 +439,25 @@ pub fn entry_bytes(api: &Api, r: &SnipRef, selector: &str, index: &str) -> Resul
     Ok(bytes)
 }
 
+/// For `prego verify`: the version number and its hash, after every entry is downloaded and the hash is
+/// computed here from the entries. Nothing is written.
+pub(crate) fn checked_version(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &SnipRef,
+) -> Result<(String, String), String> {
+    let api = api(globals, &r.tenant, env)?;
+    let v = version(&api, r, r.selector(), None)?;
+    let entries = fetch_entries(&api, r, &v)?;
+    let local = entry::version_hash(
+        &entries
+            .iter()
+            .map(|(_, k, b)| (*k, b.clone()))
+            .collect::<Vec<_>>(),
+    );
+    Ok((v.number, local))
+}
+
 /// The entries of a version with their bytes, checked against the version hash.
 pub fn fetch_entries(
     api: &Api,

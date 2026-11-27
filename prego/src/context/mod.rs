@@ -665,6 +665,40 @@ fn restore(
     session: Option<&str>,
     expect: Option<&str>,
 ) -> Result<(), String> {
+    let (seq, local, got) = fetch_checked(api, r, session, expect, Some(dir))?;
+    let created = files::prepare_folder(dir).map_err(err)?;
+    if let Err(e) = files::write_all(dir, &got) {
+        if created {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+        return Err(err(e));
+    }
+    eprintln!("{}@{seq} {local} ({} files)", r.long(), got.len());
+    println!("{}", dir.display());
+    Ok(())
+}
+
+/// For `prego verify`: the sequence number and the hash of the selected version, after the content is
+/// downloaded and checked against the file list. Nothing is written.
+pub(crate) fn checked_version(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &CtxRef,
+) -> Result<(String, String), String> {
+    let api = Api::new(globals, &r.tenant, env)?;
+    let (seq, local, _) = fetch_checked(&api, r, None, None, None)?;
+    Ok((seq, local))
+}
+
+/// The selected version: its sequence number, its hash computed here, and its files, checked against the
+/// file list. `dir`, the restore folder, is checked after the file list and before the content is read.
+fn fetch_checked(
+    api: &Api,
+    r: &CtxRef,
+    session: Option<&str>,
+    expect: Option<&str>,
+    dir: Option<&Path>,
+) -> Result<(String, String, Vec<files::File>), String> {
     let sel = r.selector();
     let what = format!("{}@{sel}", r.long());
     let mut q: Vec<(&str, String)> = Vec::new();
@@ -728,7 +762,9 @@ fn restore(
         .map(str::to_string)
         .unwrap_or_else(|| text(field(&meta, "seq")));
     // The folder is checked first, but made only after the content is downloaded and checked.
-    files::check_folder(dir).map_err(err)?;
+    if let Some(d) = dir {
+        files::check_folder(d).map_err(err)?;
+    }
     let content = format!("{}/at/{}/content", Api::context(r), seg(&local));
     let (res, bytes) =
         api.get_bytes(&content, "application/gzip, application/x-tar", MAX_CONTENT)?;
@@ -743,16 +779,7 @@ fn restore(
             "prego: {what}: the content ({got_hash}) does not match the file list ({local})"
         ));
     }
-    let created = files::prepare_folder(dir).map_err(err)?;
-    if let Err(e) = files::write_all(dir, &got) {
-        if created {
-            let _ = std::fs::remove_dir_all(dir);
-        }
-        return Err(err(e));
-    }
-    eprintln!("{}@{seq} {local} ({} files)", r.long(), got.len());
-    println!("{}", dir.display());
-    Ok(())
+    Ok((seq, local, got))
 }
 
 // ---- ls, log, tag, rm, set ----
