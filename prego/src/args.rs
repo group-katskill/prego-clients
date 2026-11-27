@@ -114,6 +114,8 @@ pub enum Command {
     Context(Box<crate::context::ContextCommand>),
     /// `prego sqlite ...`.
     Sqlite(Box<crate::sqlite::SqliteCommand>),
+    /// `prego apispec ...`.
+    Apispec(Box<crate::apispec::ApispecCommand>),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -486,6 +488,41 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         }
         ["context", rest @ ..] => Command::Context(Box::new(parse_context(rest, &opts, &flag, &allow)?)),
         ["sqlite", rest @ ..] => Command::Sqlite(Box::new(parse_sqlite(rest, &opts, &flag, &allow)?)),
+        ["apispec", "push", file, r] => {
+            allow(&["--message", "--tag"], &[])?;
+            let o = Opt { opts: &opts };
+            Command::Apispec(Box::new(crate::apispec::ApispecCommand::Push {
+                file: file.to_string(),
+                reference: r.to_string(),
+                message: o.text("--message", 200)?,
+                tag: o.tag()?,
+            }))
+        }
+        ["apispec", "get", r] => {
+            allow(&["--format", "--expect", "--out"], &[])?;
+            let o = Opt { opts: &opts };
+            let format = one("--format")?;
+            if format.as_deref().is_some_and(|f| f != "json" && f != "yaml") {
+                return Err("--format is json or yaml".into());
+            }
+            Command::Apispec(Box::new(crate::apispec::ApispecCommand::Get {
+                reference: r.to_string(),
+                format,
+                expect: o.hash("--expect")?,
+                out: one("--out")?,
+            }))
+        }
+        ["apispec", "diff", a, b] => {
+            allow(&[], &["--json"])?;
+            Command::Apispec(Box::new(crate::apispec::ApispecCommand::Diff {
+                from: a.to_string(),
+                to: b.to_string(),
+                json: flag("--json"),
+            }))
+        }
+        ["apispec", ..] => {
+            return Err("usage: prego apispec push <file> <ref>@<version> | get <ref>[@<version>] | diff <ref>@<a> <ref>@<b>".into())
+        }
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };

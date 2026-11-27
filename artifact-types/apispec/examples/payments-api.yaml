@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: Payments API
+  version: 1.4.0
+servers:
+  - url: https://payments.example.com/v1
+paths:
+  /payments:
+    get:
+      summary: List payments
+      responses:
+        "200":
+          description: The payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+  /refunds:
+    post:
+      summary: Refund a payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Refund"
+      responses:
+        "201":
+          description: The refund
+components:
+  schemas:
+    Payment:
+      type: object
+      required: [id, amount]
+      properties:
+        id: { type: string }
+        amount: { type: integer }
+    Refund:
+      type: object
+      required: [payment_id]
+      properties:
+        payment_id: { type: string }

@@ -1,0 +1,17 @@
+# Publish the OpenAPI document of a release tag (v1.4.0 -> version 1.4.0) to Prego.
+# The job uses its own ID token: no stored secret. The publish gets an ADR-0065 attestation.
+publish-api-spec:
+  image: debian:stable-slim
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  variables:
+    PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
+  script:
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates
+    - curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+    - sh install.sh && export PATH="$HOME/.local/bin:$PATH"
+    - prego apispec push openapi.yaml "acme/payments-api@${CI_COMMIT_TAG#v}" --message "$CI_COMMIT_SHA"

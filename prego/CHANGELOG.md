@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.4.0 (minor). Not released yet.
+
+### Added
+
+- `prego apispec` (ADR-0067, API specs; needs the registry with ADR-0067): `push <file> <ref>@<version>
+  [--message] [--tag]` publishes an OpenAPI 3.0 or 3.1 document (JSON or YAML, at most 4 MiB) as a version with a
+  SemVer label; `get <ref>[@<version>] [--format json|yaml] [--expect <hash>] [--out <file>]` writes the document
+  (default: the highest version, the bytes as published, checked against the version hash); `diff <ref>@<a>
+  <ref>@<b> [--json]` prints the registry's informational diff at the API level, so the CLI and the console show the
+  same list. Before the upload, `push` checks the size, the `openapi` field (3.0.x or 3.1.x) and refuses Swagger 2.0
+  with the registry's hint; nothing is sent then. The registry does the full check.
+
 ### Tests
 
 - No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When

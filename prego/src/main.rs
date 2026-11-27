@@ -5,6 +5,7 @@
 mod a2a;
 mod adapter;
 mod admin;
+mod apispec;
 mod args;
 mod context;
 mod docker_config;
@@ -211,6 +212,21 @@ Commands:
                                   convert an A2A 0.3 card (also agent.json) to an A2A 1.0 card, offline. It
                                   prints every change and stops at a field it cannot map with certainty.
                                   Default output: agent-card.json next to the input. The output is unsigned
+  apispec push <file> <ref>@<version> [--message <text>] [--tag <tag>]
+                                  publish an OpenAPI 3.0 or 3.1 document (JSON or YAML, at most 4 MiB) as
+                                  a new version of an API spec. <ref> is <tenant>/<spec> or
+                                  <tenant>/<namespace>/<spec>; the version is SemVer with no leading v.
+                                  Swagger 2.0 is refused before the upload. The same bytes again: no
+                                  change. Needs publish on ecosystem apispec
+  apispec get <ref>[@<version>] [--format json|yaml] [--expect <hash>] [--out <file>]
+                                  write the document to stdout or --out (default: the highest version,
+                                  the bytes as published, checked against the version hash). --format
+                                  gives the other format as a conversion
+  apispec diff <ref>@<version> <ref>@<version> [--json]
+                                  the registry's informational diff at the API level: paths,
+                                  operations, parameters, request bodies, responses, security,
+                                  servers, info.version, deprecated, and schema <name> changed.
+                                  It does not call a change breaking
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
                                   save a checkpoint of agent context (memory, notes, plans, transcripts):
@@ -423,6 +439,7 @@ fn main() {
                 Command::A2a(c) => a2a::run(&globals, &c, &env),
                 Command::Context(c) => context::run(&globals, &c, &env),
                 Command::Sqlite(c) => sqlite::run(&globals, &c, &env),
+                Command::Apispec(c) => apispec::run(&globals, &c, &env),
                 Command::Exec {
                     command,
                     python: py,

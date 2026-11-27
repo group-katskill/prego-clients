@@ -53,6 +53,7 @@ Prego hosts these types. The `prego` tools work with all of them. Each type has 
 | [SQLite snapshots](artifact-types/sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](artifact-types/keys/) | `prego keys` | Trial, Indie, Org, Publisher |
 | [A2A Agent Cards](artifact-types/a2a/) | `prego a2a` | Trial, Indie, Org, Publisher |
+| [API specs (OpenAPI)](artifact-types/apispec/) | `prego apispec` | Trial, Indie, Org, Publisher |
 
 The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
 
@@ -526,6 +527,23 @@ prego a2a upgrade ./agent.json                                  # A2A 0.3 to 1.0
 
 The [A2A Agent Cards quickstart](artifact-types/a2a/quickstart.md) has the rules, CI and the errors.
 [`artifact-types/a2a/examples/`](artifact-types/a2a/examples/) has a sample card set, a script and CI jobs.
+
+## API specs (OpenAPI)
+
+From prego 1.4.0 and the registry with ADR-0067. Versioned OpenAPI 3.0 and 3.1 documents: one document per version,
+a SemVer label, a body that does not change, a stable URL, and an informational diff at the API level.
+
+```sh
+prego apispec push ./openapi.yaml acme/payments-api@1.4.0 --tag stable
+prego apispec get acme/payments-api@1.4.0 --out openapi.yaml
+prego apispec diff acme/payments-api@1.3.0 acme/payments-api@1.4.0
+```
+
+- Swagger 2.0 is refused before the upload. Bundle external `$ref`s first; Prego does not follow them.
+- The diff comes from the registry, the same as in the console. It says "added", "removed" or "changed", never
+  "breaking", and it does not look inside `components.schemas` ("schema `<name>` changed").
+
+The [API specs quickstart](artifact-types/apispec/quickstart.md) has the checks, CI and the errors.
 
 ## Not in 1.0.0
 
