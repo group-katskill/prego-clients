@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `artifact-types/snippets/examples/`: two runbooks to share as snippets, an Ansible playbook (`ansible-deploy-web/`,
+  with a role, an inventory example and a check run first) and a Python runbook (`python-rotate-logs/`, pinned
+  requirements, a virtual environment, a dry run first). Each has the recommended `runbook.yaml` (`kind`,
+  `entrypoint`, `inputs`), which Prego does not check. Prego has no runbook type (the operator's decision,
+  2026-11-26).
+
 ### Fixed
 
 - Site, README and consumer quickstart: the install text names version 1.3.0 (it said 0.10.0), the cosign example
