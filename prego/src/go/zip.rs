@@ -1,9 +1,7 @@
 //! Module zip files and `h1` hashes, as `golang.org/x/mod/zip` and `golang.org/x/mod/sumdb/dirhash` make them.
 
 use std::collections::HashMap;
-#[cfg(test)]
-use std::io::Read;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 use base64::Engine;
 use sha2::{Digest, Sha256};
@@ -346,8 +344,7 @@ impl<W: Write + Seek> ZipWriter<W> {
     }
 }
 
-#[cfg(test)]
-/// Computes the h1 of an existing module zip (for tests and checks): the SHA-256 of each entry, by name.
+/// Computes the h1 of an existing module zip (`prego verify`, tests): the SHA-256 of each entry, by name.
 pub fn zip_hash1(mut zip: impl Read) -> Result<String, String> {
     let mut data = Vec::new();
     zip.read_to_end(&mut data).map_err(|e| e.to_string())?;
@@ -358,9 +355,13 @@ pub fn zip_hash1(mut zip: impl Read) -> Result<String, String> {
     hash1(&files)
 }
 
-#[cfg(test)]
-/// Reads the entries of a zip (store or deflate, no zip64) from its central directory.
+/// The most uncompressed bytes that [`read_entries`] gives, as the Go module zip limit (500 MiB).
+const MAX_UNPACKED: u64 = 500 * 1024 * 1024;
+
+/// Reads the entries of a zip (store or deflate, no zip64) from its central directory. The content of all
+/// entries together is at most 500 MiB, so a zip bomb stops early.
 pub fn read_entries(data: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut left = MAX_UNPACKED;
     let u16_at = |i: usize| -> Result<u16, String> {
         data.get(i..i + 2)
             .map(|b| u16::from_le_bytes([b[0], b[1]]))
@@ -404,12 +405,16 @@ pub fn read_entries(data: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
             8 => {
                 let mut v = Vec::new();
                 flate2::read::DeflateDecoder::new(raw)
+                    .take(left + 1)
                     .read_to_end(&mut v)
                     .map_err(|e| e.to_string())?;
                 v
             }
             m => return Err(format!("zip method {m} is not supported")),
         };
+        left = left
+            .checked_sub(content.len() as u64)
+            .ok_or("the zip content is larger than 500 MiB")?;
         out.push((name, content));
     }
     Ok(out)

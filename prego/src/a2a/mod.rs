@@ -799,19 +799,13 @@ fn push(
     Ok(())
 }
 
-// ---- get ----
-
-#[allow(clippy::too_many_arguments)]
-fn get(
-    globals: &[&str],
-    env: &dyn Env,
+/// The card list of the selected version: the answer, the version number, the hash computed here from the
+/// list, and the list.
+fn card_listing(
+    api: &Api,
     r: &SnipRef,
-    folder: Option<&str>,
-    one: Option<&str>,
     expect: Option<&str>,
-    verify: bool,
-) -> Result<(), String> {
-    let api = api(globals, &r.tenant, env)?;
+) -> Result<(Value, String, String, Vec<files::Entry>), String> {
     let sel = r.selector();
     let mut path = format!("{}/v/{}", Api::snippet(r), seg(sel));
     if let Some(h) = expect {
@@ -854,28 +848,74 @@ fn get(
             sn::mismatch_exit(&what, &local, want);
         }
     }
+    Ok((answer, number, local, entries))
+}
+
+/// Downloads one card by the version hash and checks it against the list.
+fn fetch_card(
+    api: &Api,
+    r: &SnipRef,
+    number: &str,
+    local: &str,
+    e: &files::Entry,
+) -> Result<Vec<u8>, String> {
+    let p = format!(
+        "{}/v/{}/cards/{}",
+        Api::snippet(r),
+        seg(local),
+        seg(&e.path)
+    );
+    let w = format!("{}@{number} card {}", r.long(), e.path);
+    let (res, data) = api.get_bytes(&p, "application/json", MAX_CARD_BYTES as u64)?;
+    if res.status != 200 {
+        return Err(hint(sn::api_error(&res, &w), r, "read"));
+    }
+    if data.len() as u64 != e.size || files::hex_sha256(&data) != e.sha256 {
+        return Err(format!(
+            "prego: {w}: the content does not match the card list (size or sha256)"
+        ));
+    }
+    Ok(data)
+}
+
+/// For `prego verify`: the version number and its hash, computed here, after every card is downloaded and
+/// checked against the list. Nothing is written.
+pub(crate) fn checked_version(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &SnipRef,
+) -> Result<(String, String), String> {
+    let api = api(globals, &r.tenant, env)?;
+    let (_, number, local, entries) = card_listing(&api, r, None)?;
+    for e in &entries {
+        fetch_card(&api, r, &number, &local, e)?;
+    }
+    Ok((number, local))
+}
+
+// ---- get ----
+
+#[allow(clippy::too_many_arguments)]
+fn get(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &SnipRef,
+    folder: Option<&str>,
+    one: Option<&str>,
+    expect: Option<&str>,
+    verify: bool,
+) -> Result<(), String> {
+    let api = api(globals, &r.tenant, env)?;
+    let what = format!("{}@{}", r.long(), r.selector());
+    let (answer, number, local, entries) = card_listing(&api, r, expect)?;
+    let list = answer["cards"].as_array().cloned().unwrap_or_default();
     // Download every card by the version hash, and check each against the list.
     let mut got: Vec<(String, Vec<u8>)> = Vec::new();
     for e in &entries {
         if one.is_some_and(|f| f != e.path) && !verify {
             continue;
         }
-        let p = format!(
-            "{}/v/{}/cards/{}",
-            Api::snippet(r),
-            seg(&local),
-            seg(&e.path)
-        );
-        let w = format!("{}@{number} card {}", r.long(), e.path);
-        let (res, data) = api.get_bytes(&p, "application/json", MAX_CARD_BYTES as u64)?;
-        if res.status != 200 {
-            return Err(hint(sn::api_error(&res, &w), r, "read"));
-        }
-        if data.len() as u64 != e.size || files::hex_sha256(&data) != e.sha256 {
-            return Err(format!(
-                "prego: {w}: the content does not match the card list (size or sha256)"
-            ));
-        }
+        let data = fetch_card(&api, r, &number, &local, e)?;
         got.push((e.path.clone(), data));
     }
     if let Some(f) = one {

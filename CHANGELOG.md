@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- README: "Verify where a version came from" (`prego verify`, ADR-0065), and the command in the CLI list.
 - `artifact-types/crates/` and `artifact-types/npm/` READMEs: a "Stop dependency confusion" section. Crates: the
   registry on every private dependency, cargo-deny `[sources]`, a `cargo metadata | jq` source check in CI, a clear
   prefix, and no placeholder crates on crates.io. npm: the scope line in `.npmrc` and the free npmjs.com organization
