@@ -1,0 +1,22 @@
+# On a release tag: build and push the release files to Prego, promoted with the tag, with a link to the GitLab
+# release of the same tag (make that release in your release job, for example with release-cli).
+# The job uses its own ID token: no stored Prego secret.
+prego-release:
+  image: debian:stable-slim
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  variables:
+    PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
+  script:
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates make
+    - make dist && (cd dist && sha256sum * > SHA256SUMS)
+    - curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+    - sh install.sh && export PATH="$HOME/.local/bin:$PATH"
+    - >
+      prego build push acme/ci/api-cli dist/*
+      --promote "$CI_COMMIT_TAG"
+      --release-url "$CI_PROJECT_URL/-/releases/$CI_COMMIT_TAG"

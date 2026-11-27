@@ -53,6 +53,7 @@ Prego hosts these types. The `prego` tools work with all of them. Each type has 
 | [SQLite snapshots](artifact-types/sqlite-snapshots/) | `prego sqlite` | Trial, Org, Publisher |
 | [Keys and Certificates](artifact-types/keys/) | `prego keys` | Trial, Indie, Org, Publisher |
 | [A2A Agent Cards](artifact-types/a2a/) | `prego a2a` | Trial, Indie, Org, Publisher |
+| [Build artifacts](artifact-types/build/) | `prego build` | Trial, Indie, Org, Publisher |
 
 The Consumer plan publishes no type. A Consumer tenant reads every type through grants from other tenants.
 
@@ -526,6 +527,29 @@ prego a2a upgrade ./agent.json                                  # A2A 0.3 to 1.0
 
 The [A2A Agent Cards quickstart](artifact-types/a2a/quickstart.md) has the rules, CI and the errors.
 [`artifact-types/a2a/examples/`](artifact-types/a2a/examples/) has a sample card set, a script and CI jobs.
+
+## Build artifacts
+
+From prego 1.5.0 and the registry with ADR-0066. The output of CI pipelines (archives, binaries, `SHA256SUMS`,
+reports), uploaded by a CI job with its own identity. A build expires after the namespace window (3 to 360 days,
+default 30) unless it is promoted with a label.
+
+```sh
+prego build push acme/ci/api-cli dist/* --promote "$TAG" --release-url "$RELEASE_URL"   # a release
+prego build push acme/ci/api-test-reports reports/junit.xml --expires-in 7                # CI output
+prego build get acme/ci/api-cli --commit "$GITHUB_SHA" --out dist
+prego build list acme/ci/api-cli --promoted
+prego build promote acme/ci/api-cli v1.4.0 --commit 9f2c1ab
+```
+
+- Each file is sent in parts of at most 95 MiB, with its sha256; Prego checks it again. `get` checks the sha256 of
+  each file and does not replace a file that exists.
+- CI and SPIFFE identities can upload. People and API keys can upload only when the namespace allows it.
+- Prego does not mirror GitHub or GitLab releases: the release job pushes its files, and `--release-url` links the
+  build to the forge release.
+
+The [Build artifacts quickstart](artifact-types/build/quickstart.md) has the selectors, the expiry, CI jobs and the
+errors.
 
 ## Not in 1.0.0
 

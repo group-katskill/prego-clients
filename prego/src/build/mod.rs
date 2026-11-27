@@ -2,9 +2,9 @@
 //! set of a build and the sha256 of each file, the part plan of an upload, the `--release-url` check, the
 //! expiry window, the promote label and the selectors of `get`.
 //!
-//! The commands (`push`, `get`, `list`, `promote`) use these parts when the routes are in api.md section 16.
+//! The commands (`push`, `get`, `list`, `promote`) are in [`commands`], on the routes of api.md section 16.
 
-#![allow(dead_code)]
+pub mod commands;
 
 use std::io::Read;
 use std::path::Path;
@@ -21,6 +21,8 @@ pub const MAX_EXPIRY_DAYS: u32 = 360;
 /// Parts of an upload: at most 95 MiB, as `prego oci push` (ADR-0066 section 4).
 pub const MAX_PART: u64 = 95 * 1024 * 1024;
 pub const DEFAULT_PART: u64 = 64 * 1024 * 1024;
+/// The largest file of any plan (Publisher, 5 GiB; api.md section 16.1).
+pub const MAX_FILE_BYTES: u64 = 5 * 1024 * 1024 * 1024;
 
 /// One file of a build: the name in the build, the path on disk, the size and the sha256 (hex).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,21 +33,21 @@ pub struct BuildFile {
     pub sha256: String,
 }
 
-/// The name of a file in a build: the file name of the path. 1 to 255 bytes, no `/`, `\`, NUL or control
-/// characters, not `.` or `..`.
+/// The name of a file in a build (api.md section 16.1): one path segment, `[A-Za-z0-9._+-]`, 1 to 128
+/// characters, not starting with `.`.
 pub fn check_file_name(name: &str) -> Result<(), String> {
     let ok = !name.is_empty()
-        && name.len() <= 255
-        && name != "."
-        && name != ".."
-        && !name
-            .chars()
-            .any(|c| c == '/' || c == '\\' || c.is_control());
+        && name.len() <= 128
+        && !name.starts_with('.')
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'));
     if ok {
         Ok(())
     } else {
         Err(format!(
-            "the file name `{}` is not allowed in a build (1 to 255 bytes, no / or \\, no control characters)",
+            "the file name `{}` is not allowed in a build: 1 to 128 characters from A-Z, a-z, 0-9, `.`, `_`, \
+             `+` and `-`, not starting with `.`. Rename the file or put it in an archive",
             name.escape_debug()
         ))
     }
@@ -116,15 +118,6 @@ pub fn collect(paths: &[String]) -> Result<Vec<BuildFile>, String> {
         });
     }
     Ok(out)
-}
-
-/// The `SHA256SUMS` text of a file set (`<hex>  <name>`), sorted by name, as `sha256sum` writes it.
-pub fn sha256sums(files: &[BuildFile]) -> String {
-    let mut v: Vec<&BuildFile> = files.iter().collect();
-    v.sort_by(|a, b| a.name.cmp(&b.name));
-    v.iter()
-        .map(|f| format!("{}  {}\n", f.sha256, f.name))
-        .collect()
 }
 
 /// The part plan of one file: `(offset, length)` pairs. Every part has `part` bytes except the last. An empty
@@ -241,7 +234,7 @@ impl Selector {
         .count();
         if given != 1 {
             return Err(
-                "choose one build: <build-id>, --commit <sha>, --run <id>, --version <label> or --latest".into(),
+                "choose one build: <build-id>, --commit <sha>, --run <id>, --label <label> or --latest".into(),
             );
         }
         if git_ref.is_some() && !latest {
@@ -261,11 +254,8 @@ impl Selector {
             return Ok(Selector::Commit(c.to_ascii_lowercase()));
         }
         if let Some(r) = run {
-            if r.is_empty()
-                || r.len() > 64
-                || !r.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
-            {
-                return Err(format!("--run `{r}`: give the run or pipeline ID"));
+            if r.is_empty() || r.len() > 20 || !r.bytes().all(|b| b.is_ascii_digit()) {
+                return Err(format!("--run `{r}`: give the run or pipeline ID (digits)"));
             }
             return Ok(Selector::Run(r.to_string()));
         }
@@ -302,13 +292,6 @@ mod tests {
         assert_eq!(
             files[1].sha256,
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        );
-        assert_eq!(
-            sha256sums(&files),
-            format!(
-                "{}  app.tar.gz\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  empty.txt\n",
-                files[0].sha256
-            )
         );
         assert!(collect(&[p("app.tar.gz"), p("sub/app.tar.gz")])
             .unwrap_err()
@@ -406,6 +389,7 @@ mod tests {
         assert!(Selector::from_parts(None, None, Some("456"), None, false, Some("main")).is_err());
         assert!(Selector::from_parts(Some("build1"), None, None, None, false, None).is_err());
         assert!(Selector::from_parts(None, None, Some("a b"), None, false, None).is_err());
+        assert!(Selector::from_parts(None, None, Some("run-1"), None, false, None).is_err());
         assert_eq!(
             Selector::from_parts(None, None, None, Some("1.4.0"), false, None).unwrap(),
             Selector::Version("1.4.0".into())

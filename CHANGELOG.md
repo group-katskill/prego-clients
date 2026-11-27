@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `artifact-types/build/`: Build artifacts, ADR-0066. The README, the quickstart (push, get, list, promote, the
+  expiry and the errors), and CI examples: a GitHub Actions release job and a GitLab release job that push the
+  release files promoted with the tag and a link to the forge release, and a GitLab job that pushes test reports
+  that expire after 7 days. The type tables of the README, `artifact-types/README.md` and the site, and the site's
+  Artifacts menu, list it. The README has a "Build artifacts" section.
 - `artifact-types/crates/` and `artifact-types/npm/` READMEs: a "Stop dependency confusion" section. Crates: the
   registry on every private dependency, cargo-deny `[sources]`, a `cargo metadata | jq` source check in CI, a clear
   prefix, and no placeholder crates on crates.io. npm: the scope line in `.npmrc` and the free npmjs.com organization
