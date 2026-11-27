@@ -1,0 +1,7 @@
+# Managed by the deploy-web runbook. Local changes are lost at the next run.
+server {
+    listen {{ web_port }};
+    server_name {{ site_name }};
+    root {{ site_root }};
+    index index.html;
+}

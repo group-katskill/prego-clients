@@ -1,0 +1,14 @@
+# runbook.yaml: a convention. Prego does not check this file.
+kind: ansible
+entrypoint: playbook.yml
+description: Install nginx and serve one static site on the web servers.
+inputs:
+  - name: inventory
+    description: Your inventory file. Copy inventory.example.ini and add your hosts.
+    required: true
+  - name: web_port
+    description: The port of the web server.
+    default: "8080"
+  - name: site_name
+    description: The server name of the site.
+    default: example.internal

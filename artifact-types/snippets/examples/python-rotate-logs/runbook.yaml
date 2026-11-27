@@ -1,0 +1,14 @@
+# runbook.yaml: a convention. Prego does not check this file.
+kind: python
+entrypoint: runbook.py
+description: Remove .log files older than a number of days from one folder.
+inputs:
+  - name: dir
+    description: The folder with the log files.
+    default: /var/log/myapp
+  - name: days
+    description: Remove files older than this number of days.
+    default: "14"
+  - name: dry_run
+    description: Show the files and remove nothing. Always do a dry run first.
+    default: "true"

@@ -1,6 +1,6 @@
 # Snippets
 
-A snippet is a named set of text files: scripts, prompts, agent skills and templates. Its versions do not change.
+A snippet is a named set of text files: scripts, prompts, agent skills, templates and runbooks. Its versions do not change.
 Machines and agents read snippets with the identity that they already have. Like a gist, but private and
 versioned.
 
@@ -18,3 +18,6 @@ trust.**
 ## Examples
 
 The [Snippets guide](quickstart.md#ci) has a CI job.
+
+[Share runbooks](examples/README.md): an Ansible playbook and a Python runbook that you push as snippets, with the
+recommended `runbook.yaml` file. A runbook is code that you run: pin a tag and the hash.
