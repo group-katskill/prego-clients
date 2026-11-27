@@ -482,6 +482,50 @@ fn npm_latest_tarball_both_digests() {
 }
 
 #[test]
+fn npm_tarball_behind_a_download_link_gets_no_token() {
+    let s = Signer::new();
+    let tarball = b"npm tarball bytes".to_vec();
+    let sha512 = sha2::Sha512::digest(&tarball);
+    let st = package_statement(
+        "npm",
+        "hello",
+        "1.0.0",
+        json!([{"name": "hello-1.0.0.tgz", "digest": {"sha256": hex(&Sha256::digest(&tarball)), "sha512": hex(&sha512)}}]),
+    );
+    let server = MockServer::start_with(|base| {
+        vec![
+            sts_ok(),
+            MockResponse::json(
+                200,
+                &json!({"dist-tags": {"latest": "1.0.0"}, "versions": {"1.0.0": {"dist": {
+                    "tarball": format!("{base}/t/acme/default/hello/-/hello-1.0.0.tgz"),
+                    "integrity": format!("sha512-{}", STANDARD.encode(sha512))}}}})
+                .to_string(),
+            ),
+            MockResponse::redirect(&format!("{base}/storage/hello-1.0.0.tgz?sig=x")),
+            MockResponse::bytes(200, "application/octet-stream", tarball.clone()),
+            sts_ok(),
+            attestation(s.envelope(&st)),
+            MockResponse::json(200, &s.jwks()),
+        ]
+    });
+    let r = run(
+        &server,
+        &[
+            "verify",
+            "npm:acme/default/hello",
+            "--registry",
+            &host(&server),
+        ],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let reqs = server.requests();
+    assert!(reqs[2].header("authorization").is_some());
+    assert_eq!(reqs[3].target, "/storage/hello-1.0.0.tgz?sig=x");
+    assert_eq!(reqs[3].header("authorization"), None);
+}
+
+#[test]
 fn python_every_file_of_the_version() {
     let s = Signer::new();
     let whl = b"wheel bytes".to_vec();

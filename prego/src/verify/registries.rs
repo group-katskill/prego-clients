@@ -128,6 +128,26 @@ impl Client {
             .map_err(|e| format!("prego: {url}: {e}"))?;
         match res.status {
             200 => Ok(()),
+            // A download link (Prego gives large files as a short-lived storage link). It is followed one time,
+            // without the token, so the token never goes to another host.
+            301 | 302 | 303 | 307 | 308 => {
+                let loc = res.header("location").ok_or_else(|| {
+                    format!("prego: {what}: a redirect without a Location header")
+                })?;
+                let target = download_link(url, loc).map_err(|e| format!("prego: {what}: {e}"))?;
+                let (r, _) = self
+                    .http
+                    .get_to(&target, &[("Accept", accept)], out, max)
+                    .map_err(|e| format!("prego: {what}: the download link: {e}"))?;
+                if r.status == 200 {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "prego: {what}: HTTP {} from the download link",
+                        r.status
+                    ))
+                }
+            }
             404 => Err(format!(
                 "prego: {what}: not found, or you have no grant for it"
             )),
@@ -140,6 +160,25 @@ impl Client {
         serde_json::from_slice(&b)
             .map_err(|e| format!("prego: {what}: the answer is not JSON: {e}"))
     }
+}
+
+/// The target of a redirect from `url`: a path on the same host, or an `https://` link (`http://` only when
+/// `url` is `http://`, for local tests).
+pub fn download_link(url: &str, loc: &str) -> Result<String, String> {
+    let loc = loc.trim();
+    if loc.starts_with('/') && !loc.starts_with("//") {
+        let origin_end = url
+            .find("://")
+            .and_then(|i| url[i + 3..].find('/').map(|j| i + 3 + j))
+            .unwrap_or(url.len());
+        return Ok(format!("{}{loc}", &url[..origin_end]));
+    }
+    if loc.starts_with("https://") || (url.starts_with("http://") && loc.starts_with("http://")) {
+        return Ok(loc.to_string());
+    }
+    Err(format!(
+        "the registry sent a download link that is not https: `{loc}`"
+    ))
 }
 
 /// Compares two version texts: numeric parts as numbers, a pre-release (`-...`, or a Python `a`, `b`, `rc`,
@@ -573,6 +612,21 @@ mod tests {
             Some("1.0.1")
         );
         assert_eq!(latest(std::iter::empty()), None);
+    }
+
+    #[test]
+    fn download_links() {
+        assert_eq!(
+            download_link("https://npm.example/t/a/d/x", "/r2/x?sig=1").unwrap(),
+            "https://npm.example/r2/x?sig=1"
+        );
+        assert_eq!(
+            download_link("https://npm.example/t/a/d/x", "https://r2.example/x").unwrap(),
+            "https://r2.example/x"
+        );
+        assert!(download_link("https://npm.example/x", "http://r2.example/x").is_err());
+        assert!(download_link("https://npm.example/x", "//r2.example/x").is_err());
+        assert!(download_link("http://127.0.0.1:9/x", "http://127.0.0.1:9/y").is_ok());
     }
 
     #[test]
