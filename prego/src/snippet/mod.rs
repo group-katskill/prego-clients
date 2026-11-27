@@ -343,6 +343,22 @@ impl Api {
         Ok((res, out))
     }
 
+    /// A `GET` of a path on the control host outside `/v1/<prefix>/` (for example `/.well-known/...`), with no
+    /// token. A `200` body, at most `max` bytes.
+    pub(crate) fn get_root(&self, path: &str, accept: &str, max: u64) -> Result<Vec<u8>, String> {
+        let url = format!("{}{path}", self.c.base);
+        let mut out = Vec::new();
+        let (res, _) = self
+            .c
+            .http
+            .get_to(&url, &[("Accept", accept)], &mut out, max)
+            .map_err(|e| format!("prego: {url}: {e}"))?;
+        if res.status != 200 {
+            return Err(format!("prego: {url}: {}", res.status));
+        }
+        Ok(out)
+    }
+
     /// A `GET` with a `200` JSON answer. A `412 hash_mismatch` exits with [`EXIT_EXPECT`].
     pub(crate) fn get_json(&self, path: &str, what: &str) -> Result<(FullResponse, Value), String> {
         let (res, body) = self.get_bytes(path, "application/json", MAX_JSON)?;
@@ -563,6 +579,21 @@ fn listing(api: &Api, r: &SnipRef, expect: Option<&str>) -> Result<Listing, Stri
         hash: local,
         entries: out,
     })
+}
+
+/// For `prego verify`: the version number and its hash, computed here from the file list, after every file is
+/// downloaded and checked against the list. Nothing is written.
+pub(crate) fn checked_version(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &SnipRef,
+) -> Result<(String, String), String> {
+    let api = Api::new(globals, &r.tenant, env)?;
+    let l = listing(&api, r, None)?;
+    for e in &l.entries {
+        fetch(&api, r, &l, e)?;
+    }
+    Ok((l.number, l.hash))
 }
 
 /// Downloads one file of the listed version (by its hash, so it is the same version) and checks it.

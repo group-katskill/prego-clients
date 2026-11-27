@@ -49,6 +49,9 @@ struct Session {
     short_seen: bool,
 }
 
+/// A fixed answer: status, headers, body.
+pub type Canned = (u16, Vec<(String, String)>, Vec<u8>);
+
 #[derive(Default)]
 pub struct State {
     /// Blobs by (repository, digest).
@@ -87,6 +90,9 @@ pub struct State {
     pub deny_adapters: bool,
     /// The port of this server, for absolute storage links.
     pub port: u16,
+    /// Fixed answers by path (no query), checked before the registry routes: status, headers, body. For the
+    /// control-host routes that a test needs on the same server (the token exchange, `/v1/attestations/...`).
+    pub extra: HashMap<String, Canned>,
     patches: usize,
     v2_requests: usize,
 }
@@ -289,6 +295,13 @@ fn read(reader: &mut BufReader<TcpStream>) -> Option<(Req, Seen)> {
 }
 
 fn handle(s: &mut State, port: u16, req: &Req) -> Res {
+    if let Some((status, headers, body)) = s.extra.get(&req.path) {
+        return Res {
+            status: *status,
+            headers: headers.clone(),
+            body: body.clone(),
+        };
+    }
     if req.path.starts_with(REALM_PREFIX) {
         return realm(s, req);
     }

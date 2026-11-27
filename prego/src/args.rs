@@ -116,6 +116,8 @@ pub enum Command {
     Sqlite(Box<crate::sqlite::SqliteCommand>),
     /// `prego apispec ...`.
     Apispec(Box<crate::apispec::ApispecCommand>),
+    /// `prego verify <type>:<ref>[@<version>]`.
+    Verify(Box<crate::verify::VerifyCommand>),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -125,7 +127,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 45] = [
+const WITH_VALUE: [&str; 50] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -171,9 +173,14 @@ const WITH_VALUE: [&str; 45] = [
     "--key",
     "--key-file",
     "--card",
+    "--repository",
+    "--ref",
+    "--sha",
+    "--keys",
+    "--kind",
 ];
 /// Options without a value.
-const FLAGS: [&str; 16] = [
+const FLAGS: [&str; 18] = [
     "--write",
     "--print",
     "--dry-run",
@@ -190,6 +197,8 @@ const FLAGS: [&str; 16] = [
     "--yes",
     "--verify",
     "--no-source",
+    "--hosted-runner",
+    "--no-content",
 ];
 
 /// Parses the arguments after the program name.
@@ -525,6 +534,32 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         }
         ["apispec", ..] => {
             return Err("usage: prego apispec push <file> <ref>@<version> | get <ref>[@<version>] | diff <ref>@<a> <ref>@<b>".into())
+        }
+        ["verify", r] => {
+            allow(
+                &["--repository", "--ref", "--sha", "--level", "--keys", "--kind", "--registry"],
+                &["--hosted-runner", "--no-content", "--json"],
+            )?;
+            Command::Verify(Box::new(crate::verify::VerifyCommand {
+                reference: r.to_string(),
+                policy: crate::verify::statement::Policy {
+                    repository: one("--repository")?,
+                    git_ref: one("--ref")?,
+                    sha: one("--sha")?,
+                    level: one("--level")?,
+                    hosted_runner: flag("--hosted-runner"),
+                },
+                keys: one("--keys")?,
+                no_content: flag("--no-content"),
+                json: flag("--json"),
+                kind: one("--kind")?.unwrap_or_else(|| "publish".into()),
+                registry: one("--registry")?,
+            }))
+        }
+        ["verify", ..] => {
+            return Err("usage: prego verify <type>:<tenant>/<namespace>/<name>[@<version>] [--repository <r>] \
+                        [--ref <ref>] [--sha <commit>] [--level <level>] [--hosted-runner] [--no-content] [--json]"
+                .into())
         }
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),

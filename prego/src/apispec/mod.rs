@@ -682,6 +682,18 @@ pub(crate) fn get(
     Ok((version, hash, body))
 }
 
+/// For `prego verify`: the version label (the highest when none is given) and the hash of the document as
+/// published, after the download is checked against it.
+pub(crate) fn checked_version(
+    globals: &[&str],
+    env: &dyn Env,
+    r: &SpecRef,
+) -> Result<(String, String), String> {
+    let api = api(globals, &r.tenant, env)?;
+    let (version, hash, _) = get(&api, r, None, None)?;
+    Ok((version, hash))
+}
+
 fn diff(api: &Api, r: &SpecRef, from: &str, to: &str, json: bool) -> Result<(), String> {
     let path = format!(
         "{}/diff?{}",
