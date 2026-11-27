@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+Version 1.5.0 with `prego` 1.5.0 (`prego build`). Not released yet.
+
 ## [1.3.0] - 2026-11-25
 
 Version 1.3.0 with `prego` 1.3.0 (`prego keys`, `prego a2a`).

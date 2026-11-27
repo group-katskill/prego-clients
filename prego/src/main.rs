@@ -6,6 +6,7 @@ mod a2a;
 mod adapter;
 mod admin;
 mod args;
+mod build;
 mod context;
 mod docker_config;
 mod env;
@@ -211,6 +212,27 @@ Commands:
                                   convert an A2A 0.3 card (also agent.json) to an A2A 1.0 card, offline. It
                                   prints every change and stops at a field it cannot map with certainty.
                                   Default output: agent-card.json next to the input. The output is unsigned
+  build push <stream> <file>... [--promote <label>] [--release-url <https url>] [--message <text>]
+             [--expires-in <days>]
+                                  upload 1 to 32 files as one build of a build stream (<tenant>/<stream>
+                                  or <tenant>/<namespace>/<stream>), in parts of at most 95 MiB. prego
+                                  computes the sha256 of each file first; Prego checks it again. A build
+                                  expires after the namespace window (3 to 360 days, default 30) unless
+                                  it is promoted; --expires-in asks for fewer days. --promote <label>
+                                  keeps it with that label (a release). CI and SPIFFE identities can
+                                  upload; people and API keys only when the namespace allows it. Prints
+                                  the build ID on stdout
+  build get <stream> <build-id>|--commit <sha>|--run <id>|--label <label>|--latest [--ref <ref>]
+            [--out <folder>] [--no-verify]
+                                  download the files of one build to a folder (default .) and check the
+                                  sha256 of each file against the build's file list. An existing file
+                                  is not replaced
+  build list <stream> [--commit <sha>] [--ref <ref>] [--run <id>] [--promoted] [--limit <n>] [--json]
+                                  list builds, newest first, with the level, commit, ref, and the label
+                                  or the expiry
+  build promote <stream> <build-id> <label> | build promote <stream> <label> --commit <sha>
+                                  keep a build with a label (SemVer or a free label such as v1.4.0). It
+                                  does not expire; a label does not move
   context save <folder> <ref> [--session <s>] [--trigger compact|stop|manual|schedule] [--parent <hash>]
                [--label k=v]... [--message <text>] [--tag <tag>] [--no-redact]
                                   save a checkpoint of agent context (memory, notes, plans, transcripts):
@@ -423,6 +445,7 @@ fn main() {
                 Command::A2a(c) => a2a::run(&globals, &c, &env),
                 Command::Context(c) => context::run(&globals, &c, &env),
                 Command::Sqlite(c) => sqlite::run(&globals, &c, &env),
+                Command::Build(c) => build::commands::run(&globals, &c, &env),
                 Command::Exec {
                     command,
                     python: py,

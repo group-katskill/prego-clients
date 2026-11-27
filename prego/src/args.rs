@@ -114,6 +114,8 @@ pub enum Command {
     Context(Box<crate::context::ContextCommand>),
     /// `prego sqlite ...`.
     Sqlite(Box<crate::sqlite::SqliteCommand>),
+    /// `prego build ...`.
+    Build(Box<crate::build::commands::BuildCommand>),
 }
 
 const GLOBAL: [&str; 5] = [
@@ -123,7 +125,7 @@ const GLOBAL: [&str; 5] = [
     "--audience",
     "--source",
 ];
-const WITH_VALUE: [&str; 45] = [
+const WITH_VALUE: [&str; 52] = [
     "--scope",
     "--resource",
     "--namespace",
@@ -169,9 +171,16 @@ const WITH_VALUE: [&str; 45] = [
     "--key",
     "--key-file",
     "--card",
+    "--promote",
+    "--release-url",
+    "--expires-in",
+    "--commit",
+    "--run",
+    "--ref",
+    "--limit",
 ];
 /// Options without a value.
-const FLAGS: [&str; 16] = [
+const FLAGS: [&str; 19] = [
     "--write",
     "--print",
     "--dry-run",
@@ -188,6 +197,9 @@ const FLAGS: [&str; 16] = [
     "--yes",
     "--verify",
     "--no-source",
+    "--latest",
+    "--promoted",
+    "--no-verify",
 ];
 
 /// Parses the arguments after the program name.
@@ -486,10 +498,111 @@ pub fn parse(args: &[String]) -> Result<Parsed, String> {
         }
         ["context", rest @ ..] => Command::Context(Box::new(parse_context(rest, &opts, &flag, &allow)?)),
         ["sqlite", rest @ ..] => Command::Sqlite(Box::new(parse_sqlite(rest, &opts, &flag, &allow)?)),
+        ["build", rest @ ..] => Command::Build(Box::new(parse_build(rest, &opts, &flag, &allow)?)),
         [] => return Ok(Parsed::Help),
         other => return Err(format!("unknown command `{}`", other.join(" "))),
     };
     Ok(Parsed::Run { globals, command })
+}
+
+/// `prego build <subcommand>` (ADR-0066).
+fn parse_build(
+    words: &[&str],
+    opts: &[(&str, String)],
+    flag: &dyn Fn(&str) -> bool,
+    allow: &Allow<'_>,
+) -> Result<crate::build::commands::BuildCommand, String> {
+    use crate::build::commands::BuildCommand;
+    use crate::build::Selector;
+    let o = Opt { opts };
+    let usage =
+        "usage: prego build push <stream> <file>... | get <stream> <selector> | list <stream> | \
+                 promote <stream> <build-id>|--commit <sha> <label> (see prego --help)";
+    let selector = |id: Option<&str>| {
+        Selector::from_parts(
+            id,
+            o.one("--commit")?.as_deref(),
+            o.one("--run")?.as_deref(),
+            o.one("--label")?.as_deref(),
+            flag("--latest"),
+            o.one("--ref")?.as_deref(),
+        )
+    };
+    Ok(match words {
+        ["push", s, files @ ..] if !files.is_empty() => {
+            allow(
+                &["--promote", "--release-url", "--message", "--expires-in"],
+                &[],
+            )?;
+            BuildCommand::Push {
+                stream: s.to_string(),
+                files: files.iter().map(|f| f.to_string()).collect(),
+                promote: o.one("--promote")?,
+                release_url: o.one("--release-url")?,
+                message: o.text("--message", 200)?,
+                expires_days: o
+                    .one("--expires-in")?
+                    .map(|d| crate::build::parse_expiry_days(&d))
+                    .transpose()?,
+            }
+        }
+        ["get", s, rest @ ..] if rest.len() <= 1 => {
+            allow(
+                &["--commit", "--run", "--label", "--ref", "--out"],
+                &["--latest", "--no-verify"],
+            )?;
+            BuildCommand::Get {
+                stream: s.to_string(),
+                selector: selector(rest.first().copied())?,
+                out: o.one("--out")?,
+                no_verify: flag("--no-verify"),
+            }
+        }
+        ["list", s] => {
+            allow(
+                &["--commit", "--ref", "--run", "--limit"],
+                &["--promoted", "--json"],
+            )?;
+            let limit = match o.one("--limit")? {
+                Some(l) => Some(
+                    l.parse::<u32>()
+                        .ok()
+                        .filter(|n| (1..=1000).contains(n))
+                        .ok_or("--limit is 1 to 1000")?,
+                ),
+                None => None,
+            };
+            BuildCommand::List {
+                stream: s.to_string(),
+                commit: o.one("--commit")?,
+                git_ref: o.one("--ref")?,
+                run: o.one("--run")?,
+                promoted: flag("--promoted"),
+                limit,
+                json: flag("--json"),
+            }
+        }
+        ["promote", s, id, label] => {
+            allow(&[], &[])?;
+            BuildCommand::Promote {
+                stream: s.to_string(),
+                selector: selector(Some(id))?,
+                label: label.to_string(),
+            }
+        }
+        ["promote", s, label] => {
+            allow(&["--commit"], &[])?;
+            if o.one("--commit")?.is_none() {
+                return Err(usage.into());
+            }
+            BuildCommand::Promote {
+                stream: s.to_string(),
+                selector: selector(None)?,
+                label: label.to_string(),
+            }
+        }
+        _ => return Err(usage.into()),
+    })
 }
 
 /// Checks that a command gets only its own options and flags.

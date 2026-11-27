@@ -343,6 +343,43 @@ impl Api {
         Ok((res, out))
     }
 
+    /// A `GET` streamed into `out` with the token, at most `max` bytes. A redirect is not followed here: the
+    /// caller gets the `3xx` answer and follows the link without the token (`prego build get`).
+    pub(crate) fn get_into(
+        &self,
+        path: &str,
+        accept: &str,
+        out: &mut dyn std::io::Write,
+        max: u64,
+    ) -> Result<FullResponse, String> {
+        let url = self.url(path);
+        let headers = [("Authorization", self.c.auth.as_str()), ("Accept", accept)];
+        self.c
+            .http
+            .get_to(&url, &headers, out, max)
+            .map(|(res, _)| res)
+            .map_err(|e| format!("prego: {url}: {e}"))
+    }
+
+    /// A `GET` of an absolute link with no token (a short-lived storage link), streamed into `out`.
+    pub(crate) fn get_link(
+        &self,
+        link: &str,
+        out: &mut dyn std::io::Write,
+        max: u64,
+    ) -> Result<FullResponse, String> {
+        self.c
+            .http
+            .get_to(link, &[("Accept", "application/octet-stream")], out, max)
+            .map(|(res, _)| res)
+            .map_err(|e| format!("prego: the download link: {e}"))
+    }
+
+    /// The URL of a path under `/v1/<prefix>/`, for messages and for the base of a relative link.
+    pub(crate) fn full_url(&self, path: &str) -> String {
+        self.url(path)
+    }
+
     /// A `GET` with a `200` JSON answer. A `412 hash_mismatch` exits with [`EXIT_EXPECT`].
     pub(crate) fn get_json(&self, path: &str, what: &str) -> Result<(FullResponse, Value), String> {
         let (res, body) = self.get_bytes(path, "application/json", MAX_JSON)?;

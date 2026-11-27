@@ -6,15 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-### Tests
+Version 1.5.0 (minor). Not released yet.
 
-- No test leaves a temp directory. Each test makes its temp directory with `prego_auth::testing::TempDir`. When
-  the test ends, also after a failure, the guard overwrites each file with zeros and removes the directory. The
-  directories hold test private keys, tokens and session files. Before, the tests of `prego keys`, `prego a2a`,
-  `prego adapter`, `prego login` and the Python commands left `prego-keys-a2a-*`, `prego-keys-*`,
-  `prego-keyfile-*`, `prego-adapter-*`, `prego-login-*` and `prego-py-*` in the system temp directory. The other
-  tests (cli, context, env, go, npm, oci, snippet, sqlite, docker config, Go token cache) removed theirs only when
-  they passed.
+### Added
+
+- `prego build` (ADR-0066, build artifacts; needs the registry with ADR-0066, 1.33.0):
+  - `push <stream> <file>... [--promote <label>] [--release-url <url>] [--message <text>] [--expires-in <days>]`
+    uploads 1 to 32 files as one build, in parts of at most 95 MiB, with the sha256 of each file computed first. A
+    refused file (Prego computed another sha256) cancels the upload; nothing is stored. It prints the build ID.
+  - `get <stream> <build-id>|--commit <sha>|--run <id>|--label <label>|--latest [--ref <ref>] [--out <folder>]
+    [--no-verify]` downloads the files of one build and checks the sha256 of each one against the file list. It
+    follows the 60 s storage link without the token, and it does not replace a file that exists. (ADR-0066 names
+    the label selector `--version`; that is prego's global flag, so the option is `--label`.)
+  - `list <stream> [--commit] [--ref] [--run] [--promoted] [--limit] [--json]` and
+    `promote <stream> <build-id> <label>` or `promote <stream> <label> --commit <sha>`.
+  - Checks before any request: file names (`[A-Za-z0-9._+-]`, 1 to 128, not starting with `.`, unique), regular
+    files only, `--release-url` (`https://`, at most 2,048 characters, no user name), `--expires-in` (3 to 360),
+    the label and the selectors.
 
 ## [1.3.0] - 2026-11-25
 

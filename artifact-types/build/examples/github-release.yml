@@ -1,0 +1,36 @@
+# On a release tag: build, make the GitHub release, and push the same files to Prego, promoted with the tag.
+# The job uses its own OIDC identity: no stored Prego secret. The build gets a publish attestation with the
+# repository, the tag ref, the commit and the run.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      PREGO_TENANT: acme
+      PREGO_EDGE_CODE: k7mq
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          make dist
+          (cd dist && sha256sum * > SHA256SUMS)
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*
+      - name: Install prego
+        run: |
+          curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+          sh install.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Push the release files to Prego
+        run: |
+          prego build push acme/ci/api-cli dist/* \
+            --promote "$GITHUB_REF_NAME" \
+            --release-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"

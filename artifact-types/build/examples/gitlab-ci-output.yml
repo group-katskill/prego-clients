@@ -1,0 +1,17 @@
+# Every pipeline pushes its test reports. They expire after 7 days unless someone keeps (promotes) them.
+# Find them later by commit: prego build get acme/ci/api-test-reports --commit <sha>
+test:
+  image: debian:stable-slim
+  id_tokens:
+    PREGO_ID_TOKEN:
+      aud: prego.k8skill.com
+  variables:
+    PREGO_TENANT: acme
+    PREGO_EDGE_CODE: k7mq
+  script:
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates make
+    - make test || status=$?
+    - curl -fsSLO https://github.com/group-katskill/prego-clients/releases/latest/download/install.sh
+    - sh install.sh && export PATH="$HOME/.local/bin:$PATH"
+    - prego build push acme/ci/api-test-reports reports/junit.xml reports/coverage.xml --expires-in 7
+    - exit "${status:-0}"

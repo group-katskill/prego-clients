@@ -111,8 +111,15 @@ pub struct MockServer {
 impl MockServer {
     /// Starts the server on a free port.
     pub fn start(responses: Vec<MockResponse>) -> Self {
+        Self::start_with(|_| responses)
+    }
+
+    /// Starts the server on a free port, with responses that `make` builds from the base URL
+    /// (`http://127.0.0.1:<port>`), for answers that hold absolute URLs on the server.
+    pub fn start_with(make: impl FnOnce(&str) -> Vec<MockResponse>) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock server");
         let port = listener.local_addr().expect("local addr").port();
+        let responses = make(&format!("http://127.0.0.1:{port}"));
         let requests = Arc::new(Mutex::new(Vec::new()));
         let seen = Arc::clone(&requests);
         thread::spawn(move || {
